@@ -6295,64 +6295,87 @@ async function startPatientVoice() {
     document.getElementById('ptVoiceBtn').textContent = '⏹';
   } else {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+    if (!SR) { 
+      const msg = '⚠ WebSpeech NOT available. SR=' + (!!window.SpeechRecognition) + ' webkit=' + (!!window.webkitSpeechRecognition);
+      showMicBanner(msg);
+      transEl.textContent = msg;
+      return; 
+    }
     
-    // iPhone Safari optimized approach - single session with interim results
+    console.log('[DEBUG] Creating SpeechRecognition');
     const rec = new SR();
-    rec.continuous = true;  // Keep going until we stop it
-    rec.interimResults = true;  // Show results as they come in
+    rec.continuous = true;
+    rec.interimResults = true;
     rec.lang = 'en-US';
+    console.log('[DEBUG] Configured: continuous=true, interimResults=true');
+    
+    rec.onstart = () => {
+      console.log('[DEBUG] onstart fired');
+      transEl.textContent = '✓ Started - speak now';
+    };
     
     rec.onresult = (e) => {
+      console.log('[DEBUG] onresult: results.length=' + e.results.length);
       let interimTranscript = '';
       let finalTranscript = '';
       
       for (let i = 0; i < e.results.length; i++) {
         const transcript = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
+        const isFinal = e.results[i].isFinal;
+        console.log('[DEBUG] Result ' + i + ': "' + transcript + '" final=' + isFinal);
+        
+        if (isFinal) {
           finalTranscript += transcript + ' ';
         } else {
           interimTranscript += transcript;
         }
       }
       
-      // Update the accumulated final transcript
       if (finalTranscript) {
         ptTranscript += finalTranscript;
+        console.log('[DEBUG] Total transcript now: "' + ptTranscript + '"');
       }
       
-      // Show what we have so far (final + interim)
       const displayText = (ptTranscript + interimTranscript).trim();
       if (displayText) {
         transEl.textContent = displayText;
         transEl.classList.add('has-content');
+        console.log('[DEBUG] Showing: "' + displayText.substring(0, 30) + '..."');
       } else {
-        transEl.textContent = '🎙 Listening…';
+        transEl.textContent = '🎙 Listening (no speech yet)...';
       }
     };
     
     rec.onerror = (e) => {
-      console.log('WebSpeech error:', e.error);
-      // Only show real errors, not normal abort/no-speech
+      console.error('[DEBUG] onerror: ' + e.error);
+      transEl.textContent = 'ERROR: ' + e.error;
       if (e.error !== 'no-speech' && e.error !== 'aborted') {
         showMicBanner('⚠ ' + e.error);
       }
     };
     
     rec.onend = () => {
-      console.log('WebSpeech ended, ptRecording:', ptRecording);
-      // Don't restart - we'll handle this in the stop function
+      console.log('[DEBUG] onend fired, ptRecording=' + ptRecording);
     };
+    
+    rec.onaudiostart = () => console.log('[DEBUG] onaudiostart');
+    rec.onaudioend = () => console.log('[DEBUG] onaudioend');
+    rec.onsoundstart = () => console.log('[DEBUG] onsoundstart - sound detected!');
+    rec.onsoundend = () => console.log('[DEBUG] onsoundend');
+    rec.onspeechstart = () => console.log('[DEBUG] onspeechstart - speech detected!');
+    rec.onspeechend = () => console.log('[DEBUG] onspeechend');
     
     ptRecognition = rec;
     ptRecording = true;
     
+    console.log('[DEBUG] Calling rec.start()...');
     try {
       rec.start();
-      console.log('WebSpeech started');
+      console.log('[DEBUG] rec.start() succeeded');
     } catch(e) {
-      console.error('Failed to start WebSpeech:', e);
-      showMicBanner('⚠ Failed to start: ' + e.message);
+      console.error('[DEBUG] rec.start() FAILED:', e);
+      showMicBanner('⚠ Start failed: ' + e.message);
+      transEl.textContent = 'Start failed: ' + e.message;
       return;
     }
     
