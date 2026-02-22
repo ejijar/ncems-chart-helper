@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: iPhone-WebSpeech-Fix-v3 - Pattern-based extraction, no API needed -->
+<!-- Version: iPhone-WebSpeech-Fix-v4 - Fixed re-recording bug, proper cleanup -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -6280,11 +6280,23 @@ function togglePatientVoice() {
 }
 
 async function startPatientVoice() {
+  // Clean up any existing recognition first
+  if (ptRecognition) {
+    try {
+      ptRecognition.abort();
+      ptRecognition = null;
+    } catch(e) {
+      console.log('[DEBUG] Cleanup error (expected):', e);
+    }
+  }
+  
   ptTranscript = '';
+  ptRecording = false; // Reset flag
   const transEl = document.getElementById('ptDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
   document.getElementById('ptExtractStatus').textContent = '';
+  document.getElementById('ptExtractBtn').style.display = 'none';
 
   if (useWhisper()) {
     const ok = await whisperStart('patient');
@@ -6395,18 +6407,21 @@ async function startPatientVoice() {
 async function stopPatientVoice() {
   ptRecording = false;
   
-  // Stop the recognition
+  // Stop the recognition properly
   if (ptRecognition) { 
     try { 
-      ptRecognition.stop(); 
-      console.log('WebSpeech stopped');
+      ptRecognition.stop();
+      console.log('[DEBUG] WebSpeech stopped');
     } catch(e) {
-      console.error('Error stopping WebSpeech:', e);
+      console.log('[DEBUG] Stop error (may be expected):', e);
     }
   }
   
   // Give a moment for final results to be processed
   await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Clean up recognition instance
+  ptRecognition = null;
   
   stopVisualizer();
   const wv = document.getElementById('ptWaveform');
@@ -6532,11 +6547,21 @@ function toggleSceneVoice() {
 }
 
 async function startSceneVoice() {
+  // Clean up any existing recognition first
+  if (sceneRecognition) {
+    try {
+      sceneRecognition.abort();
+      sceneRecognition = null;
+    } catch(e) {}
+  }
+  
   sceneTranscript = '';
+  sceneRecording = false;
   const transEl = document.getElementById('sceneDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
   document.getElementById('sceneExtractStatus').textContent = '';
+  document.getElementById('sceneExtractBtn').style.display = 'none';
 
   if (useWhisper()) {
     const ok = await whisperStart('scene');
@@ -6615,6 +6640,9 @@ async function stopSceneVoice() {
   }
   
   await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Clean up recognition instance
+  sceneRecognition = null;
   
   stopVisualizer();
   const wv = document.getElementById('sceneWaveform');
@@ -6717,11 +6745,21 @@ function toggleIncidentVoice() {
 }
 
 async function startIncidentVoice() {
+  // Clean up any existing recognition first
+  if (incidentRecognition) {
+    try {
+      incidentRecognition.abort();
+      incidentRecognition = null;
+    } catch(e) {}
+  }
+  
   incidentTranscript = '';
+  incidentRecording = false;
   const transEl = document.getElementById('incidentDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
   document.getElementById('incidentExtractStatus').textContent = '';
+  document.getElementById('incidentExtractBtn').style.display = 'none';
 
   if (useWhisper()) {
     const ok = await whisperStart('incident');
@@ -6800,6 +6838,9 @@ async function stopIncidentVoice() {
   }
   
   await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Clean up recognition instance
+  incidentRecognition = null;
   
   stopVisualizer();
   const wv = document.getElementById('incidentWaveform');
