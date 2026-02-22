@@ -1,2 +1,2 @@
-# ncems-chart-helper
-EMS Chart Helper Application v2
+# chart-helper
+Chart Helper Application v2
