@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: iPhone-WebSpeech-Fix-v4 - Fixed re-recording bug, proper cleanup -->
+<!-- Version: iPhone-WebSpeech-Fix-v5 - Multiple recordings with timestamped history -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -6284,14 +6284,17 @@ async function startPatientVoice() {
   if (ptRecognition) {
     try {
       ptRecognition.abort();
-      ptRecognition = null;
     } catch(e) {
-      console.log('[DEBUG] Cleanup error (expected):', e);
+      console.log('[DEBUG] Cleanup abort error (expected):', e);
     }
+    // Wait a moment for abort to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
   
-  ptTranscript = '';
+  ptRecognition = null;
+  ptTranscript = ''; // Clear for new recording session
   ptRecording = false; // Reset flag
+  
   const transEl = document.getElementById('ptDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
@@ -6551,12 +6554,14 @@ async function startSceneVoice() {
   if (sceneRecognition) {
     try {
       sceneRecognition.abort();
-      sceneRecognition = null;
     } catch(e) {}
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
   
+  sceneRecognition = null;
   sceneTranscript = '';
   sceneRecording = false;
+  
   const transEl = document.getElementById('sceneDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
@@ -6749,12 +6754,14 @@ async function startIncidentVoice() {
   if (incidentRecognition) {
     try {
       incidentRecognition.abort();
-      incidentRecognition = null;
     } catch(e) {}
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
   
+  incidentRecognition = null;
   incidentTranscript = '';
   incidentRecording = false;
+  
   const transEl = document.getElementById('incidentDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
@@ -8704,6 +8711,19 @@ function collectChartData() {
     data.vitalsCards.push(cardData);
   });
   
+  // Collect transcript histories
+  data.transcriptHistories = {};
+  ['patient', 'scene', 'incident', 'assessment', 'activities'].forEach(section => {
+    const historyDiv = document.getElementById(`${section}-transcript-history`);
+    if (historyDiv) {
+      const entries = Array.from(historyDiv.querySelectorAll('.transcript-entry')).map(entry => ({
+        timestamp: entry.querySelector('.transcript-timestamp')?.textContent || '',
+        text: entry.querySelector('.transcript-text')?.textContent || ''
+      }));
+      data.transcriptHistories[section] = entries;
+    }
+  });
+  
   return data;
 }
 
@@ -8844,6 +8864,28 @@ function restoreChartData(data) {
           if (pill && !pill.classList.contains('selected')) {
             pill.classList.add('selected');
           }
+        });
+      }
+    });
+  }
+  
+  // Restore transcript histories
+  if (data.transcriptHistories) {
+    Object.keys(data.transcriptHistories).forEach(section => {
+      const historyDiv = document.getElementById(`${section}-transcript-history`);
+      if (historyDiv && data.transcriptHistories[section]) {
+        // Clear existing content
+        historyDiv.innerHTML = '';
+        
+        // Add each entry (they're already in reverse chronological order)
+        data.transcriptHistories[section].forEach(entry => {
+          const entryDiv = document.createElement('div');
+          entryDiv.className = 'transcript-entry';
+          entryDiv.innerHTML = `
+            <div class="transcript-timestamp">${entry.timestamp}</div>
+            <div class="transcript-text">${entry.text}</div>
+          `;
+          historyDiv.appendChild(entryDiv);
         });
       }
     });
