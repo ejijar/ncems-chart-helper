@@ -1146,8 +1146,6 @@
   .auto-save-status .menu-icon {
     opacity: 0.6;
   }
-    color: var(--text-muted);
-  }
   
   .activity-pills {
     display: flex;
@@ -1530,10 +1528,11 @@
     inset: 0;
     background: rgba(0,0,0,0.7);
     z-index: 200;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
   }
 
+  .modal-overlay.active,
   .modal-overlay.visible { display: flex; }
 
   .modal {
@@ -2102,6 +2101,8 @@
     font-size: 13px;
     text-align: center;
   }
+
+  .gcs-btn {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -5535,23 +5536,9 @@ let secTranscriptLog = {};   // all transcripts for this section, accumulated
 const SECTION_PROMPTS = {
   calltype: {
     hint: 'e.g. "This is a refusal call, non-emergency priority, patient called 911 themselves"',
-    prompt: (t) => `Extract call information from this dictated text and return ONLY valid JSON with these keys (empty string if not mentioned):
-{
-  "callType": "",
-  "dispatchPriority": "",
-  "whoCalled911": ""
-}
-Rules:
-- "callType": one of "lift_assist", "chest_pain", "respiratory", "trauma", "diabetic" — match closest
-- "dispatchPriority": "Emergency" or "Non-Emergency"
-- Return ONLY the JSON object
-
-Dictated text: "${t}"`,
-    fill: (d) => {
-      if (d.callType) { document.getElementById('callType').value = d.callType; updateCallType(); }
-      if (d.dispatchPriority) document.getElementById('dispatchPriority').value = d.dispatchPriority;
-      if (d.whoCalled911) document.getElementById('whoCalled911').value = d.whoCalled911;
-    }
+    prompt: null,  // uses universal extractor
+    fill: null,    // uses universal extractor
+    useUniversal: true
   },
   vitals: {
     hint: 'e.g. "Pulse 78, BP 132 over 84, sats 97%, resp rate 16, GCS 15, pain 3 out of 10, skin warm and dry"',
@@ -5593,20 +5580,9 @@ Dictated text: "${t}"`,
   },
   transport: {
     hint: 'e.g. "Transported to Stamford Hospital, brought to ED room 4"',
-    prompt: (t) => `Extract transport information from this dictated text and return ONLY valid JSON:
-{
-  "hospital": "",
-  "edRoom": ""
-}
-Return ONLY the JSON object.
-Dictated text: "${t}"`,
-    fill: (d) => {
-      if (d.hospital) document.getElementById('transportHospital').value = d.hospital;
-      if (d.edRoom) document.getElementById('edRoom').value = d.edRoom;
-      // Open section if closed
-      const sec = document.getElementById('section-transport');
-      if (sec.style.display === 'none') toggleSection('transport');
-    }
+    prompt: null,
+    fill: null,
+    useUniversal: true
   },
   refusal: {
     hint: 'e.g. "Patient was informed of risks, patient refused all EMS services, does not want to go to hospital"',
@@ -5682,8 +5658,9 @@ async function whisperStart(section) {
     return false;
   }
 
-  // Pick best supported format
-  const mimeType = ['audio/webm', 'audio/mp4', 'audio/ogg'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+  // Pick best supported format — audio/mp4 first for Safari/iPhone
+  const preferredTypes = ['audio/mp4', 'audio/webm', 'audio/ogg'];
+  const mimeType = preferredTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
   whisperChunks = [];
   whisperRecorder = new MediaRecorder(whisperStream, mimeType ? { mimeType } : {});
   whisperRecorder.ondataavailable = e => { if (e.data.size > 0) whisperChunks.push(e.data); };
@@ -5702,7 +5679,7 @@ async function whisperStop() {
       // Release mic
       if (whisperStream) { whisperStream.getTracks().forEach(t => t.stop()); whisperStream = null; }
 
-      const mimeType = whisperRecorder.mimeType || 'audio/webm';
+      const mimeType = whisperRecorder.mimeType || 'audio/mp4';
       const blob = new Blob(whisperChunks, { type: mimeType });
       whisperChunks = [];
 
@@ -5710,7 +5687,7 @@ async function whisperStop() {
 
       // Send to Whisper
       try {
-        const ext = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+        const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('ogg') ? 'ogg' : 'mp4';
         const formData = new FormData();
         formData.append('file', blob, 'audio.' + ext);
         formData.append('model', 'whisper-1');
@@ -5840,8 +5817,9 @@ function setDictateState(section, state, extra) {
     wordsEl.textContent = '';
     toggleEl.style.display = 'none';
     waveEl && (waveEl.style.display = 'block');
-    // Live RMS level meter via getUserMedia independent of SpeechRecognition
-    startLevelMeter(section);
+    // Live RMS level meter — only when Whisper is active (mic stream already open).
+    // Skipped for WebSpeech to avoid a second getUserMedia call on iPhone Safari.
+    if (useWhisper()) startLevelMeter(section);
   } else if (state === 'processing') {
     const words = extra || 0;
     stateEl.innerHTML = '<span class="sec-spinner"></span> Extracting ' + words + ' word' + (words !== 1 ? 's' : '') + '…';
@@ -6005,10 +5983,34 @@ async function extractSection(section) {
   statusEl.className = 'sec-extract-status';
 
   try {
+    // Sections with useUniversal:true route through the universal extractor
+    if (config.useUniversal) {
+      const result = await extractUniversalInfo(transcript, section);
+      if (result.success && result.fieldsPopulated.length > 0) {
+        const over = result.fieldsOverwritten.length;
+        let msg = `✓ ${result.fieldsPopulated.length} field${result.fieldsPopulated.length !== 1 ? 's' : ''} populated (${result.fieldsPopulated.join(', ')})`;
+        if (over) msg += ` — ${over} updated`;
+        setDictateState(section, 'done');
+        statusEl.textContent = msg + ' — tap "Show transcript" to review';
+        statusEl.classList.add('success');
+      } else if (result.success) {
+        setDictateState(section, 'error', 'No fields extracted');
+        statusEl.textContent = '⚠ No fields extracted — try speaking more clearly';
+        statusEl.classList.add('error');
+      } else {
+        setDictateState(section, 'error', result.error.slice(0, 60));
+        statusEl.textContent = '✗ ' + result.error;
+        statusEl.classList.add('error');
+        showToast('error', 'Extraction Failed', result.error + ' — Check Anthropic API key in ⚙ Crew settings.');
+      }
+      return;
+    }
+
+    // Standard section-specific extraction (vitals, transport, refusal)
     console.log('[extractSection] section:', section, 'transcript:', transcript);
     const text = await claudeAPI([{ role: 'user', content: config.prompt(transcript) }], 400);
     console.log('[extractSection] raw response:', text);
-    const clean = text.replace(/```json|```/g, '').trim();
+    const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
     const parsed = JSON.parse(clean);
     config.fill(parsed);
     setDictateState(section, 'done');
@@ -6093,10 +6095,12 @@ function closeGCSOutside(e) {
 }
 
 // ======== UNIVERSAL CROSS-SECTION EXTRACTION ========
+// Every mic section routes through here so any dictation can fill any field.
+// Field IDs are mapped to the actual HTML elements that exist in the DOM.
 async function extractUniversalInfo(transcript, sourceSection) {
   if (!transcript || !transcript.trim()) return { success: false, error: 'No transcript' };
 
-  const prompt = `Extract ALL relevant information from the following EMS dictation and return ONLY a valid JSON object with these exact keys (use empty string "" if not mentioned):
+  const prompt = `You are an EMS documentation assistant. Extract ALL relevant information from this dictated text and return ONLY a valid JSON object. Use "" for any field not mentioned.
 
 {
   "patient": {
@@ -6110,157 +6114,108 @@ async function extractUniversalInfo(transcript, sourceSection) {
     "phone": "",
     "sex": ""
   },
+  "dispatch": {
+    "callType": "",
+    "dispatchPriority": "",
+    "whoCalled911": ""
+  },
   "scene": {
     "loc": "",
-    "sceneNotes": "",
-    "caller911": ""
+    "sceneNotes": ""
   },
   "incident": {
     "chiefComplaint": "",
-    "onset": "",
-    "provokes": "",
-    "quality": "",
-    "radiates": "",
-    "severity": "",
-    "time": "",
-    "pmh": "",
-    "medications": "",
-    "allergies": ""
+    "hpiNarrative": "",
+    "sampleNarrative": ""
   }
 }
 
-EXTRACTION RULES:
-Patient:
-- "dob": format as YYYY-MM-DD if date given
-- "age": extract age if mentioned (e.g. "45 year old")
-- "sex": return "male" or "female" only, lowercase
-- "state": two-letter abbreviation (e.g. CT, NY)
-
-Scene:
-- "loc": level of consciousness — return EXACTLY one of: "Alert and Oriented x4", "Alert and Oriented x3", "Alert and Oriented x2", "Alert and Oriented x1", "Altered Mental Status", "Unconscious"
-- "sceneNotes": any scene description, safety concerns, environment details
-- "caller911": who called 911
-
-Incident:
-- "chiefComplaint": main complaint, as a direct quote if possible
-- Extract OPQRST components if mentioned
-- "pmh": past medical history
-- "medications": current medications  
-- "allergies": known allergies
+RULES:
+- patient.dob: YYYY-MM-DD format if a date of birth is given, else ""
+- patient.age: number only if mentioned explicitly (e.g. "45 year old" → "45"), else ""
+- patient.sex: "male" or "female" lowercase only, else ""
+- patient.state: two-letter abbreviation (CT, NY, etc.), else ""
+- dispatch.callType: match to one of: "lift_assist", "chest_pain", "respiratory", "trauma", "diabetic", "mva" — closest match, else ""
+- dispatch.dispatchPriority: "Emergency" or "Non-Emergency" only, else ""
+- scene.loc: EXACTLY one of: "Alert and Oriented x4", "Alert and Oriented x3", "Alert and Oriented x2", "Alert and Oriented x1", "Altered Mental Status", "Unconscious" — or "" if not mentioned
+- scene.sceneNotes: scene description, environment, positioning, who was present
+- incident.chiefComplaint: the patient's main complaint, quoted if possible
+- incident.hpiNarrative: ALL OPQRST details — onset, provocation, quality, radiation, severity (0-10), timing, duration
+- incident.sampleNarrative: ALL SAMPLE details — signs/symptoms, allergies, medications, past medical history, last intake, events leading up to call
 
 Return ONLY the JSON object, no other text.
 
 Dictated text: "${transcript}"`;
 
   try {
-    const text = await claudeAPI([{ role: 'user', content: prompt }], 500);
-    const clean = text.replace(/```json|```/g, '').trim();
+    const text = await claudeAPI([{ role: 'user', content: prompt }], 600);
+    const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
     const parsed = JSON.parse(clean);
     
-    // Populate ALL fields across ALL sections
     const fieldsPopulated = [];
     const fieldsOverwritten = [];
     
-    // Helper function to populate field with overwrite tracking
-    const populateField = (elementId, value, displayName) => {
-      const element = document.getElementById(elementId);
-      if (!element) return false;
-      
-      const wasPopulated = element.value && element.value.trim();
-      element.value = value;
-      
-      // Add highlight if overwriting existing data
-      if (wasPopulated) {
-        element.classList.add('field-overwritten');
-        fieldsOverwritten.push(displayName);
-        // Remove highlight after 5 seconds
-        setTimeout(() => {
-          element.classList.remove('field-overwritten');
-        }, 5000);
+    // Helper: set a field value, highlight if overwriting
+    const setField = (id, value, label) => {
+      if (!value || !value.toString().trim()) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      const had = el.value && el.value.trim();
+      el.value = value;
+      if (had) {
+        fieldsOverwritten.push(label);
+        el.classList.add('field-overwritten');
+        setTimeout(() => el.classList.remove('field-overwritten'), 5000);
       }
-      
-      fieldsPopulated.push(displayName);
-      return true;
+      fieldsPopulated.push(label);
     };
-    
-    // PATIENT SECTION
-    if (parsed.patient?.name) {
-      populateField('patientName', parsed.patient.name, 'Patient Name');
+
+    // Helper: append to textarea (HPI/SAMPLE are narrative fields — append, don't overwrite)
+    const appendField = (id, value, label) => {
+      if (!value || !value.toString().trim()) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      const had = el.value && el.value.trim();
+      el.value = had ? had + '\n' + value : value;
+      el.classList.add('field-overwritten');
+      fieldsPopulated.push(label);
+      fieldsOverwritten.push(label);
+      setTimeout(() => el.classList.remove('field-overwritten'), 5000);
+    };
+
+    // PATIENT
+    if (parsed.patient?.name)    setField('patientName',    parsed.patient.name,                  'Patient Name');
+    if (parsed.patient?.dob)   { setField('patientDOB',     parsed.patient.dob,                   'DOB'); calcAge(); }
+    if (parsed.patient?.age && !parsed.patient?.dob) setField('patientAge', parsed.patient.age,   'Age');
+    if (parsed.patient?.address) setField('patientAddress', parsed.patient.address,               'Address');
+    if (parsed.patient?.city)    setField('patientCity',    parsed.patient.city,                  'City');
+    if (parsed.patient?.state)   setField('patientState',   parsed.patient.state.toUpperCase(),   'State');
+    if (parsed.patient?.zip)     setField('patientZip',     parsed.patient.zip,                   'Zip');
+    if (parsed.patient?.phone)   setField('patientPhone',   parsed.patient.phone,                 'Phone');
+    if (parsed.patient?.sex)     setField('patientSex',     parsed.patient.sex,                   'Sex');
+
+    // DISPATCH
+    if (parsed.dispatch?.callType) {
+      setField('callType', parsed.dispatch.callType, 'Call Type');
+      try { updateCallType(); } catch(e) {}
     }
-    if (parsed.patient?.dob) {
-      populateField('patientDOB', parsed.patient.dob, 'DOB');
-      calcAge();
-    }
-    if (parsed.patient?.age && !parsed.patient?.dob) {
-      populateField('patientAge', parsed.patient.age, 'Age');
-    }
-    if (parsed.patient?.address) {
-      populateField('patientAddress', parsed.patient.address, 'Address');
-    }
-    if (parsed.patient?.city) {
-      populateField('patientCity', parsed.patient.city, 'City');
-    }
-    if (parsed.patient?.state) {
-      populateField('patientState', parsed.patient.state.toUpperCase(), 'State');
-    }
-    if (parsed.patient?.zip) {
-      populateField('patientZip', parsed.patient.zip, 'Zip');
-    }
-    if (parsed.patient?.phone) {
-      populateField('patientPhone', parsed.patient.phone, 'Phone');
-    }
-    if (parsed.patient?.sex) {
-      populateField('patientSex', parsed.patient.sex, 'Sex');
-    }
-    
-    // SCENE SECTION
-    if (parsed.scene?.loc) {
-      populateField('patientLOC', parsed.scene.loc, 'LOC');
-    }
-    if (parsed.scene?.sceneNotes) {
-      populateField('sceneNotes', parsed.scene.sceneNotes, 'Scene Notes');
-    }
-    if (parsed.scene?.caller911) {
-      populateField('caller911', parsed.scene.caller911, '911 Caller');
-    }
-    
-    // INCIDENT SECTION
-    if (parsed.incident?.chiefComplaint) {
-      populateField('chiefComplaint', parsed.incident.chiefComplaint, 'Chief Complaint');
-    }
-    if (parsed.incident?.onset) {
-      populateField('hpiOnset', parsed.incident.onset, 'Onset');
-    }
-    if (parsed.incident?.provokes) {
-      populateField('hpiProvokes', parsed.incident.provokes, 'Provokes');
-    }
-    if (parsed.incident?.quality) {
-      populateField('hpiQuality', parsed.incident.quality, 'Quality');
-    }
-    if (parsed.incident?.radiates) {
-      populateField('hpiRadiates', parsed.incident.radiates, 'Radiates');
-    }
-    if (parsed.incident?.severity) {
-      populateField('hpiSeverity', parsed.incident.severity, 'Severity');
-    }
-    if (parsed.incident?.time) {
-      populateField('hpiTime', parsed.incident.time, 'Time/Duration');
-    }
-    if (parsed.incident?.pmh) {
-      populateField('pmh', parsed.incident.pmh, 'PMH');
-    }
-    if (parsed.incident?.medications) {
-      populateField('medications', parsed.incident.medications, 'Medications');
-    }
-    if (parsed.incident?.allergies) {
-      populateField('allergies', parsed.incident.allergies, 'Allergies');
-    }
-    
+    if (parsed.dispatch?.dispatchPriority) setField('dispatchPriority', parsed.dispatch.dispatchPriority, 'Priority');
+    if (parsed.dispatch?.whoCalled911)     setField('whoCalled911',     parsed.dispatch.whoCalled911,     'Who Called 911');
+
+    // SCENE
+    if (parsed.scene?.loc)        setField('patientLOC',  parsed.scene.loc,        'LOC');
+    if (parsed.scene?.sceneNotes) appendField('sceneNotes', parsed.scene.sceneNotes, 'Scene Notes');
+
+    // INCIDENT
+    if (parsed.incident?.chiefComplaint) setField('chiefComplaint',   parsed.incident.chiefComplaint, 'Chief Complaint');
+    if (parsed.incident?.hpiNarrative)   appendField('hpiNarrative',  parsed.incident.hpiNarrative,   'HPI');
+    if (parsed.incident?.sampleNarrative) appendField('sampleNarrative', parsed.incident.sampleNarrative, 'PMH/SAMPLE');
+
     return {
       success: true,
-      fieldsPopulated: fieldsPopulated,
-      fieldsOverwritten: fieldsOverwritten,
-      sourceSection: sourceSection
+      fieldsPopulated,
+      fieldsOverwritten,
+      sourceSection
     };
     
   } catch (err) {
@@ -6312,98 +6267,48 @@ async function startPatientVoice() {
   } else {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { 
-      const msg = '⚠ WebSpeech NOT available. SR=' + (!!window.SpeechRecognition) + ' webkit=' + (!!window.webkitSpeechRecognition);
+      const msg = '⚠ WebSpeech NOT available. SR=' + (!!window.SpeechRecognition) + ' webkit:' + (!!window.webkitSpeechRecognition);
       showMicBanner(msg);
       transEl.textContent = msg;
       return; 
     }
     
-    console.log('[DEBUG] Creating SpeechRecognition');
-    const rec = new SR();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = 'en-US';
-    console.log('[DEBUG] Configured: continuous=true, interimResults=true');
-    
-    rec.onstart = () => {
-      console.log('[DEBUG] onstart fired');
-      transEl.textContent = '✓ Started - speak now';
-    };
-    
-    rec.onresult = (e) => {
-      console.log('[DEBUG] onresult: results.length=' + e.results.length);
-      let interimTranscript = '';
-      let finalTranscript = '';
-      
-      for (let i = 0; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript;
-        const isFinal = e.results[i].isFinal;
-        console.log('[DEBUG] Result ' + i + ': "' + transcript + '" final=' + isFinal);
-        
-        if (isFinal) {
-          finalTranscript += transcript + ' ';
-        } else {
-          interimTranscript += transcript;
+    ptRecording = true;
+    document.getElementById('ptVoiceBtn').classList.add('recording');
+    document.getElementById('ptVoiceBtn').textContent = '⏹';
+
+    function onResult(e) {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          ptTranscript += e.results[i][0].transcript + ' ';
         }
       }
-      
-      if (finalTranscript) {
-        ptTranscript += finalTranscript;
-        console.log('[DEBUG] Total transcript now: "' + ptTranscript + '"');
-      }
-      
-      const displayText = (ptTranscript + interimTranscript).trim();
+      const displayText = ptTranscript.trim();
       if (displayText) {
         transEl.textContent = displayText;
         transEl.classList.add('has-content');
-        console.log('[DEBUG] Showing: "' + displayText.substring(0, 30) + '..."');
-      } else {
-        transEl.textContent = '🎙 Listening (no speech yet)...';
       }
-    };
-    
-    rec.onerror = (e) => {
-      console.error('[DEBUG] onerror: ' + e.error);
-      transEl.textContent = 'ERROR: ' + e.error;
-      if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        showMicBanner('⚠ ' + e.error);
-      }
-    };
-    
-    rec.onend = () => {
-      console.log('[DEBUG] onend fired, ptRecording=' + ptRecording);
-    };
-    
-    rec.onaudiostart = () => console.log('[DEBUG] onaudiostart');
-    rec.onaudioend = () => console.log('[DEBUG] onaudioend');
-    rec.onsoundstart = () => console.log('[DEBUG] onsoundstart - sound detected!');
-    rec.onsoundend = () => console.log('[DEBUG] onsoundend');
-    rec.onspeechstart = () => console.log('[DEBUG] onspeechstart - speech detected!');
-    rec.onspeechend = () => console.log('[DEBUG] onspeechend');
-    
-    ptRecognition = rec;
-    ptRecording = true;
-    
-    console.log('[DEBUG] Calling rec.start()...');
-    try {
-      rec.start();
-      console.log('[DEBUG] rec.start() succeeded');
-    } catch(e) {
-      console.error('[DEBUG] rec.start() FAILED:', e);
-      showMicBanner('⚠ Start failed: ' + e.message);
-      transEl.textContent = 'Start failed: ' + e.message;
-      return;
     }
-    
+    function onErr(e) {
+      if (e.error === 'no-speech') return;
+      if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
+    }
+    function loop() {
+      if (!ptRecording) return;
+      const rec = new SR();
+      rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
+      rec.onresult = onResult; rec.onerror = onErr;
+      rec.onend = () => { if (ptRecording) setTimeout(loop, 80); };
+      ptRecognition = rec;
+      try { rec.start(); } catch(e) { if (ptRecording) setTimeout(loop, 200); }
+    }
+    loop();
     setTimeout(() => { 
       if (ptRecording) { 
         startVisualizer('ptWaveform'); 
         document.getElementById('ptWaveform').classList.add('active'); 
       } 
     }, 600);
-    
-    document.getElementById('ptVoiceBtn').classList.add('recording');
-    document.getElementById('ptVoiceBtn').textContent = '⏹';
   }
 }
 
@@ -6449,13 +6354,12 @@ async function stopPatientVoice() {
     }
   } else {
     // WebSpeech path
-    console.log('[DEBUG] Final transcript:', ptTranscript);
     if (ptTranscript.trim().length > 5) {
       transEl.textContent = ptTranscript.trim();
       transEl.classList.add('has-content');
       document.getElementById('ptExtractBtn').style.display = 'block';
       addTranscriptToHistory('patient', ptTranscript.trim());
-      extractPatientInfo(); // Auto-extract using pattern matching (no API needed)
+      extractPatientInfo();
     } else {
       transEl.textContent = 'Tap mic to dictate patient info — name, DOB, address, phone…';
       transEl.classList.remove('has-content');
@@ -6472,70 +6376,35 @@ async function extractPatientInfo() {
   const transEl = document.getElementById('ptDictateTranscript');
 
   btn.style.display = 'none';
+  btn.textContent = 'Extracting…';
+  btn.disabled = true;
   status.textContent = '';
   status.className = 'pt-extract-status';
 
-  // Simple pattern matching - no API needed
-  let fieldsPopulated = [];
-  
-  // Extract name (look for "my name is" or just assume first words are name)
-  const nameMatch = transcript.match(/(?:my name is|this is|patient is|name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
-  if (nameMatch) {
-    document.getElementById('patientName').value = nameMatch[1];
-    fieldsPopulated.push('Name');
-  }
-  
-  // Extract phone (look for 10-digit numbers or formatted phone)
-  const phoneMatch = transcript.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-  if (phoneMatch) {
-    document.getElementById('patientPhone').value = phoneMatch[0];
-    fieldsPopulated.push('Phone');
-  }
-  
-  // Extract DOB (look for dates)
-  const dobMatch = transcript.match(/(?:born|birth|dob|date of birth).*?(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i);
-  if (dobMatch) {
-    document.getElementById('patientDOB').value = dobMatch[1];
-    fieldsPopulated.push('DOB');
-  }
-  
-  // Extract age (look for "X years old")
-  const ageMatch = transcript.match(/(\d{1,3})\s*(?:years?\s*old|yo|y\/o)/i);
-  if (ageMatch) {
-    document.getElementById('patientAge').value = ageMatch[1];
-    fieldsPopulated.push('Age');
-  }
-  
-  // Extract sex/gender
-  const lower = transcript.toLowerCase();
-  if (lower.includes('male') && !lower.includes('female')) {
-    document.getElementById('patientSex').value = 'male';
-    fieldsPopulated.push('Sex');
-  } else if (lower.includes('female')) {
-    document.getElementById('patientSex').value = 'female';
-    fieldsPopulated.push('Sex');
-  }
-  
-  // Extract address (look for street numbers and street names)
-  const addressMatch = transcript.match(/(\d+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Court|Ct|Boulevard|Blvd))?)/i);
-  if (addressMatch) {
-    document.getElementById('patientAddress').value = addressMatch[1];
-    fieldsPopulated.push('Address');
-  }
-  
-  if (fieldsPopulated.length > 0) {
-    status.textContent = `✓ ${fieldsPopulated.length} field${fieldsPopulated.length !== 1 ? 's' : ''} populated (${fieldsPopulated.join(', ')}) — review and correct if needed`;
+  const result = await extractUniversalInfo(transcript, 'patient');
+
+  if (result.success && result.fieldsPopulated.length > 0) {
+    const over = result.fieldsOverwritten.length;
+    let msg = `✓ ${result.fieldsPopulated.length} field${result.fieldsPopulated.length !== 1 ? 's' : ''} populated (${result.fieldsPopulated.join(', ')})`;
+    if (over) msg += ` — ${over} updated`;
+    status.textContent = msg + ' — review and correct if needed';
     status.classList.add('success');
     transEl.textContent = transcript;
     transEl.classList.add('has-content');
+  } else if (result.success) {
+    status.textContent = '⚠ No fields extracted — try speaking more clearly or fill manually';
+    status.classList.add('error');
+    transEl.textContent = transcript;
+    transEl.classList.add('has-content');
+    btn.style.display = 'block';
   } else {
-    status.textContent = '⚠ No fields extracted - please dictate clearly: name, DOB, address, phone';
+    status.textContent = '✗ ' + result.error;
     status.classList.add('error');
     transEl.textContent = transcript;
     transEl.classList.add('has-content');
     btn.style.display = 'block';
   }
-  
+
   btn.textContent = 'Extract →';
   btn.disabled = false;
 }
@@ -6580,58 +6449,40 @@ async function startSceneVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
     
-    const rec = new SR();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = 'en-US';
-    
-    rec.onresult = (e) => {
-      let interimText = '';
-      let finalText = '';
-      
-      for (let i = 0; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          finalText += transcript + ' ';
-        } else {
-          interimText += transcript;
-        }
+    sceneRecording = true;
+    document.getElementById('sceneVoiceBtn').classList.add('recording');
+    document.getElementById('sceneVoiceBtn').textContent = '⏹';
+
+    function onResult(e) {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sceneTranscript += e.results[i][0].transcript + ' ';
       }
-      
-      if (finalText) {
-        sceneTranscript += finalText;
-      }
-      
-      const displayText = (sceneTranscript + interimText).trim();
+      const displayText = sceneTranscript.trim();
       if (displayText) {
         transEl.textContent = displayText;
         transEl.classList.add('has-content');
-      } else {
-        transEl.textContent = '🎙 Listening…';
       }
-    };
-    
-    rec.onerror = (e) => {
-      if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        showMicBanner('⚠ ' + e.error);
-      }
-    };
-    
-    rec.onend = () => {};
-    
-    sceneRecognition = rec;
-    sceneRecording = true;
-    
-    try { rec.start(); } catch(e) { showMicBanner('⚠ Failed: ' + e.message); return; }
-    
+    }
+    function onErr(e) {
+      if (e.error === 'no-speech') return;
+      if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
+    }
+    function loop() {
+      if (!sceneRecording) return;
+      const rec = new SR();
+      rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
+      rec.onresult = onResult; rec.onerror = onErr;
+      rec.onend = () => { if (sceneRecording) setTimeout(loop, 80); };
+      sceneRecognition = rec;
+      try { rec.start(); } catch(e) { if (sceneRecording) setTimeout(loop, 200); }
+    }
+    loop();
     setTimeout(() => { 
       if (sceneRecording) { 
         startVisualizer('sceneWaveform'); 
         document.getElementById('sceneWaveform').classList.add('active'); 
       } 
     }, 600);
-    document.getElementById('sceneVoiceBtn').classList.add('recording');
-    document.getElementById('sceneVoiceBtn').textContent = '⏹';
   }
 }
 
@@ -6659,13 +6510,16 @@ async function stopSceneVoice() {
   if (useWhisper()) {
     transEl.textContent = 'Transcribing…';
     const result = await whisperStop();
-    if (result?.text) {
-      sceneTranscript = result.text;
+    if (result && !result.startsWith('ERROR:')) {
+      sceneTranscript = result;
       transEl.textContent = sceneTranscript;
       transEl.classList.add('has-content');
       addTranscriptToHistory('scene', sceneTranscript);
       document.getElementById('sceneExtractBtn').style.display = 'block';
       extractSceneInfo();
+    } else {
+      transEl.textContent = result ? '✗ ' + result.slice(6) : '✗ No audio — try again';
+      transEl.classList.remove('has-content');
     }
   } else {
     if (sceneTranscript.trim().length > 5) {
@@ -6694,48 +6548,25 @@ async function extractSceneInfo() {
   status.textContent = '';
   status.classList.remove('error', 'success');
 
-  // Simple pattern matching - no API needed
-  const lower = transcript.toLowerCase();
-  let fieldsPopulated = [];
-  
-  // Extract LOC
-  const locField = document.getElementById('patientLOC');
-  if (lower.includes('alert') && lower.includes('oriented')) {
-    locField.value = 'Alert and Oriented x4';
-    fieldsPopulated.push('LOC');
-  } else if (lower.includes('alert')) {
-    locField.value = 'Alert';
-    fieldsPopulated.push('LOC');
-  } else if (lower.includes('unresponsive') || lower.includes('unconscious')) {
-    locField.value = 'Unresponsive';
-    fieldsPopulated.push('LOC');
-  } else if (lower.includes('confused') || lower.includes('disoriented')) {
-    locField.value = 'Confused/Disoriented';
-    fieldsPopulated.push('LOC');
-  }
-  
-  // Put full transcript in scene notes
-  const sceneNotesField = document.getElementById('sceneNotes');
-  if (sceneNotesField && !sceneNotesField.value.trim()) {
-    sceneNotesField.value = transcript;
-    fieldsPopulated.push('Scene Notes');
-  }
-  
-  if (fieldsPopulated.length > 0) {
-    const count = fieldsPopulated.length;
-    status.textContent = `✓ ${count} field${count !== 1 ? 's' : ''} populated (${fieldsPopulated.join(', ')}) — review and correct if needed`;
+  const result = await extractUniversalInfo(transcript, 'scene');
+
+  if (result.success && result.fieldsPopulated.length > 0) {
+    const over = result.fieldsOverwritten.length;
+    let msg = `✓ ${result.fieldsPopulated.length} field${result.fieldsPopulated.length !== 1 ? 's' : ''} populated (${result.fieldsPopulated.join(', ')})`;
+    if (over) msg += ` — ${over} updated`;
+    status.textContent = msg + ' — review and correct if needed';
     status.classList.add('success');
     btn.style.display = 'none';
     transEl.textContent = transcript;
     transEl.classList.add('has-content');
+  } else if (result.success) {
+    status.textContent = '⚠ No fields extracted — try speaking more clearly or fill manually';
+    status.classList.add('error');
   } else {
-    status.textContent = '✓ Scene notes saved — review and add details as needed';
-    status.classList.add('success');
-    btn.style.display = 'none';
-    transEl.textContent = transcript;
-    transEl.classList.add('has-content');
+    status.textContent = '✗ ' + result.error;
+    status.classList.add('error');
   }
-  
+
   btn.textContent = 'Extract →';
   btn.disabled = false;
 }
@@ -6780,58 +6611,40 @@ async function startIncidentVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
     
-    const rec = new SR();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = 'en-US';
-    
-    rec.onresult = (e) => {
-      let interimText = '';
-      let finalText = '';
-      
-      for (let i = 0; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          finalText += transcript + ' ';
-        } else {
-          interimText += transcript;
-        }
+    incidentRecording = true;
+    document.getElementById('incidentVoiceBtn').classList.add('recording');
+    document.getElementById('incidentVoiceBtn').textContent = '⏹';
+
+    function onResult(e) {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) incidentTranscript += e.results[i][0].transcript + ' ';
       }
-      
-      if (finalText) {
-        incidentTranscript += finalText;
-      }
-      
-      const displayText = (incidentTranscript + interimText).trim();
+      const displayText = incidentTranscript.trim();
       if (displayText) {
         transEl.textContent = displayText;
         transEl.classList.add('has-content');
-      } else {
-        transEl.textContent = '🎙 Listening…';
       }
-    };
-    
-    rec.onerror = (e) => {
-      if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        showMicBanner('⚠ ' + e.error);
-      }
-    };
-    
-    rec.onend = () => {};
-    
-    incidentRecognition = rec;
-    incidentRecording = true;
-    
-    try { rec.start(); } catch(e) { showMicBanner('⚠ Failed: ' + e.message); return; }
-    
+    }
+    function onErr(e) {
+      if (e.error === 'no-speech') return;
+      if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
+    }
+    function loop() {
+      if (!incidentRecording) return;
+      const rec = new SR();
+      rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
+      rec.onresult = onResult; rec.onerror = onErr;
+      rec.onend = () => { if (incidentRecording) setTimeout(loop, 80); };
+      incidentRecognition = rec;
+      try { rec.start(); } catch(e) { if (incidentRecording) setTimeout(loop, 200); }
+    }
+    loop();
     setTimeout(() => { 
       if (incidentRecording) { 
         startVisualizer('incidentWaveform'); 
         document.getElementById('incidentWaveform').classList.add('active'); 
       } 
     }, 600);
-    document.getElementById('incidentVoiceBtn').classList.add('recording');
-    document.getElementById('incidentVoiceBtn').textContent = '⏹';
   }
 }
 
@@ -6859,12 +6672,15 @@ async function stopIncidentVoice() {
   if (useWhisper()) {
     transEl.textContent = 'Transcribing…';
     const result = await whisperStop();
-    if (result?.text) {
-      incidentTranscript = result.text;
+    if (result && !result.startsWith('ERROR:')) {
+      incidentTranscript = result;
       transEl.textContent = incidentTranscript;
       transEl.classList.add('has-content');
       addTranscriptToHistory('incident', incidentTranscript);
       document.getElementById('incidentExtractBtn').style.display = 'block';
+    } else {
+      transEl.textContent = result ? '✗ ' + result.slice(6) : '✗ No audio — try again';
+      transEl.classList.remove('has-content');
     }
   } else {
     if (incidentTranscript.trim().length > 5) {
@@ -6977,13 +6793,19 @@ async function stopVitalsVoice() {
   document.getElementById('vitalsVoiceBtn').textContent = '🎙';
   
   if (useWhisper()) {
+    document.getElementById('vitalsDictateTranscript').textContent = 'Transcribing…';
     const result = await whisperStop();
-    if (result?.text) {
-      vitalsTranscript = result.text;
+    if (result && !result.startsWith('ERROR:')) {
+      vitalsTranscript = result;
       document.getElementById('vitalsDictateTranscript').textContent = vitalsTranscript;
       document.getElementById('vitalsDictateTranscript').classList.add('has-content');
       addTranscriptToHistory('vitals', vitalsTranscript);
+      document.getElementById('vitalsExtractBtn').style.display = 'block';
+    } else {
+      document.getElementById('vitalsDictateTranscript').textContent = result ? '✗ ' + result.slice(6) : '✗ No audio — try again';
+      document.getElementById('vitalsDictateTranscript').classList.remove('has-content');
     }
+    return;
   }
   
   if (vitalsRecognition) { try { vitalsRecognition.stop(); } catch(e) {} vitalsRecognition = null; }
@@ -7007,62 +6829,80 @@ async function extractVitalsInfo() {
   status.classList.remove('error', 'success');
 
   try {
-    const prompt = `Extract vital signs from this dictated text. Return ONLY a JSON object with these fields:
-- "time": time vitals were taken (HH:MM format)
-- "bp": blood pressure (e.g., "120/80")
-- "pulse": heart rate number
-- "rr": respiratory rate number
-- "spo2": SpO2 percentage
-- "pain": pain score
-- "gcsEye": GCS eye response (1-4)
-- "gcsVerbal": GCS verbal response (1-5)
-- "gcsMotor": GCS motor response (1-6)
-- "skin": skin condition
-- "temp": temperature description
-- "glucose": glucose in mg/dL
-- "activity": what was done at this time (interventions, actions, etc.)
+    // Run both extractions in parallel: vitals-specific + universal cross-section
+    const [vitalsText, universalResult] = await Promise.all([
+      claudeAPI([{ role: 'user', content: `Extract vital signs and activity information from this dictated EMS text. Return ONLY valid JSON with these exact keys (use "" if not mentioned):
+{
+  "time": "",
+  "bp": "",
+  "pulse": "",
+  "rr": "",
+  "spo2": "",
+  "pain": "",
+  "skin": "",
+  "temp": "",
+  "glucose": "",
+  "activity": "",
+  "gcsEye": "",
+  "gcsVerbal": "",
+  "gcsMotor": ""
+}
+Rules:
+- time: HH:MM 24-hour format
+- bp: "120/80" format
+- spo2: number 0-100 only, no % sign
+- pain: "X/10" format
+- glucose: number only (mg/dL)
+- pulse/rr: numbers only
+- gcsEye: 1-4, gcsVerbal: 1-5, gcsMotor: 1-6
+- activity: interventions, procedures, or actions performed
 
-Dictated text: "${transcript}"`;
+Dictated text: "${transcript}"` }], 400),
+      extractUniversalInfo(transcript, 'vitals')
+    ]);
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-    const text = data.content.find(c => c.type === 'text')?.text || '';
-    const clean = text.replace(/```json|```/g, '').trim();
+    // Fill vitals card fields
+    const clean = vitalsText.replace(/```json[\s\S]*?```|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
-    // Add a vitals row if we don't have any yet
-    if (vitalsCount === 0) addVitalsRow();
+    // Use the most recently added card (vitalsCount reflects last card)
     const id = vitalsCount;
+    const vitalsFilled = [];
 
-    if (parsed.time) document.getElementById(`vt-${id}`).value = parsed.time;
-    if (parsed.bp) document.getElementById(`vbp-${id}`).value = parsed.bp;
-    if (parsed.pulse) document.getElementById(`vhr-${id}`).value = parsed.pulse;
-    if (parsed.rr) document.getElementById(`vrr-${id}`).value = parsed.rr;
-    if (parsed.spo2) document.getElementById(`vspo2-${id}`).value = parsed.spo2;
-    if (parsed.pain) document.getElementById(`vpain-${id}`).value = parsed.pain;
-    if (parsed.skin) document.getElementById(`vskin-${id}`).value = parsed.skin;
-    if (parsed.temp) document.getElementById(`vtemp-${id}`).value = parsed.temp;
-    if (parsed.glucose) document.getElementById(`vglucose-${id}`).value = parsed.glucose;
-    if (parsed.activity) document.getElementById(`vactivity-${id}`).value = parsed.activity;
-    
-    if (parsed.gcsEye) document.getElementById(`vgcs-eye-${id}`).value = parsed.gcsEye;
-    if (parsed.gcsVerbal) document.getElementById(`vgcs-verbal-${id}`).value = parsed.gcsVerbal;
-    if (parsed.gcsMotor) document.getElementById(`vgcs-motor-${id}`).value = parsed.gcsMotor;
-    updateGCS(id);
+    if (parsed.time)     { document.getElementById(`vt-${id}`).value     = parsed.time;     vitalsFilled.push('Time'); }
+    if (parsed.bp)       { document.getElementById(`vbp-${id}`).value     = parsed.bp;       vitalsFilled.push('BP'); }
+    if (parsed.pulse)    { document.getElementById(`vhr-${id}`).value    = parsed.pulse;    vitalsFilled.push('HR'); }
+    if (parsed.rr)       { document.getElementById(`vrr-${id}`).value    = parsed.rr;       vitalsFilled.push('RR'); }
+    if (parsed.spo2)     { document.getElementById(`vspo2-${id}`).value  = parsed.spo2;     vitalsFilled.push('SpO2'); }
+    if (parsed.pain)     { document.getElementById(`vpain-${id}`).value  = parsed.pain;     vitalsFilled.push('Pain'); }
+    if (parsed.skin)     { document.getElementById(`vskin-${id}`).value  = parsed.skin;     vitalsFilled.push('Skin'); }
+    if (parsed.temp)     { document.getElementById(`vtemp-${id}`).value  = parsed.temp;     vitalsFilled.push('Temp'); }
+    if (parsed.glucose)  { document.getElementById(`vglucose-${id}`).value = parsed.glucose; vitalsFilled.push('BGL'); }
+    if (parsed.activity) { document.getElementById(`vactivity-${id}`).value = parsed.activity; vitalsFilled.push('Activity'); }
+    if (parsed.gcsEye)   { document.getElementById(`vgcs-eye-${id}`).value   = parsed.gcsEye; }
+    if (parsed.gcsVerbal){ document.getElementById(`vgcs-verbal-${id}`).value = parsed.gcsVerbal; }
+    if (parsed.gcsMotor) { document.getElementById(`vgcs-motor-${id}`).value  = parsed.gcsMotor; }
+    if (parsed.gcsEye || parsed.gcsVerbal || parsed.gcsMotor) {
+      updateGCS(id);
+      vitalsFilled.push('GCS');
+    }
 
-    status.textContent = '✓ Extracted';
-    status.classList.add('success');
+    // Build status message
+    const allFields = [...vitalsFilled];
+    if (universalResult.success && universalResult.fieldsPopulated.length > 0) {
+      allFields.push(...universalResult.fieldsPopulated.map(f => f + ' (other section)'));
+    }
+
+    if (allFields.length > 0) {
+      status.textContent = `✓ Filled: ${allFields.join(', ')}`;
+      status.classList.add('success');
+    } else {
+      status.textContent = '⚠ No fields extracted — try again or fill manually';
+      status.classList.add('error');
+    }
+
     btn.style.display = 'none';
-    transEl.textContent = 'Tap mic to dictate vitals…';
+    transEl.textContent = 'Tap mic to dictate activities…';
     transEl.classList.remove('has-content');
     vitalsTranscript = '';
 
@@ -7072,9 +6912,14 @@ Dictated text: "${transcript}"`;
     btn.style.display = 'block';
     btn.textContent = 'Extract →';
     btn.disabled = false;
-    status.textContent = '✗ ' + (err.message || 'Could not parse');
+    status.textContent = '✗ ' + (err.message || 'Could not parse — check API key in ⚙ Crew settings');
     status.classList.add('error');
+    showToast('error', 'Extraction Failed', err.message || 'Check Anthropic API key in ⚙ Crew settings.');
+    return;
   }
+
+  btn.textContent = 'Extract →';
+  btn.disabled = false;
 }
 
 // ======== TRANSPORT DICTATION ========
@@ -7135,16 +6980,25 @@ async function stopTransportVoice() {
   document.getElementById('transportVoiceBtn').textContent = '🎙';
   
   if (useWhisper()) {
+    const tEl = document.getElementById('transportDictateTranscript');
+    if (tEl) tEl.textContent = 'Transcribing…';
     const result = await whisperStop();
-    if (result?.text) {
-      transportTranscript = result.text;
-      document.getElementById('transportDictateTranscript').textContent = transportTranscript;
-      document.getElementById('transportDictateTranscript').classList.add('has-content');
+    if (result && !result.startsWith('ERROR:')) {
+      transportTranscript = result;
+      if (tEl) { tEl.textContent = transportTranscript; tEl.classList.add('has-content'); }
+      addTranscriptToHistory('transport', transportTranscript);
+    } else if (tEl) {
+      tEl.textContent = result ? '✗ ' + result.slice(6) : '✗ No audio — try again';
+      tEl.classList.remove('has-content');
     }
   }
   
   if (transportRecognition) { try { transportRecognition.stop(); } catch(e) {} transportRecognition = null; }
-  if (transportTranscript.trim()) document.getElementById('transportExtractBtn').style.display = 'block';
+  if (transportTranscript.trim()) {
+    addTranscriptToHistory('transport', transportTranscript.trim());
+    const extBtn = document.getElementById('transportExtractBtn');
+    if (extBtn) extBtn.style.display = 'block';
+  }
 }
 
 async function extractTransportInfo() {
@@ -7155,54 +7009,29 @@ async function extractTransportInfo() {
   const status = document.getElementById('transportExtractStatus');
   const transEl = document.getElementById('transportDictateTranscript');
 
-  btn.textContent = 'Extracting…';
-  btn.disabled = true;
-  status.textContent = '';
-  status.classList.remove('error', 'success');
+  if (btn) { btn.textContent = 'Extracting…'; btn.disabled = true; }
+  if (status) { status.textContent = ''; status.classList.remove('error', 'success'); }
 
-  try {
-    const prompt = `Extract transport information from this dictated text. Return ONLY a JSON object with these fields:
-- "hospital": hospital name
-- "room": ED room or bed number
-- "handoff": handoff summary or notes
+  // Route through universal extractor — fills any field across any section
+  const result = await extractUniversalInfo(transcript, 'transport');
 
-Dictated text: "${transcript}"`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-    const text = data.content.find(c => c.type === 'text')?.text || '';
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-
-    if (parsed.hospital) document.getElementById('transportHospital').value = parsed.hospital;
-    if (parsed.room) document.getElementById('edRoom').value = parsed.room;
-    if (parsed.handoff) document.getElementById('handoffSummary').value = parsed.handoff;
-
-    status.textContent = '✓ Extracted';
-    status.classList.add('success');
-    btn.style.display = 'none';
-    transEl.textContent = 'Tap mic to dictate transport info…';
-    transEl.classList.remove('has-content');
+  if (result.success && result.fieldsPopulated.length > 0) {
+    const over = result.fieldsOverwritten.length;
+    let msg = `✓ ${result.fieldsPopulated.length} field${result.fieldsPopulated.length !== 1 ? 's' : ''} populated (${result.fieldsPopulated.join(', ')})`;
+    if (over) msg += ` — ${over} updated`;
+    if (status) { status.textContent = msg + ' — review and correct if needed'; status.classList.add('success'); }
+    if (btn) btn.style.display = 'none';
+    if (transEl) { transEl.textContent = 'Tap mic to dictate transport info…'; transEl.classList.remove('has-content'); }
     transportTranscript = '';
-
-  } catch (err) {
-    transEl.textContent = transcript;
-    transEl.classList.add('has-content');
-    btn.style.display = 'block';
-    btn.textContent = 'Extract →';
-    btn.disabled = false;
-    status.textContent = '✗ ' + (err.message || 'Could not parse');
-    status.classList.add('error');
+  } else if (result.success) {
+    if (status) { status.textContent = '⚠ No fields extracted — try again or fill manually'; status.classList.add('error'); }
+  } else {
+    if (transEl) { transEl.textContent = transcript; transEl.classList.add('has-content'); }
+    if (btn) btn.style.display = 'block';
+    if (status) { status.textContent = '✗ ' + result.error; status.classList.add('error'); }
   }
+
+  if (btn) { btn.textContent = 'Extract →'; btn.disabled = false; }
 }
 
 async function generateSOAP() {
