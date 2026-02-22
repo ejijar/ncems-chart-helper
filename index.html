@@ -6430,13 +6430,13 @@ async function stopPatientVoice() {
     }
   } else {
     // WebSpeech path
-    console.log('Final transcript:', ptTranscript);
+    console.log('[DEBUG] Final transcript:', ptTranscript);
     if (ptTranscript.trim().length > 5) {
       transEl.textContent = ptTranscript.trim();
       transEl.classList.add('has-content');
       document.getElementById('ptExtractBtn').style.display = 'block';
       addTranscriptToHistory('patient', ptTranscript.trim());
-      extractPatientInfo();
+      extractPatientInfo(); // Auto-extract using pattern matching (no API needed)
     } else {
       transEl.textContent = 'Tap mic to dictate patient info — name, DOB, address, phone…';
       transEl.classList.remove('has-content');
@@ -6452,33 +6452,69 @@ async function extractPatientInfo() {
   const status = document.getElementById('ptExtractStatus');
   const transEl = document.getElementById('ptDictateTranscript');
 
-  // Keep transcript visible during extraction
-  transEl.textContent = transcript + ' (extracting...)';
-  transEl.classList.add('has-content');
   btn.style.display = 'none';
   status.textContent = '';
   status.className = 'pt-extract-status';
 
-  const result = await extractUniversalInfo(transcript, 'patient');
+  // Simple pattern matching - no API needed
+  let fieldsPopulated = [];
   
-  if (result.success) {
-    const count = result.fieldsPopulated.length;
-    let statusText = `✓ ${count} field${count !== 1 ? 's' : ''} populated`;
-    if (result.fieldsOverwritten.length > 0) {
-      statusText += ` (${result.fieldsOverwritten.length} updated: ${result.fieldsOverwritten.join(', ')})`;
-    }
-    statusText += ' — review and correct if needed';
-    status.textContent = statusText;
+  // Extract name (look for "my name is" or just assume first words are name)
+  const nameMatch = transcript.match(/(?:my name is|this is|patient is|name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i);
+  if (nameMatch) {
+    document.getElementById('patientName').value = nameMatch[1];
+    fieldsPopulated.push('Name');
+  }
+  
+  // Extract phone (look for 10-digit numbers or formatted phone)
+  const phoneMatch = transcript.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+  if (phoneMatch) {
+    document.getElementById('patientPhone').value = phoneMatch[0];
+    fieldsPopulated.push('Phone');
+  }
+  
+  // Extract DOB (look for dates)
+  const dobMatch = transcript.match(/(?:born|birth|dob|date of birth).*?(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/i);
+  if (dobMatch) {
+    document.getElementById('patientDOB').value = dobMatch[1];
+    fieldsPopulated.push('DOB');
+  }
+  
+  // Extract age (look for "X years old")
+  const ageMatch = transcript.match(/(\d{1,3})\s*(?:years?\s*old|yo|y\/o)/i);
+  if (ageMatch) {
+    document.getElementById('patientAge').value = ageMatch[1];
+    fieldsPopulated.push('Age');
+  }
+  
+  // Extract sex/gender
+  const lower = transcript.toLowerCase();
+  if (lower.includes('male') && !lower.includes('female')) {
+    document.getElementById('patientSex').value = 'male';
+    fieldsPopulated.push('Sex');
+  } else if (lower.includes('female')) {
+    document.getElementById('patientSex').value = 'female';
+    fieldsPopulated.push('Sex');
+  }
+  
+  // Extract address (look for street numbers and street names)
+  const addressMatch = transcript.match(/(\d+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Court|Ct|Boulevard|Blvd))?)/i);
+  if (addressMatch) {
+    document.getElementById('patientAddress').value = addressMatch[1];
+    fieldsPopulated.push('Address');
+  }
+  
+  if (fieldsPopulated.length > 0) {
+    status.textContent = `✓ ${fieldsPopulated.length} field${fieldsPopulated.length !== 1 ? 's' : ''} populated (${fieldsPopulated.join(', ')}) — review and correct if needed`;
     status.classList.add('success');
-    // Keep transcript visible after successful extraction
     transEl.textContent = transcript;
     transEl.classList.add('has-content');
   } else {
+    status.textContent = '⚠ No fields extracted - please dictate clearly: name, DOB, address, phone';
+    status.classList.add('error');
     transEl.textContent = transcript;
     transEl.classList.add('has-content');
     btn.style.display = 'block';
-    status.textContent = '✗ ' + result.error;
-    status.classList.add('error');
   }
   
   btn.textContent = 'Extract →';
