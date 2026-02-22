@@ -3956,20 +3956,26 @@ let outputGenerated = false;
 // ======== AUDIO VISUALIZER ========
 let vizAudioCtx = null, vizAnalyser = null, vizStream = null, vizAnimId = null;
 
+// startVisualizer — NEVER opens its own getUserMedia.
+// It reuses whisperStream (Whisper mode) or sharedMicStream (WebSpeech mode).
+// This prevents the double-getUserMedia that breaks iPhone Safari.
 async function startVisualizer(canvasId) {
   stopVisualizer();
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
+
+  // Pick the already-open mic stream: Whisper owns whisperStream, WebSpeech uses sharedMicStream
+  const stream = whisperStream || sharedMicStream;
+  if (!stream) return;  // no stream available — skip silently
+
   try {
-    vizStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     vizAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     vizAnalyser = vizAudioCtx.createAnalyser();
     vizAnalyser.fftSize = 64;
-    vizAudioCtx.createMediaStreamSource(vizStream).connect(vizAnalyser);
+    vizAudioCtx.createMediaStreamSource(stream).connect(vizAnalyser);
     const buf = new Uint8Array(vizAnalyser.frequencyBinCount);
     const ctx = canvas.getContext('2d');
     const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f97316';
-    const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface2').trim() || '#1a1a1a';
 
     function draw() {
       vizAnimId = requestAnimationFrame(draw);
@@ -3977,17 +3983,15 @@ async function startVisualizer(canvasId) {
       const W = canvas.width = canvas.offsetWidth;
       const H = canvas.height = canvas.offsetHeight;
       ctx.clearRect(0, 0, W, H);
-      const barW = Math.floor(W / buf.length * 1.5);
-      const gap = 2;
       const total = buf.length;
       const slotW = W / total;
+      const barW = Math.max(2, Math.floor(slotW * 0.7));
       for (let i = 0; i < total; i++) {
         const v = buf[i] / 255;
         const h = Math.max(3, v * H * 0.9);
         const x = i * slotW + (slotW - barW) / 2;
-        const alpha = 0.4 + v * 0.6;
         ctx.fillStyle = accentColor;
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = 0.4 + v * 0.6;
         ctx.beginPath();
         ctx.roundRect(x, (H - h) / 2, barW, h, 2);
         ctx.fill();
@@ -3995,28 +3999,56 @@ async function startVisualizer(canvasId) {
       ctx.globalAlpha = 1;
     }
     draw();
+    canvas.style.display = 'block';
   } catch(e) {
-    console.warn('Visualizer error:', e);
+    // Visualizer failure is non-fatal — recording still works
   }
 }
 
 function stopVisualizer() {
   if (vizAnimId) { cancelAnimationFrame(vizAnimId); vizAnimId = null; }
-  if (vizStream) { vizStream.getTracks().forEach(t => t.stop()); vizStream = null; }
-  if (vizAudioCtx) { vizAudioCtx.close(); vizAudioCtx = null; }
+  // Do NOT stop vizStream — we don't own it (whisperStream or sharedMicStream does)
+  vizStream = null;
+  if (vizAudioCtx) { try { vizAudioCtx.close(); } catch(e) {} vizAudioCtx = null; }
   vizAnalyser = null;
 }
 
-// Simple RMS level meter — runs independently of SpeechRecognition
-let levelStream = null, levelCtx = null, levelAnimId = null;
-async function startLevelMeter(section) {
-  stopLevelMeter();
+// sharedMicStream — one getUserMedia for WebSpeech visualizer, opened on first recording,
+// kept alive while any WebSpeech recording is active, closed when all stop.
+let sharedMicStream = null;
+let sharedMicRefCount = 0;
+
+async function acquireSharedMic() {
+  sharedMicRefCount++;
+  if (sharedMicStream) return sharedMicStream;
   try {
-    levelStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    levelCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const analyser = levelCtx.createAnalyser();
+    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    sharedMicRefCount--;
+  }
+  return sharedMicStream;
+}
+
+function releaseSharedMic() {
+  sharedMicRefCount = Math.max(0, sharedMicRefCount - 1);
+  if (sharedMicRefCount === 0 && sharedMicStream) {
+    sharedMicStream.getTracks().forEach(t => t.stop());
+    sharedMicStream = null;
+  }
+}
+
+// Level meter (text bar) — reuses whisperStream, no extra getUserMedia needed.
+// Only used in Whisper mode (setDictateState already gates on useWhisper()).
+let levelAnimId = null;
+function startLevelMeter(section) {
+  stopLevelMeter();
+  const stream = whisperStream;
+  if (!stream) return;
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
-    levelCtx.createMediaStreamSource(levelStream).connect(analyser);
+    ctx.createMediaStreamSource(stream).connect(analyser);
     const buf = new Uint8Array(analyser.fftSize);
     const bars = '▁▂▃▄▅▆▇█';
     function tick() {
@@ -4028,18 +4060,13 @@ async function startLevelMeter(section) {
       const idx = Math.min(7, Math.floor(rms * 40));
       const el = document.getElementById('sec-level-' + section);
       if (el) el.textContent = bars[idx].repeat(5);
-      else stopLevelMeter();
+      else { ctx.close(); stopLevelMeter(); }
     }
     tick();
-    console.log('[levelMeter] started for', section);
-  } catch(e) {
-    console.log('[levelMeter] failed:', e.message);
-  }
+  } catch(e) { /* non-fatal */ }
 }
 function stopLevelMeter() {
   if (levelAnimId) { cancelAnimationFrame(levelAnimId); levelAnimId = null; }
-  if (levelStream) { levelStream.getTracks().forEach(t => t.stop()); levelStream = null; }
-  if (levelCtx) { levelCtx.close(); levelCtx = null; }
 }
 
 // ======== INIT ========
@@ -5474,6 +5501,8 @@ async function startRecording() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
     const textarea = document.getElementById('sceneNotes');
+    await acquireSharedMic();
+    isRecording = true;
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) textarea.value += e.results[i][0].transcript + ' ';
@@ -5486,9 +5515,9 @@ async function startRecording() {
       rec.onend = () => { if (isRecording) setTimeout(loop, 80); };
       recognition = rec; try { rec.start(); } catch(e) { if (isRecording) setTimeout(loop, 200); }
     }
-    isRecording = true;
     loop();
-    setTimeout(() => { if (isRecording) { startVisualizer('sceneWaveform'); document.getElementById('sceneWaveform').classList.add('active'); } }, 600);
+    startVisualizer('sceneWaveform');
+    document.getElementById('sceneWaveform').classList.add('active');
     document.getElementById('voiceBtn').classList.add('recording');
     document.getElementById('voiceBtn').textContent = '⏹';
     document.getElementById('voiceStatus').textContent = '🎙 Recording… tap to stop';
@@ -5521,7 +5550,8 @@ async function stopRecording() {
       document.getElementById('voiceStatus').classList.remove('active');
     }, 3000);
   } else {
-    if (recognition) { try { recognition.stop(); } catch(e) {} }
+    if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+    releaseSharedMic();
     document.getElementById('voiceStatus').textContent = 'Tap to dictate scene notes';
     document.getElementById('voiceStatus').classList.remove('active');
   }
@@ -5731,7 +5761,7 @@ function useWhisper() {
 }
 
 // ======== WEB SPEECH ENGINE (iPhone Safari / Chrome) ========
-function wsSectionStart(section, btn) {
+async function wsSectionStart(section, btn) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     showToast('error', 'Web Speech Unavailable', 'SR:' + !!window.SpeechRecognition + ' webkit:' + !!window.webkitSpeechRecognition);
@@ -5740,15 +5770,16 @@ function wsSectionStart(section, btn) {
 
   const bar = document.getElementById('sec-bar-' + section);
   const statusEl = document.getElementById('sec-status-' + section);
-  const transcriptBox = document.getElementById('sec-transcript-' + section);
   bar.style.display = 'flex';
-  if (transcriptBox) transcriptBox.style.display = 'none';
   statusEl.textContent = '';
   secTranscript[section] = '';
   secRecording[section] = true;
   btn.classList.add('recording');
   btn.textContent = '⏹';
   setDictateState(section, 'listening');
+
+  // Acquire shared mic so visualizer can use it — no separate getUserMedia
+  await acquireSharedMic();
 
   function onResult(e) {
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -5775,12 +5806,13 @@ function wsSectionStart(section, btn) {
     try { rec.start(); } catch(e) { if (secRecording[section]) setTimeout(loop, 200); }
   }
   loop();
-  setTimeout(() => { if (secRecording[section]) startVisualizer('sec-wave-' + section); }, 600);
+  startVisualizer('sec-wave-' + section);
 }
 
 function wsSectionStop(section, btn) {
   secRecording[section] = false;
   if (secRecognition[section]) { try { secRecognition[section].stop(); } catch(e) {} }
+  releaseSharedMic();
   btn.classList.remove('recording');
   btn.textContent = '🎙';
   stopVisualizer();
@@ -6235,21 +6267,11 @@ function togglePatientVoice() {
 }
 
 async function startPatientVoice() {
-  // Clean up any existing recognition first
-  if (ptRecognition) {
-    try {
-      ptRecognition.abort();
-    } catch(e) {
-      console.log('[DEBUG] Cleanup abort error (expected):', e);
-    }
-    // Wait a moment for abort to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  ptRecognition = null;
-  ptTranscript = ''; // Clear for new recording session
-  ptRecording = false; // Reset flag
-  
+  // Reset any previous state
+  if (ptRecognition) { try { ptRecognition.abort(); } catch(e) {} ptRecognition = null; }
+  ptTranscript = '';
+  ptRecording = false;
+
   const transEl = document.getElementById('ptDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
@@ -6260,34 +6282,26 @@ async function startPatientVoice() {
     const ok = await whisperStart('patient');
     if (!ok) { transEl.textContent = 'Tap mic to dictate patient info…'; return; }
     ptRecording = true;
-    startVisualizer('ptWaveform');
-    document.getElementById('ptWaveform').classList.add('active');
     document.getElementById('ptVoiceBtn').classList.add('recording');
     document.getElementById('ptVoiceBtn').textContent = '⏹';
+    startVisualizer('ptWaveform');
+    document.getElementById('ptWaveform').classList.add('active');
   } else {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { 
-      const msg = '⚠ WebSpeech NOT available. SR=' + (!!window.SpeechRecognition) + ' webkit:' + (!!window.webkitSpeechRecognition);
-      showMicBanner(msg);
-      transEl.textContent = msg;
-      return; 
-    }
-    
+    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+
+    // Acquire shared mic stream so visualizer can reuse it — no extra getUserMedia
+    await acquireSharedMic();
     ptRecording = true;
     document.getElementById('ptVoiceBtn').classList.add('recording');
     document.getElementById('ptVoiceBtn').textContent = '⏹';
 
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          ptTranscript += e.results[i][0].transcript + ' ';
-        }
+        if (e.results[i].isFinal) ptTranscript += e.results[i][0].transcript + ' ';
       }
-      const displayText = ptTranscript.trim();
-      if (displayText) {
-        transEl.textContent = displayText;
-        transEl.classList.add('has-content');
-      }
+      const t = ptTranscript.trim();
+      if (t) { transEl.textContent = t; transEl.classList.add('has-content'); }
     }
     function onErr(e) {
       if (e.error === 'no-speech') return;
@@ -6303,34 +6317,16 @@ async function startPatientVoice() {
       try { rec.start(); } catch(e) { if (ptRecording) setTimeout(loop, 200); }
     }
     loop();
-    setTimeout(() => { 
-      if (ptRecording) { 
-        startVisualizer('ptWaveform'); 
-        document.getElementById('ptWaveform').classList.add('active'); 
-      } 
-    }, 600);
+    // Start visualizer now that sharedMicStream is open
+    startVisualizer('ptWaveform');
+    document.getElementById('ptWaveform').classList.add('active');
   }
 }
 
 async function stopPatientVoice() {
   ptRecording = false;
-  
-  // Stop the recognition properly
-  if (ptRecognition) { 
-    try { 
-      ptRecognition.stop();
-      console.log('[DEBUG] WebSpeech stopped');
-    } catch(e) {
-      console.log('[DEBUG] Stop error (may be expected):', e);
-    }
-  }
-  
-  // Give a moment for final results to be processed
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Clean up recognition instance
-  ptRecognition = null;
-  
+  if (ptRecognition) { try { ptRecognition.stop(); } catch(e) {} ptRecognition = null; }
+
   stopVisualizer();
   const wv = document.getElementById('ptWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
@@ -6353,8 +6349,8 @@ async function stopPatientVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    // WebSpeech path
-    if (ptTranscript.trim().length > 5) {
+    releaseSharedMic();
+    if (ptTranscript.trim().length > 2) {
       transEl.textContent = ptTranscript.trim();
       transEl.classList.add('has-content');
       document.getElementById('ptExtractBtn').style.display = 'block';
@@ -6419,18 +6415,10 @@ function toggleSceneVoice() {
 }
 
 async function startSceneVoice() {
-  // Clean up any existing recognition first
-  if (sceneRecognition) {
-    try {
-      sceneRecognition.abort();
-    } catch(e) {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  sceneRecognition = null;
+  if (sceneRecognition) { try { sceneRecognition.abort(); } catch(e) {} sceneRecognition = null; }
   sceneTranscript = '';
   sceneRecording = false;
-  
+
   const transEl = document.getElementById('sceneDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
@@ -6441,72 +6429,47 @@ async function startSceneVoice() {
     const ok = await whisperStart('scene');
     if (!ok) { transEl.textContent = 'Tap mic to dictate scene information…'; return; }
     sceneRecording = true;
-    startVisualizer('sceneWaveform');
-    document.getElementById('sceneWaveform').classList.add('active');
     document.getElementById('sceneVoiceBtn').classList.add('recording');
     document.getElementById('sceneVoiceBtn').textContent = '⏹';
+    startVisualizer('sceneWaveform');
+    document.getElementById('sceneWaveform').classList.add('active');
   } else {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
-    
+    await acquireSharedMic();
     sceneRecording = true;
     document.getElementById('sceneVoiceBtn').classList.add('recording');
     document.getElementById('sceneVoiceBtn').textContent = '⏹';
-
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) sceneTranscript += e.results[i][0].transcript + ' ';
       }
-      const displayText = sceneTranscript.trim();
-      if (displayText) {
-        transEl.textContent = displayText;
-        transEl.classList.add('has-content');
-      }
-    }
-    function onErr(e) {
-      if (e.error === 'no-speech') return;
-      if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
+      const t = sceneTranscript.trim();
+      if (t) { transEl.textContent = t; transEl.classList.add('has-content'); }
     }
     function loop() {
       if (!sceneRecording) return;
-      const rec = new SR();
-      rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = onErr;
+      const rec = new SR(); rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
+      rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
       rec.onend = () => { if (sceneRecording) setTimeout(loop, 80); };
-      sceneRecognition = rec;
-      try { rec.start(); } catch(e) { if (sceneRecording) setTimeout(loop, 200); }
+      sceneRecognition = rec; try { rec.start(); } catch(e) { if (sceneRecording) setTimeout(loop, 200); }
     }
     loop();
-    setTimeout(() => { 
-      if (sceneRecording) { 
-        startVisualizer('sceneWaveform'); 
-        document.getElementById('sceneWaveform').classList.add('active'); 
-      } 
-    }, 600);
+    startVisualizer('sceneWaveform');
+    document.getElementById('sceneWaveform').classList.add('active');
   }
 }
 
 async function stopSceneVoice() {
   sceneRecording = false;
-  
-  if (sceneRecognition) { 
-    try { 
-      sceneRecognition.stop(); 
-    } catch(e) {} 
-  }
-  
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Clean up recognition instance
-  sceneRecognition = null;
-  
+  if (sceneRecognition) { try { sceneRecognition.stop(); } catch(e) {} sceneRecognition = null; }
   stopVisualizer();
   const wv = document.getElementById('sceneWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
   document.getElementById('sceneVoiceBtn').classList.remove('recording');
   document.getElementById('sceneVoiceBtn').textContent = '🎙';
   const transEl = document.getElementById('sceneDictateTranscript');
-  
+
   if (useWhisper()) {
     transEl.textContent = 'Transcribing…';
     const result = await whisperStop();
@@ -6522,7 +6485,8 @@ async function stopSceneVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    if (sceneTranscript.trim().length > 5) {
+    releaseSharedMic();
+    if (sceneTranscript.trim().length > 2) {
       transEl.textContent = sceneTranscript.trim();
       transEl.classList.add('has-content');
       addTranscriptToHistory('scene', sceneTranscript.trim());
@@ -6581,18 +6545,10 @@ function toggleIncidentVoice() {
 }
 
 async function startIncidentVoice() {
-  // Clean up any existing recognition first
-  if (incidentRecognition) {
-    try {
-      incidentRecognition.abort();
-    } catch(e) {}
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  incidentRecognition = null;
+  if (incidentRecognition) { try { incidentRecognition.abort(); } catch(e) {} incidentRecognition = null; }
   incidentTranscript = '';
   incidentRecording = false;
-  
+
   const transEl = document.getElementById('incidentDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
@@ -6603,72 +6559,47 @@ async function startIncidentVoice() {
     const ok = await whisperStart('incident');
     if (!ok) { transEl.textContent = 'Tap mic to dictate incident details…'; return; }
     incidentRecording = true;
-    startVisualizer('incidentWaveform');
-    document.getElementById('incidentWaveform').classList.add('active');
     document.getElementById('incidentVoiceBtn').classList.add('recording');
     document.getElementById('incidentVoiceBtn').textContent = '⏹';
+    startVisualizer('incidentWaveform');
+    document.getElementById('incidentWaveform').classList.add('active');
   } else {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
-    
+    await acquireSharedMic();
     incidentRecording = true;
     document.getElementById('incidentVoiceBtn').classList.add('recording');
     document.getElementById('incidentVoiceBtn').textContent = '⏹';
-
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) incidentTranscript += e.results[i][0].transcript + ' ';
       }
-      const displayText = incidentTranscript.trim();
-      if (displayText) {
-        transEl.textContent = displayText;
-        transEl.classList.add('has-content');
-      }
-    }
-    function onErr(e) {
-      if (e.error === 'no-speech') return;
-      if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
+      const t = incidentTranscript.trim();
+      if (t) { transEl.textContent = t; transEl.classList.add('has-content'); }
     }
     function loop() {
       if (!incidentRecording) return;
-      const rec = new SR();
-      rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = onErr;
+      const rec = new SR(); rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
+      rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
       rec.onend = () => { if (incidentRecording) setTimeout(loop, 80); };
-      incidentRecognition = rec;
-      try { rec.start(); } catch(e) { if (incidentRecording) setTimeout(loop, 200); }
+      incidentRecognition = rec; try { rec.start(); } catch(e) { if (incidentRecording) setTimeout(loop, 200); }
     }
     loop();
-    setTimeout(() => { 
-      if (incidentRecording) { 
-        startVisualizer('incidentWaveform'); 
-        document.getElementById('incidentWaveform').classList.add('active'); 
-      } 
-    }, 600);
+    startVisualizer('incidentWaveform');
+    document.getElementById('incidentWaveform').classList.add('active');
   }
 }
 
 async function stopIncidentVoice() {
   incidentRecording = false;
-  
-  if (incidentRecognition) { 
-    try { 
-      incidentRecognition.stop(); 
-    } catch(e) {} 
-  }
-  
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Clean up recognition instance
-  incidentRecognition = null;
-  
+  if (incidentRecognition) { try { incidentRecognition.stop(); } catch(e) {} incidentRecognition = null; }
   stopVisualizer();
   const wv = document.getElementById('incidentWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
   document.getElementById('incidentVoiceBtn').classList.remove('recording');
   document.getElementById('incidentVoiceBtn').textContent = '🎙';
   const transEl = document.getElementById('incidentDictateTranscript');
-  
+
   if (useWhisper()) {
     transEl.textContent = 'Transcribing…';
     const result = await whisperStop();
@@ -6683,7 +6614,8 @@ async function stopIncidentVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    if (incidentTranscript.trim().length > 5) {
+    releaseSharedMic();
+    if (incidentTranscript.trim().length > 2) {
       transEl.textContent = incidentTranscript.trim();
       transEl.classList.add('has-content');
       addTranscriptToHistory('incident', incidentTranscript.trim());
@@ -6753,21 +6685,25 @@ async function startVitalsVoice() {
 
   if (useWhisper()) {
     const ok = await whisperStart('vitals');
-    if (!ok) { transEl.textContent = 'Tap mic to dictate vitals…'; return; }
+    if (!ok) { transEl.textContent = 'Tap mic to dictate activities…'; return; }
     vitalsRecording = true;
-    startVisualizer('vitalsWaveform');
-    document.getElementById('vitalsWaveform').classList.add('active');
     document.getElementById('vitalsVoiceBtn').classList.add('recording');
     document.getElementById('vitalsVoiceBtn').textContent = '⏹';
+    startVisualizer('vitalsWaveform');
+    document.getElementById('vitalsWaveform').classList.add('active');
   } else {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+    await acquireSharedMic();
+    vitalsRecording = true;
+    document.getElementById('vitalsVoiceBtn').classList.add('recording');
+    document.getElementById('vitalsVoiceBtn').textContent = '⏹';
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) vitalsTranscript += e.results[i][0].transcript + ' ';
       }
-      transEl.textContent = vitalsTranscript.trim() || '🎙 Listening…';
-      if (vitalsTranscript.trim()) transEl.classList.add('has-content');
+      const t = vitalsTranscript.trim();
+      if (t) { transEl.textContent = t; transEl.classList.add('has-content'); }
     }
     function loop() {
       if (!vitalsRecording) return;
@@ -6776,22 +6712,21 @@ async function startVitalsVoice() {
       rec.onend = () => { if (vitalsRecording) setTimeout(loop, 80); };
       vitalsRecognition = rec; try { rec.start(); } catch(e) { if (vitalsRecording) setTimeout(loop, 200); }
     }
-    vitalsRecording = true;
     loop();
-    setTimeout(() => { if (vitalsRecording) { startVisualizer('vitalsWaveform'); document.getElementById('vitalsWaveform').classList.add('active'); } }, 600);
-    document.getElementById('vitalsVoiceBtn').classList.add('recording');
-    document.getElementById('vitalsVoiceBtn').textContent = '⏹';
+    startVisualizer('vitalsWaveform');
+    document.getElementById('vitalsWaveform').classList.add('active');
   }
 }
 
 async function stopVitalsVoice() {
   vitalsRecording = false;
+  if (vitalsRecognition) { try { vitalsRecognition.stop(); } catch(e) {} vitalsRecognition = null; }
   stopVisualizer();
   const wv = document.getElementById('vitalsWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
   document.getElementById('vitalsVoiceBtn').classList.remove('recording');
   document.getElementById('vitalsVoiceBtn').textContent = '🎙';
-  
+
   if (useWhisper()) {
     document.getElementById('vitalsDictateTranscript').textContent = 'Transcribing…';
     const result = await whisperStop();
@@ -6805,13 +6740,15 @@ async function stopVitalsVoice() {
       document.getElementById('vitalsDictateTranscript').textContent = result ? '✗ ' + result.slice(6) : '✗ No audio — try again';
       document.getElementById('vitalsDictateTranscript').classList.remove('has-content');
     }
-    return;
-  }
-  
-  if (vitalsRecognition) { try { vitalsRecognition.stop(); } catch(e) {} vitalsRecognition = null; }
-  if (vitalsTranscript.trim()) {
-    addTranscriptToHistory('vitals', vitalsTranscript.trim());
-    document.getElementById('vitalsExtractBtn').style.display = 'block';
+  } else {
+    releaseSharedMic();
+    if (vitalsTranscript.trim()) {
+      addTranscriptToHistory('vitals', vitalsTranscript.trim());
+      document.getElementById('vitalsExtractBtn').style.display = 'block';
+    } else {
+      document.getElementById('vitalsDictateTranscript').textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…';
+      document.getElementById('vitalsDictateTranscript').classList.remove('has-content');
+    }
   }
 }
 
@@ -6934,40 +6871,46 @@ function toggleTransportVoice() {
 async function startTransportVoice() {
   transportTranscript = '';
   const transEl = document.getElementById('transportDictateTranscript');
+  if (!transEl) return;
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
-  document.getElementById('transportExtractStatus').textContent = '';
+  const extStatus = document.getElementById('transportExtractStatus');
+  if (extStatus) extStatus.textContent = '';
 
   if (useWhisper()) {
     const ok = await whisperStart('transport');
     if (!ok) { transEl.textContent = 'Tap mic to dictate transport info…'; return; }
     transportRecording = true;
-    startVisualizer('transportWaveform');
-    document.getElementById('transportWaveform').classList.add('active');
     document.getElementById('transportVoiceBtn').classList.add('recording');
     document.getElementById('transportVoiceBtn').textContent = '⏹';
+    startVisualizer('transportWaveform');
+    const wv = document.getElementById('transportWaveform');
+    if (wv) wv.classList.add('active');
   } else {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+    if (!SR) { showMicBanner('⚠ Web Speech not available.'); return; }
+    await acquireSharedMic();
+    transportRecording = true;
+    document.getElementById('transportVoiceBtn').classList.add('recording');
+    document.getElementById('transportVoiceBtn').textContent = '⏹';
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) transportTranscript += e.results[i][0].transcript + ' ';
       }
-      transEl.textContent = transportTranscript.trim() || '🎙 Listening…';
-      if (transportTranscript.trim()) transEl.classList.add('has-content');
+      const t = transportTranscript.trim();
+      if (t) { transEl.textContent = t; transEl.classList.add('has-content'); }
     }
     function loop() {
       if (!transportRecording) return;
       const rec = new SR(); rec.continuous = false; rec.interimResults = false; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') showMicBanner('⚠ ' + e.error); };
+      rec.onresult = onResult; rec.onerror = e => {};
       rec.onend = () => { if (transportRecording) setTimeout(loop, 80); };
       transportRecognition = rec; try { rec.start(); } catch(e) { if (transportRecording) setTimeout(loop, 200); }
     }
-    transportRecording = true;
     loop();
-    setTimeout(() => { if (transportRecording) { startVisualizer('transportWaveform'); document.getElementById('transportWaveform').classList.add('active'); } }, 600);
-    document.getElementById('transportVoiceBtn').classList.add('recording');
-    document.getElementById('transportVoiceBtn').textContent = '⏹';
+    startVisualizer('transportWaveform');
+    const wv = document.getElementById('transportWaveform');
+    if (wv) wv.classList.add('active');
   }
 }
 
@@ -6994,6 +6937,7 @@ async function stopTransportVoice() {
   }
   
   if (transportRecognition) { try { transportRecognition.stop(); } catch(e) {} transportRecognition = null; }
+  if (!useWhisper()) releaseSharedMic();
   if (transportTranscript.trim()) {
     addTranscriptToHistory('transport', transportTranscript.trim());
     const extBtn = document.getElementById('transportExtractBtn');
@@ -7348,6 +7292,8 @@ async function startHPIRecording() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
     const ta = document.getElementById('hpiNarrative');
+    await acquireSharedMic();
+    hpiRecording = true;
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) ta.value += e.results[i][0].transcript + ' ';
@@ -7360,9 +7306,9 @@ async function startHPIRecording() {
       rec.onend = () => { if (hpiRecording) setTimeout(loop, 80); };
       hpiRecognition = rec; try { rec.start(); } catch(e) { if (hpiRecording) setTimeout(loop, 200); }
     }
-    hpiRecording = true;
     loop();
-    setTimeout(() => { if (hpiRecording) { startVisualizer('hpiWaveform'); document.getElementById('hpiWaveform').classList.add('active'); } }, 600);
+    startVisualizer('hpiWaveform');
+    document.getElementById('hpiWaveform').classList.add('active');
   }
   document.getElementById('hpiVoiceBtn').classList.add('recording');
   document.getElementById('hpiVoiceBtn').textContent = '⏹';
@@ -7389,7 +7335,8 @@ async function stopHPIRecording() {
       document.getElementById('hpiVoiceStatus').textContent = '✗ Failed — try again';
     }
   } else {
-    if (hpiRecognition) { try { hpiRecognition.stop(); } catch(e) {} }
+    if (hpiRecognition) { try { hpiRecognition.stop(); } catch(e) {} hpiRecognition = null; }
+    releaseSharedMic();
   }
   setTimeout(() => {
     document.getElementById('hpiVoiceStatus').textContent = 'Tap to dictate';
@@ -7416,6 +7363,8 @@ async function startSAMPLERecording() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
     const ta = document.getElementById('sampleNarrative');
+    await acquireSharedMic();
+    sampleRecording = true;
     function onResult(e) {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) ta.value += e.results[i][0].transcript + ' ';
@@ -7428,9 +7377,9 @@ async function startSAMPLERecording() {
       rec.onend = () => { if (sampleRecording) setTimeout(loop, 80); };
       sampleRecognition = rec; try { rec.start(); } catch(e) { if (sampleRecording) setTimeout(loop, 200); }
     }
-    sampleRecording = true;
     loop();
-    setTimeout(() => { if (sampleRecording) { startVisualizer('sampleWaveform'); document.getElementById('sampleWaveform').classList.add('active'); } }, 600);
+    startVisualizer('sampleWaveform');
+    document.getElementById('sampleWaveform').classList.add('active');
   }
   document.getElementById('sampleVoiceBtn').classList.add('recording');
   document.getElementById('sampleVoiceBtn').textContent = '⏹';
@@ -7457,7 +7406,8 @@ async function stopSAMPLERecording() {
       document.getElementById('sampleVoiceStatus').textContent = '✗ Failed — try again';
     }
   } else {
-    if (sampleRecognition) { try { sampleRecognition.stop(); } catch(e) {} }
+    if (sampleRecognition) { try { sampleRecognition.stop(); } catch(e) {} sampleRecognition = null; }
+    releaseSharedMic();
   }
   setTimeout(() => {
     document.getElementById('sampleVoiceStatus').textContent = 'Tap to dictate';
