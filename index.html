@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v4.4 -->
-<script>const APP_VERSION = 'v4.4';</script>
+<!-- Version: v4.5 -->
+<script>const APP_VERSION = 'v4.5';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -250,9 +250,10 @@
   }
 
   textarea {
-    resize: vertical;
-    min-height: 150px;
+    resize: none;
+    min-height: 60px;
     line-height: 1.5;
+    overflow-y: hidden;
   }
 
   select {
@@ -2965,7 +2966,7 @@
 
         <div class="field">
           <label>Scene Notes</label>
-          <textarea id="sceneNotes" placeholder="Describe the scene upon arrival. Where was the patient? How did the patient look (alert, communicative, unconscious, etc.)? Who else was there?" style="min-height:120px"></textarea>
+          <textarea id="sceneNotes" placeholder="Describe the scene upon arrival. Where was the patient? How did the patient look (alert, communicative, unconscious, etc.)? Who else was there?" style="min-height:120px" oninput="autoResizeTextarea(this)"></textarea>
         </div>
       </div>
     </div>
@@ -3007,7 +3008,7 @@
         <div class="subsection-label">HPI — History of Present Illness <span class="format-tag">OPQRST</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="hpiNarrative" placeholder="Describe the HPI freely — include onset/duration, what makes it better or worse, how the patient describes it, where it is, severity (0–10), and timing/trends." style="min-height:130px"></textarea>
+            <textarea id="hpiNarrative" placeholder="Describe the HPI freely — include onset/duration, what makes it better or worse, how the patient describes it, where it is, severity (0–10), and timing/trends." style="min-height:120px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">O</span><div><div class="opqrst-word">Onset</div><div class="opqrst-hint">When/how did it start?</div></div></div>
@@ -3023,7 +3024,7 @@
         <div class="subsection-label" style="margin-top:6px">PMH — Past Medical History <span class="format-tag">SAMPLE</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="sampleNarrative" placeholder="Describe signs/symptoms, allergies, medications, past medical history, last oral intake, and events leading up to this call." style="min-height:130px"></textarea>
+            <textarea id="sampleNarrative" placeholder="Describe signs/symptoms, allergies, medications, past medical history, last oral intake, and events leading up to this call." style="min-height:120px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">S</span><div><div class="opqrst-word">Signs/Symptoms</div><div class="opqrst-hint">Current associated symptoms</div></div></div>
@@ -3229,13 +3230,13 @@
         <div class="form-row full">
           <div class="field">
             <label>Advice Given to Patient by EMS</label>
-            <textarea id="rf_advice" placeholder="Document the specific advice given to the patient..." style="min-height:70px"></textarea>
+            <textarea id="rf_advice" placeholder="Document the specific advice given to the patient..." style="min-height:70px" oninput="autoResizeTextarea(this)"></textarea>
           </div>
         </div>
         <div class="form-row full">
           <div class="field">
             <label>Patient Explanation for Refusal</label>
-            <textarea id="rf_explanation" placeholder="Document the patient's stated reason for refusing care..." style="min-height:70px"></textarea>
+            <textarea id="rf_explanation" placeholder="Document the patient's stated reason for refusing care..." style="min-height:70px" oninput="autoResizeTextarea(this)"></textarea>
           </div>
         </div>
       </div>
@@ -4453,6 +4454,9 @@ window.onload = function() {
   
   // Attach auto-save listeners to all inputs
   attachAutoSaveListeners();
+
+  // Wire up and resize all textareas
+  initAutoResize();
   
   // Click outside menu to close
   document.addEventListener('click', function(e) {
@@ -5252,7 +5256,7 @@ function toggleActivityPill(el, cardId) {
   // Map pill text to output text (for custom phrases)
   const pillToOutput = {
     'Rapid Trauma Assessment/Findings': 'Rapid Trauma Assessment conducted and found [ENTER FINDINGS]',
-    'Rapid Trauma Assessment with no additional pertinent findings.': 'Rapid Trauma Assessment with no additional pertinent findings.',
+    'Rapid Trauma Assessment/No Findings': 'Rapid Trauma Assessment with no additional pertinent findings',
     'Alert/Oriented': `Patient was ${loc}`,
     'Collar': 'EMS applied a cervical collar',
     'EMS Assisted Medic 350': 'EMS assisted Paramedic 350 within scope of practice',
@@ -5343,7 +5347,7 @@ function initializeActivityCards() {
   const arrivalPills = [
     'Primary Assessment',
     'Rapid Trauma Assessment/Findings',
-    'Rapid Trauma Assessment with no additional pertinent findings.',
+    'Rapid Trauma Assessment/No Findings',
     'Vitals Taken',
     'Alert/Oriented',
     'Denied Pain',
@@ -5940,10 +5944,20 @@ function updateGCS(id) {
 }
 
 function autoResizeTextarea(textarea) {
-  // Reset height to measure scrollHeight properly
   textarea.style.height = 'auto';
-  // Set height to scrollHeight to fit content
   textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+function initAutoResize() {
+  document.querySelectorAll('textarea').forEach(ta => {
+    // Wire up any textarea not already wired
+    if (!ta.dataset.autoResize) {
+      ta.dataset.autoResize = '1';
+      ta.addEventListener('input', () => autoResizeTextarea(ta));
+    }
+    // Resize to fit existing content
+    autoResizeTextarea(ta);
+  });
 }
 
 function formatTimeInput(input) {
@@ -8403,12 +8417,15 @@ function syncDOBFromPicker() {
 
 // ======== PHONE FORMATTER ========
 function formatPhone(input) {
-  const digits = input.value.replace(/\D/g, '').slice(0, 10);
+  const digits = input.value.replace(/\D/g, '');
   if (digits.length === 10) {
+    // Exactly 10 digits — format as US number
     input.value = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
-  } else {
+  } else if (digits.length > 10) {
+    // More than 10 digits — international, leave as raw digits
     input.value = digits;
   }
+  // Fewer than 10 — leave as typed (don't strip non-digits mid-entry)
 }
 
 // ======== NEW CHART ========
@@ -9970,7 +9987,10 @@ function restoreChartData(data) {
   
   // Check Transport/Refusal exclusivity after restoring data
   checkTransportRefusalExclusivity();
-  
+
+  // Resize all textareas to fit restored content
+  setTimeout(initAutoResize, 50);
+
   return true;
 }
 
