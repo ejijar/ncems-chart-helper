@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v20 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: OfflineQueue-v22 - Read from DOM at stop time, abort recognition cleanly -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -5961,15 +5961,19 @@ async function wsSectionStart(section, btn) {
   btn.textContent = '⏹';
   setDictateState(section, 'listening');
 
+  let sessionCommitted = '';
+  let interim = '';
+
   function onResult(e) {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) secTranscript[section] += e.results[i][0].transcript + ' ';
+    interim = '';
+    sessionCommitted = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
       else interim += e.results[i][0].transcript;
     }
-    const t = secTranscript[section].trim();
-    const display = (t + (interim ? ' ' + interim : '')).trim();
-    const words = t ? t.split(/\s+/).length : 0;
+    const committed = (secTranscript[section] || '') + sessionCommitted;
+    const display = (committed + interim).trim();
+    const words = committed.trim() ? committed.trim().split(/\s+/).length : 0;
     const stateEl = document.getElementById('sec-state-' + section);
     if (stateEl) stateEl.textContent = '🎙 ' + (words > 0 ? words + ' word' + (words !== 1 ? 's' : '') + ' captured…' : 'Listening…');
     const transTextEl = document.getElementById('sec-trans-' + section);
@@ -5980,6 +5984,9 @@ async function wsSectionStart(section, btn) {
     if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
   }
   function onEnd() {
+    // Commit this session before potentially restarting
+    if (sessionCommitted.trim()) { secTranscript[section] = (secTranscript[section] || '') + sessionCommitted; sessionCommitted = ''; }
+    if (interim.trim()) { secTranscript[section] = (secTranscript[section] || '') + interim.trim() + ' '; interim = ''; }
     if (secRecording[section]) { setTimeout(loop, 80); return; }
     // User tapped stop — process transcript
     secRecognition[section] = null;
@@ -6000,6 +6007,7 @@ async function wsSectionStart(section, btn) {
   }
   function loop() {
     if (!secRecording[section]) return;
+    sessionCommitted = ''; interim = '';
     const rec = new SR();
     rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
     rec.onresult = onResult; rec.onerror = onErr; rec.onend = onEnd;
@@ -6401,8 +6409,23 @@ Return ONLY the JSON object, no other text.
 Dictated text: "${transcript}"`;
 
   try {
-    const text = await claudeAPI([{ role: 'user', content: prompt }], 1200);
-    const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
+    const text = await claudeAPI([{ role: 'user', content: prompt }], 2048);
+    let clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
+    console.log('[extractUniversalInfo] raw text length:', text.length, 'clean:', clean.slice(0, 300));
+
+    // If response was truncated mid-JSON, attempt to repair it so we keep any fields that did parse
+    if (!clean.endsWith('}')) {
+      console.warn('[extractUniversalInfo] JSON appears truncated, attempting repair');
+      const lastBrace = clean.lastIndexOf('}');
+      if (lastBrace > 0) {
+        clean = clean.slice(0, lastBrace + 1);
+        let depth = 0;
+        for (const ch of clean) { if (ch === '{') depth++; else if (ch === '}') depth--; }
+        for (let i = 0; i < depth; i++) clean += '}';
+      }
+    }
+
+    console.log('[extractUniversalInfo] attempting JSON.parse on:', clean.slice(0, 200));
     const parsed = JSON.parse(clean);
     
     const fieldsPopulated = [];
@@ -6513,19 +6536,21 @@ async function startPatientVoice() {
 
     ptRecording = true;
     let ptInterim = '';
+    let sessionCommitted = ''; // text committed in THIS recognition session only
     document.getElementById('ptVoiceBtn').classList.add('recording');
     document.getElementById('ptVoiceBtn').textContent = '⏹';
 
     function onResult(e) {
       ptInterim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          ptTranscript += e.results[i][0].transcript + ' ';
+          sessionCommitted += e.results[i][0].transcript + ' ';
         } else {
           ptInterim += e.results[i][0].transcript;
         }
       }
-      const display = (ptTranscript + ptInterim).trim();
+      const display = (ptTranscript + sessionCommitted + ptInterim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onErr(e) {
@@ -6533,15 +6558,20 @@ async function startPatientVoice() {
       if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
     }
     function onEnd() {
+      // Commit this session's results into ptTranscript before potentially restarting
+      if (sessionCommitted.trim()) {
+        ptTranscript += sessionCommitted;
+        sessionCommitted = '';
+      }
+      if (ptInterim.trim()) {
+        ptTranscript += ptInterim.trim() + ' ';
+        ptInterim = '';
+      }
       if (ptRecording) {
         setTimeout(loop, 80);
         return;
       }
-      // User tapped stop — commit any trailing interim text
-      // NOTE: addTranscriptToHistory and extractPatientInfo are called by stopPatientVoice,
-      // not here, to avoid double-firing when abort() triggers onEnd.
-      if (ptInterim.trim()) ptTranscript += ptInterim.trim() + ' ';
-      ptInterim = '';
+      // User tapped stop — update display, stopPatientVoice handles history/extract
       ptRecognition = null;
       const t = ptTranscript.trim();
       if (t.length > 2) {
@@ -6555,6 +6585,8 @@ async function startPatientVoice() {
     }
     function loop() {
       if (!ptRecording) return;
+      sessionCommitted = '';
+      ptInterim = '';
       const rec = new SR();
       rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = onErr; rec.onend = onEnd;
@@ -6705,21 +6737,23 @@ async function startSceneVoice() {
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
     sceneRecording = true;
     let sceneInterim = '';
+    let sessionCommitted = '';
     document.getElementById('sceneVoiceBtn').classList.add('recording');
     document.getElementById('sceneVoiceBtn').textContent = '⏹';
     function onResult(e) {
       sceneInterim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sceneTranscript += e.results[i][0].transcript + ' ';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else sceneInterim += e.results[i][0].transcript;
       }
-      const display = (sceneTranscript + sceneInterim).trim();
+      const display = (sceneTranscript + sessionCommitted + sceneInterim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { sceneTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (sceneInterim.trim()) { sceneTranscript += sceneInterim.trim() + ' '; sceneInterim = ''; }
       if (sceneRecording) { setTimeout(loop, 80); return; }
-      if (sceneInterim.trim()) sceneTranscript += sceneInterim.trim() + ' ';
-      sceneInterim = '';
       sceneRecognition = null;
       const t = sceneTranscript.trim();
       if (t.length > 2) {
@@ -6732,6 +6766,7 @@ async function startSceneVoice() {
     }
     function loop() {
       if (!sceneRecording) return;
+      sessionCommitted = ''; sceneInterim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
       rec.onend = onEnd;
@@ -6867,18 +6902,23 @@ async function startIncidentVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
     incidentRecording = true;
+    let sessionCommitted = '';
+    let interim = '';
     document.getElementById('incidentVoiceBtn').classList.add('recording');
     document.getElementById('incidentVoiceBtn').textContent = '⏹';
     function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) incidentTranscript += e.results[i][0].transcript + ' ';
+      interim = '';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else interim += e.results[i][0].transcript;
       }
-      const display = (incidentTranscript + interim).trim();
+      const display = (incidentTranscript + sessionCommitted + interim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { incidentTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (interim.trim()) { incidentTranscript += interim.trim() + ' '; interim = ''; }
       if (incidentRecording) { setTimeout(loop, 80); return; }
       incidentRecognition = null;
       const t = incidentTranscript.trim();
@@ -6892,6 +6932,7 @@ async function startIncidentVoice() {
     }
     function loop() {
       if (!incidentRecording) return;
+      sessionCommitted = ''; interim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
       rec.onend = onEnd;
@@ -7024,18 +7065,23 @@ async function startVitalsVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
     vitalsRecording = true;
+    let sessionCommitted = '';
+    let interim = '';
     document.getElementById('vitalsVoiceBtn').classList.add('recording');
     document.getElementById('vitalsVoiceBtn').textContent = '⏹';
     function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) vitalsTranscript += e.results[i][0].transcript + ' ';
+      interim = '';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else interim += e.results[i][0].transcript;
       }
-      const display = (vitalsTranscript + interim).trim();
+      const display = (vitalsTranscript + sessionCommitted + interim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { vitalsTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (interim.trim()) { vitalsTranscript += interim.trim() + ' '; interim = ''; }
       if (vitalsRecording) { setTimeout(loop, 80); return; }
       vitalsRecognition = null;
       const t = vitalsTranscript.trim();
@@ -7049,6 +7095,7 @@ async function startVitalsVoice() {
     }
     function loop() {
       if (!vitalsRecording) return;
+      sessionCommitted = ''; interim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') showMicBanner('⚠ ' + e.error); };
       rec.onend = onEnd;
@@ -7238,18 +7285,23 @@ async function startTransportVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available.'); return; }
     transportRecording = true;
+    let sessionCommitted = '';
+    let interim = '';
     document.getElementById('transportVoiceBtn').classList.add('recording');
     document.getElementById('transportVoiceBtn').textContent = '⏹';
     function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) transportTranscript += e.results[i][0].transcript + ' ';
+      interim = '';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else interim += e.results[i][0].transcript;
       }
-      const display = (transportTranscript + interim).trim();
+      const display = (transportTranscript + sessionCommitted + interim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { transportTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (interim.trim()) { transportTranscript += interim.trim() + ' '; interim = ''; }
       if (transportRecording) { setTimeout(loop, 80); return; }
       transportRecognition = null;
       const t = transportTranscript.trim();
@@ -7264,6 +7316,7 @@ async function startTransportVoice() {
     }
     function loop() {
       if (!transportRecording) return;
+      sessionCommitted = ''; interim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => {};
       rec.onend = onEnd;
@@ -7576,7 +7629,7 @@ async function claudeAPI(messages, max_tokens = 1000) {
   if (!isOnline()) {
     throw new Error('OFFLINE');
   }
-  console.log('[claudeAPI] calling with key:', apiKey.slice(0,12) + '…', 'max_tokens:', max_tokens);
+  console.log('[claudeAPI] calling, max_tokens:', max_tokens);
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -7597,7 +7650,13 @@ async function claudeAPI(messages, max_tokens = 1000) {
     throw new Error(`API error ${response.status}: ${err?.error?.message || response.statusText}`);
   }
   const data = await response.json();
-  return data.content?.map(c => c.text || '').join('') || '';
+  console.log('[claudeAPI] stop_reason:', data.stop_reason, 'content blocks:', data.content?.length);
+  const text = data.content?.map(c => c.text || '').join('') || '';
+  console.log('[claudeAPI] response text (first 500):', text.slice(0, 500));
+  if (data.stop_reason === 'max_tokens') {
+    console.warn('[claudeAPI] WARNING: response was truncated by max_tokens limit!');
+  }
+  return text;
 }
 
 // ======== SETTINGS ========
