@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.1 -->
-<script>const APP_VERSION = 'v5.1';</script>
+<!-- Version: v5.5 -->
+<script>const APP_VERSION = 'v5.5';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -4902,6 +4902,28 @@ function updateCallType() {
 //   - For systolics < 100 (e.g. 80, 90), user types space or "/" to split
 //   - Backspace past slash removes it cleanly
 
+// Auto-format temperature: digits-only entry, insert decimal on blur
+// e.g. "986" → "98.6", "1000" → "100.0", "975" → "97.5"
+function formatTempOnBlur(el) {
+  const raw = el.value.replace(/[^0-9]/g, '');
+  if (!raw) return;
+  const n = parseInt(raw, 10);
+  // Reasonable range: 850–1150 (entered as 850=85.0 to 1150=115.0)
+  // If user typed 3 digits treat last as tenths: 986 → 98.6
+  // If user typed 4 digits treat last as tenths: 1004 → 100.4
+  if (raw.length >= 3) {
+    const intPart  = raw.slice(0, -1);
+    const tenths   = raw.slice(-1);
+    const val = parseFloat(intPart + '.' + tenths);
+    if (val >= 85.0 && val <= 115.0) {
+      el.value = val.toFixed(1);
+      return;
+    }
+  }
+  // Fallback: leave as-is if can't make sense of it
+  el.value = raw;
+}
+
 function formatBPInput(el) {
   let raw = el.value;
 
@@ -4965,6 +4987,8 @@ function setTimeNow(fieldId) {
   el.value = hh + ':' + mm;
   el.classList.add('field-overwritten');
   setTimeout(() => el.classList.remove('field-overwritten'), 2000);
+  // Direct .value assignment bypasses oninput — trigger exclusivity check manually
+  checkTransportRefusalExclusivity();
 }
 
 function adjustTime(fieldId, deltaMins) {
@@ -4984,18 +5008,23 @@ function adjustTime(fieldId, deltaMins) {
   const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
   const mm = String(totalMins % 60).padStart(2, '0');
   el.value = hh + ':' + mm;
+  // Direct .value assignment bypasses oninput — trigger exclusivity check manually
+  checkTransportRefusalExclusivity();
 }
 
 // ======== GCS QUICK-FILL ========
 
 function setGCSNormal(cardId) {
-  const eye   = document.getElementById('vgcs-eye-'   + cardId);
+  const eye    = document.getElementById('vgcs-eye-'    + cardId);
   const verbal = document.getElementById('vgcs-verbal-' + cardId);
   const motor  = document.getElementById('vgcs-motor-'  + cardId);
-  if (eye)   eye.value   = '4';
+  if (eye)    eye.value    = '4';
   if (verbal) verbal.value = '5';
   if (motor)  motor.value  = '6';
   updateGCS(cardId);
+  // GCS 15 button sets values directly — must trigger exclusivity manually
+  checkTransportRefusalExclusivity();
+  triggerAutoSave();
 }
 
 // ======== VITALS ========
@@ -5039,6 +5068,7 @@ function toggleActivityPill(el, cardId) {
     // Hospital pills don't add text themselves
     // They just store the selected hospital for use by "Transport Commenced"
     // Don't add to activity field
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5097,32 +5127,13 @@ function toggleActivityPill(el, cardId) {
     
     activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
     autoResizeTextarea(activityField);
+    checkTransportRefusalExclusivity();
     return;
   }
   // Handle "Transport Commenced", "Patient Comforted", and "Transport Uneventful" pills - uses selected hospital
   if (pillText === 'Transport Commenced' || pillText === 'Patient Comforted' || pillText === 'Transport Uneventful') {
-    // Find which hospital is selected in the Transport card
-    // We need to look for the Transport card specifically
-    const allCards = document.querySelectorAll('.vitals-card');
-    let selectedHospital = '[HOSPITAL]';
-    
-    // Find the Transport card
-    allCards.forEach(card => {
-      const label = card.querySelector('.vitals-card-label');
-      if (label && label.textContent.includes('Transport')) {
-        // This is the Transport card - check for selected hospital
-        const norwalkPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Norwalk Hospital');
-        const stamfordPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Stamford Hospital');
-        
-        if (norwalkPill && norwalkPill.classList.contains('selected')) {
-          selectedHospital = 'Norwalk Hospital';
-        } else if (stamfordPill && stamfordPill.classList.contains('selected')) {
-          selectedHospital = 'Stamford Hospital';
-        }
-      }
-    });
+    const transportId = getTransportCardId();
+    const selectedHospital = transportId ? getTransportHospital(transportId) : '[HOSPITAL]';
     
     let outputText;
     if (pillText === 'Transport Commenced') {
@@ -5180,40 +5191,21 @@ function toggleActivityPill(el, cardId) {
       }
     }
     
+    checkTransportRefusalExclusivity();
     return;
   }
   
   // Handle "Arrived at Hospital" pill - uses selected hospital from Transport card
   if (pillText === 'Arrived at Hospital') {
-    // Find which hospital is selected in the Transport card
-    const allCards = document.querySelectorAll('.vitals-card');
-    let selectedHospital = '[HOSPITAL]';
-    
-    // Find the Transport card
-    allCards.forEach(card => {
-      const label = card.querySelector('.vitals-card-label');
-      if (label && label.textContent.includes('Transport')) {
-        // This is the Transport card - check for selected hospital
-        const norwalkPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Norwalk Hospital');
-        const stamfordPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Stamford Hospital');
-        
-        if (norwalkPill && norwalkPill.classList.contains('selected')) {
-          selectedHospital = 'Norwalk Hospital';
-        } else if (stamfordPill && stamfordPill.classList.contains('selected')) {
-          selectedHospital = 'Stamford Hospital';
-        }
-      }
-    });
-    
-    const outputText = `Arrived at ${selectedHospital} ED without incident`;
+    const transportId = getTransportCardId();
+    const selectedHospital = transportId ? getTransportHospital(transportId) : '[HOSPITAL]';
+    const outputText = `Arrived at ${selectedHospital} without incident`;
     const currentValue = activityField.value;
     const pills = currentValue.split('. ').filter(p => p.trim()).map(p => p.replace(/\.$/, '').trim());
     
     if (el.classList.contains('selected')) {
-      // Remove any existing "Arrived at ... ED without incident" text first
-      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' ED without incident'));
+      // Remove any existing "Arrived at ... without incident" text first
+      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' without incident'));
       if (!filteredPills.includes(outputText)) {
         filteredPills.push(outputText);
       }
@@ -5221,11 +5213,12 @@ function toggleActivityPill(el, cardId) {
       autoResizeTextarea(activityField);
     } else {
       // Remove pill text
-      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' ED without incident'));
+      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' without incident'));
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
     }
     
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5240,48 +5233,17 @@ function toggleActivityPill(el, cardId) {
     const pills = currentValue.split('. ').filter(p => p.trim()).map(p => p.replace(/\.$/, '').trim());
     
     if (el.classList.contains('selected')) {
-      // Remove any existing "Patient brought to ED Room ..." text first
       const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
-      if (!filteredPills.includes(outputText)) {
-        filteredPills.push(outputText);
-      }
+      if (!filteredPills.includes(outputText)) filteredPills.push(outputText);
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
     } else {
-      // Remove pill text
       const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
     }
     
-    return;
-  }
-  
-  // Handle "Patient Room" pill - uses ED Room field from Hospital Transfer card
-  if (pillText === 'Patient Room') {
-    // Get the ED Room value from this card
-    const edRoomField = document.getElementById('ved-room-' + cardId);
-    const edRoom = edRoomField?.value.trim() || '[ROOM NUMBER]';
-    
-    const outputText = `Patient brought to ED Room ${edRoom}`;
-    const currentValue = activityField.value;
-    const pills = currentValue.split('. ').filter(p => p.trim()).map(p => p.replace(/\.$/, '').trim());
-    
-    if (el.classList.contains('selected')) {
-      // Remove any existing "Patient brought to ED Room ..." text first
-      const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
-      if (!filteredPills.includes(outputText)) {
-        filteredPills.push(outputText);
-      }
-      activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
-      autoResizeTextarea(activityField);
-    } else {
-      // Remove pill text
-      const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
-      activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
-      autoResizeTextarea(activityField);
-    }
-    
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5322,6 +5284,7 @@ function toggleActivityPill(el, cardId) {
     
     activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
     autoResizeTextarea(activityField);
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5350,6 +5313,7 @@ function toggleActivityPill(el, cardId) {
       autoResizeTextarea(activityField);
     }
     
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5437,6 +5401,7 @@ function toggleActivityPill(el, cardId) {
       if (newValue && !newValue.endsWith('.')) newValue += '.';
       activityField.value = newValue;
       autoResizeTextarea(activityField);
+      checkTransportRefusalExclusivity();
       return;
     } else if (pillText === 'Medic 350 Care') {
       // Remove "Paramedic 350 assumed care. See Paramedic 350 Chart for further information"
@@ -5449,18 +5414,22 @@ function toggleActivityPill(el, cardId) {
       if (newValue && !newValue.endsWith('.')) newValue += '.';
       activityField.value = newValue;
       autoResizeTextarea(activityField);
+      checkTransportRefusalExclusivity();
       return;
     } else {
       // Regular pills - filter out the matching text
       const filteredPills = pills.filter(p => p !== outputText);
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
+      checkTransportRefusalExclusivity();
       return;
     }
   }
   
   activityField.value = pills.length > 0 ? pills.join('. ') + '.' : '';
   autoResizeTextarea(activityField);
+  checkTransportRefusalExclusivity();
+  triggerAutoSave();
 }
 
 function toggleActivityCard(id) {
@@ -5488,7 +5457,7 @@ function initializeActivityCards() {
     'Primary Assessment',
     'Rapid Trauma Assessment/Findings',
     'Rapid Trauma Assessment/No Findings',
-    'Vitals Taken',
+    'Vitals taken',
     'Alert/Oriented',
     'Denied Pain',
     'Denied LOC',
@@ -5504,7 +5473,7 @@ function initializeActivityCards() {
   
   // Define activity pills (for Activity #1, #2, etc. - no assessment pills, includes Patient Secured/Loaded)
   const activityPills = [
-    'Vitals Taken',
+    'Vitals taken',
     'Alert/Oriented',
     'Denied Pain',
     'Denied LOC',
@@ -5524,8 +5493,6 @@ function initializeActivityCards() {
   // Define the transport pills
   const transportPills = [
     'Vitals Re-Assessed',
-    'Norwalk Hospital',
-    'Stamford Hospital',
     'Transport Commenced',
     'Patient Comforted',
     'Transport Uneventful',
@@ -5672,8 +5639,12 @@ function checkTransportRefusalExclusivity() {
       refusalContent.style.display = 'none';
       if (refusalBadge) refusalBadge.textContent = '▸';
     }
+    // Also lock the Refusal tab
+    _setRefusalTabLocked(true);
   } else {
     enableCard(refusalCardId);
+    // Unlock the Refusal tab
+    _setRefusalTabLocked(false);
   }
   
   // If Refusal has data, disable both Transport and Hospital Transfer AND close them
@@ -5709,23 +5680,30 @@ function checkTransportRefusalExclusivity() {
 }
 
 function cardHasData(cardId) {
-  // Check if any field in the card has data
-  const time = document.getElementById('vt-' + cardId)?.value;
-  const bp = document.getElementById('vbp-' + cardId)?.value;
-  const hr = document.getElementById('vhr-' + cardId)?.value;
-  const rr = document.getElementById('vrr-' + cardId)?.value;
-  const spo2 = document.getElementById('vspo2-' + cardId)?.value;
-  const pain = document.getElementById('vpain-' + cardId)?.value;
-  const skin = document.getElementById('vskin-' + cardId)?.value;
-  const temp = document.getElementById('vtemp-' + cardId)?.value;
-  const glucose = document.getElementById('vglucose-' + cardId)?.value;
+  const card = document.getElementById('vrow-' + cardId);
+  if (!card) return false;
+
+  // Check form field values
+  const time     = document.getElementById('vt-'        + cardId)?.value;
+  const bp       = document.getElementById('vbp-'       + cardId)?.value;
+  const hr       = document.getElementById('vhr-'       + cardId)?.value;
+  const rr       = document.getElementById('vrr-'       + cardId)?.value;
+  const spo2     = document.getElementById('vspo2-'     + cardId)?.value;
+  const pain     = document.getElementById('vpain-'     + cardId)?.value;
+  const skin     = document.getElementById('vskin-'     + cardId)?.value;
+  const temp     = document.getElementById('vtemp-'     + cardId)?.value;
+  const glucose  = document.getElementById('vglucose-'  + cardId)?.value;
   const activity = document.getElementById('vactivity-' + cardId)?.value;
-  const gcsEye = document.getElementById('vgcs-eye-' + cardId)?.value;
-  const gcsVerbal = document.getElementById('vgcs-verbal-' + cardId)?.value;
-  const gcsMotor = document.getElementById('vgcs-motor-' + cardId)?.value;
-  const edRoom = document.getElementById('ved-room-' + cardId)?.value;
-  
-  return !!(time || bp || hr || rr || spo2 || pain || skin || temp || glucose || activity || gcsEye || gcsVerbal || gcsMotor || edRoom);
+  const gcsEye   = document.getElementById('vgcs-eye-'  + cardId)?.value;
+  const gcsVerbal= document.getElementById('vgcs-verbal-'+ cardId)?.value;
+  const gcsMotor = document.getElementById('vgcs-motor-'+ cardId)?.value;
+  const edRoom   = document.getElementById('ved-room-'  + cardId)?.value;
+
+  // Also check if any pill is selected (activity pills or hospital selector)
+  const hasPill = card.querySelectorAll('.activity-pill.selected').length > 0;
+  const hasHosp = card.querySelectorAll('.transport-hosp-pill.selected').length > 0;
+
+  return !!(time || bp || hr || rr || spo2 || pain || skin || temp || glucose || activity || gcsEye || gcsVerbal || gcsMotor || edRoom || hasPill || hasHosp);
 }
 
 function disableCard(cardId, message) {
@@ -5794,6 +5772,46 @@ function enableCard(cardId) {
   }
 }
 
+// Lock/unlock the Refusal tab contents when patient is transported
+function _setRefusalTabLocked(locked) {
+  const tabEl = document.getElementById('tab-refusal');
+  if (!tabEl) return;
+
+  if (locked) {
+    // Add overlay banner and disable all inputs inside the refusal tab
+    if (!document.getElementById('refusalTabLockBanner')) {
+      const banner = document.createElement('div');
+      banner.id = 'refusalTabLockBanner';
+      banner.style.cssText = `
+        position: sticky; top: 0; z-index: 100;
+        background: rgba(248,81,73,0.12); border: 1px solid rgba(248,81,73,0.4);
+        border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+        font-family: var(--mono); font-size: 12px; font-weight: 600;
+        color: var(--danger); text-align: center; letter-spacing: 0.04em;
+      `;
+      banner.textContent = '⚠ REFUSAL LOCKED — Patient was transported';
+      tabEl.insertBefore(banner, tabEl.firstChild);
+    }
+    // Disable all inputs, selects, textareas, buttons (except tab navigation)
+    tabEl.querySelectorAll('input, select, textarea, button:not(.tab)').forEach(el => {
+      el.disabled = true;
+    });
+    // Disable signature Sign buttons and canvas interaction
+    tabEl.querySelectorAll('.sig-canvas').forEach(c => c.style.pointerEvents = 'none');
+    tabEl.style.opacity = '0.65';
+  } else {
+    // Remove banner
+    const banner = document.getElementById('refusalTabLockBanner');
+    if (banner) banner.remove();
+    // Re-enable all inputs
+    tabEl.querySelectorAll('input, select, textarea, button').forEach(el => {
+      el.disabled = false;
+    });
+    tabEl.querySelectorAll('.sig-canvas').forEach(c => c.style.pointerEvents = '');
+    tabEl.style.opacity = '';
+  }
+}
+
 function addNumberedActivity() {
   // Count existing numbered activities (On-Scene Activity #1, On-Scene Activity #2, etc.)
   const container = document.getElementById('vitals-container');
@@ -5823,7 +5841,7 @@ function addNumberedActivity() {
   
   // Define activity pills (no assessments, includes Patient Secured/Loaded)
   const activityPills = [
-    'Vitals Taken',
+    'Vitals taken',
     'Alert/Oriented',
     'Denied Pain',
     'Denied LOC',
@@ -5978,7 +5996,7 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
         </div>
         <div class="vitals-field">
           <label>Temp (F°)</label>
-          <input type="text" id="vtemp-${id}" placeholder="—" inputmode="decimal" autocomplete="off"${exclusivityCheck}>
+          <input type="text" id="vtemp-${id}" placeholder="—" inputmode="numeric" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="formatTempOnBlur(this)" ${exclusivityCheck.replace(/^\ /, '')}>
         </div>
         <div class="vitals-field">
           <label>Glucose (mg/dL)</label>
@@ -6030,7 +6048,22 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
       <div class="vitals-line-4">
         <div class="vitals-field-full">
           <label>ED Room</label>
-          <input type="text" id="ved-room-${id}" placeholder="e.g., Room 5, Bay 3"${exclusivityCheck}>
+          <input type="text" id="ved-room-${id}" placeholder="e.g., Room 5, Bay 3" autocomplete="off"${exclusivityCheck}>
+        </div>
+      </div>
+      ${pillsHTML}
+      ` : label === 'Transport' ? `
+      <div class="vitals-line-4">
+        <div class="vitals-field-full">
+          <label>Hospital</label>
+          <div class="check-group" style="margin-top:4px;gap:6px;flex-wrap:wrap;" id="vhosp-pills-${id}">
+            <div class="check-pill transport-hosp-pill" onclick="selectTransportHospital(this,${id})" data-val="Norwalk Hospital">Norwalk Hospital</div>
+            <div class="check-pill transport-hosp-pill" onclick="selectTransportHospital(this,${id})" data-val="Stamford Hospital">Stamford Hospital</div>
+            <div class="check-pill transport-hosp-pill" onclick="selectTransportHospital(this,${id})" data-val="Other">Other</div>
+          </div>
+          <input type="text" id="vhosp-other-${id}" placeholder="Enter hospital name…" autocomplete="off"
+            style="display:none;margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 10px;width:100%;"
+            oninput="triggerAutoSave();checkTransportRefusalExclusivity();">
         </div>
       </div>
       ${pillsHTML}
@@ -8187,7 +8220,6 @@ function buildEmailText() {
         row('GCS', `E${e} V${v} M${m} = ${tot||'-'}`);
       }
       if (card.edRoom)                                   row('ED Room', card.edRoom);
-      if (card.selectedPills?.length)                    row('Actions', card.selectedPills.join(', '));
       if (card.activity) { L(); block('Notes', card.activity); }
     });
   }
@@ -9014,6 +9046,48 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+// ── Transport Hospital Selector ──────────────────────────────
+function selectTransportHospital(el, cardId) {
+  const wrap = document.getElementById('vhosp-pills-' + cardId);
+  if (wrap) wrap.querySelectorAll('.transport-hosp-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  const otherInput = document.getElementById('vhosp-other-' + cardId);
+  if (otherInput) {
+    if (el.dataset.val === 'Other') {
+      otherInput.style.display = 'block';
+      otherInput.focus();
+    } else {
+      otherInput.style.display = 'none';
+      otherInput.value = '';
+    }
+  }
+  triggerAutoSave();
+  checkTransportRefusalExclusivity();
+}
+
+function getTransportHospital(cardId) {
+  const wrap = document.getElementById('vhosp-pills-' + cardId);
+  if (!wrap) return '[HOSPITAL]';
+  const selected = wrap.querySelector('.transport-hosp-pill.selected');
+  if (!selected) return '[HOSPITAL]';
+  if (selected.dataset.val === 'Other') {
+    return document.getElementById('vhosp-other-' + cardId)?.value.trim() || '[HOSPITAL]';
+  }
+  return selected.dataset.val;
+}
+
+function getTransportCardId() {
+  let transportId = null;
+  document.getElementById('vitals-container')?.querySelectorAll('.vitals-card-label').forEach(lbl => {
+    const span = lbl.querySelector('span:first-child');
+    if (span?.textContent.trim() === 'Transport') {
+      const badge = lbl.querySelector('.activity-badge');
+      if (badge) transportId = badge.id.replace('activity-badge-', '');
+    }
+  });
+  return transportId;
+}
 
 // ---- Pill selectors (single-select) ----
 function selectRelationship(el) {
@@ -10267,11 +10341,14 @@ function collectChartData() {
   
   allCards.forEach(card => {
     const id = card.id.replace('vrow-', '');
-    const label = card.querySelector('.vitals-card-label')?.textContent.trim() || '';
-    
+    const labelEl = card.querySelector('.vitals-card-label');
+    const labelText = labelEl
+      ? (labelEl.querySelector('span:first-child')?.textContent?.trim() || '')
+      : '';
+
     const cardData = {
       id: id,
-      label: label.split('[')[0].split('▾')[0].split('▸')[0].trim(), // Remove badges and disabled messages
+      label: labelText,
       time: document.getElementById('vt-' + id)?.value || '',
       bp: document.getElementById('vbp-' + id)?.value || '',
       hr: document.getElementById('vhr-' + id)?.value || '',
@@ -10286,7 +10363,10 @@ function collectChartData() {
       gcsMotor: document.getElementById('vgcs-motor-' + id)?.value || '',
       activity: document.getElementById('vactivity-' + id)?.value || '',
       edRoom: document.getElementById('ved-room-' + id)?.value || '',
-      
+      // Hospital selector (Transport card)
+      hospSelected: document.querySelector(`#vhosp-pills-${id} .transport-hosp-pill.selected`)?.dataset.val || '',
+      hospOther: document.getElementById('vhosp-other-' + id)?.value || '',
+
       // Collect selected pills
       selectedPills: Array.from(card.querySelectorAll('.activity-pill.selected')).map(p => p.textContent.trim())
     };
@@ -10463,6 +10543,20 @@ function restoreChartData(data) {
         autoResizeTextarea(document.getElementById('vactivity-' + id));
       }
       if (document.getElementById('ved-room-' + id)) document.getElementById('ved-room-' + id).value = cardData.edRoom || '';
+
+      // Restore hospital selector (Transport card)
+      if (cardData.hospSelected) {
+        const wrap = document.getElementById('vhosp-pills-' + id);
+        if (wrap) {
+          wrap.querySelectorAll('.transport-hosp-pill').forEach(p => {
+            p.classList.toggle('selected', p.dataset.val === cardData.hospSelected);
+          });
+          if (cardData.hospSelected === 'Other') {
+            const otherInput = document.getElementById('vhosp-other-' + id);
+            if (otherInput) { otherInput.style.display = 'block'; otherInput.value = cardData.hospOther || ''; }
+          }
+        }
+      }
       
       // Update GCS total
       updateGCS(id);
