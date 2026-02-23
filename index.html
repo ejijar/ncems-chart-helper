@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v23 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: OfflineQueue-v24 - Read from DOM at stop time, abort recognition cleanly -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -6632,11 +6632,9 @@ async function stopPatientVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    // Read the displayed text directly — it always reflects what the user saw (including interim)
-    if (ptRecognition) { try { ptRecognition.abort(); } catch(e) {} ptRecognition = null; }
-    const t = wsReadDisplayed('ptDictateTranscript', ptTranscript);
+    // Use ptTranscript directly — it's accurate from the sessionCommitted pattern
+    const t = ptTranscript.trim();
     if (t.length > 2) {
-      ptTranscript = t;
       transEl.textContent = t;
       transEl.classList.add('has-content');
       addTranscriptToHistory('patient', t);
@@ -6809,10 +6807,8 @@ async function stopSceneVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    if (sceneRecognition) { try { sceneRecognition.abort(); } catch(e) {} sceneRecognition = null; }
-    const t = wsReadDisplayed('sceneDictateTranscript', sceneTranscript);
+    const t = sceneTranscript.trim();
     if (t.length > 2) {
-      sceneTranscript = t;
       transEl.textContent = t; transEl.classList.add('has-content');
       addTranscriptToHistory('scene', t);
       document.getElementById('sceneExtractBtn').style.display = 'block';
@@ -6974,10 +6970,8 @@ async function stopIncidentVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    if (incidentRecognition) { try { incidentRecognition.abort(); } catch(e) {} incidentRecognition = null; }
-    const t = wsReadDisplayed('incidentDictateTranscript', incidentTranscript);
+    const t = incidentTranscript.trim();
     if (t.length > 2) {
-      incidentTranscript = t;
       transEl.textContent = t; transEl.classList.add('has-content');
       addTranscriptToHistory('incident', t);
       document.getElementById('incidentExtractBtn').style.display = 'block';
@@ -7136,13 +7130,11 @@ async function stopVitalsVoice() {
       document.getElementById('vitalsDictateTranscript').classList.remove('has-content');
     }
   }
-  // WebSpeech: onend handler in the loop processes the transcript
+  // WebSpeech: use vitalsTranscript directly — accurate from sessionCommitted pattern
   if (!useWhisper()) {
-    if (vitalsRecognition) { try { vitalsRecognition.abort(); } catch(e) {} vitalsRecognition = null; }
-    const t = wsReadDisplayed('vitalsDictateTranscript', vitalsTranscript);
     const vTransEl = document.getElementById('vitalsDictateTranscript');
+    const t = vitalsTranscript.trim();
     if (t.length > 2) {
-      vitalsTranscript = t;
       if (vTransEl) { vTransEl.textContent = t; vTransEl.classList.add('has-content'); }
       addTranscriptToHistory('vitals', t);
       document.getElementById('vitalsExtractBtn').style.display = 'block';
@@ -7359,13 +7351,11 @@ async function stopTransportVoice() {
       tEl.classList.remove('has-content');
     }
   }
-  // WebSpeech: read from DOM directly
+  // WebSpeech: use transportTranscript directly — accurate from sessionCommitted pattern
   if (!useWhisper()) {
-    if (transportRecognition) { try { transportRecognition.abort(); } catch(e) {} transportRecognition = null; }
-    const t = wsReadDisplayed('transportDictateTranscript', transportTranscript);
     const tEl = document.getElementById('transportDictateTranscript');
+    const t = transportTranscript.trim();
     if (t.length > 2) {
-      transportTranscript = t;
       if (tEl) { tEl.textContent = t; tEl.classList.add('has-content'); }
       addTranscriptToHistory('transport', t);
       const extBtn = document.getElementById('transportExtractBtn');
