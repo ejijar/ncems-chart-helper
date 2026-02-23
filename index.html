@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v4.2 -->
-<script>const APP_VERSION = 'v4.2';</script>
+<!-- Version: v4.4 -->
+<script>const APP_VERSION = 'v4.4';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2727,9 +2727,14 @@
           <div class="menu-desc">API keys &amp; voice engine</div>
         </div>
       </button>
+      <div class="menu-divider"></div>
+      <div style="padding: 10px 12px; text-align: center;">
+        <span style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase;" id="menuVersion"></span>
+      </div>
     </div>
   </div>
 </div>
+<script>document.getElementById('menuVersion').textContent = '🚑 NCEMS Chart Helper · ' + APP_VERSION;</script>
 
 <div id="micStatusBanner" style="display:none;background:#3d1a1a;color:#f87171;font-family:var(--mono);font-size:12px;padding:10px 16px;text-align:center;letter-spacing:0.02em;line-height:1.6;white-space:pre-wrap"></div>
 <div id="offlineQueueBanner" style="display:none;background:#1c2a1c;color:#3fb950;font-family:var(--mono);font-size:12px;padding:10px 16px;text-align:center;letter-spacing:0.02em;cursor:pointer" onclick="processExtractionQueue()">
@@ -2871,7 +2876,7 @@
         <div class="form-row full">
           <div class="field">
             <label>Phone</label>
-            <input type="tel" id="patientPhone" placeholder="(XXX) XXX-XXXX">
+            <input type="tel" id="patientPhone" placeholder="(XXX) XXX-XXXX" oninput="formatPhone(this)">
           </div>
         </div>
 
@@ -2879,7 +2884,16 @@
         <div class="form-row three">
           <div class="field" style="grid-column: span 2">
             <label>Date of Birth</label>
-            <input type="date" id="patientDOB" onchange="calcAge()" style="font-family:var(--mono)">
+            <div style="position:relative; display:flex; align-items:center;">
+              <input type="text" id="patientDOB" placeholder="MM/DD/YYYY" maxlength="10"
+                style="font-family:var(--mono); padding-right:38px;"
+                oninput="formatDOBInput(this)"
+                onchange="calcAge()">
+              <button type="button" onclick="document.getElementById('patientDOBPicker').showPicker ? document.getElementById('patientDOBPicker').showPicker() : document.getElementById('patientDOBPicker').click()"
+                style="position:absolute;right:8px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:0;line-height:1;" title="Open calendar">📅</button>
+              <input type="date" id="patientDOBPicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;"
+                onchange="syncDOBFromPicker()">
+            </div>
           </div>
           <div class="field">
             <label>Age <span style="color:var(--text-dim);font-size:9px">(auto)</span></label>
@@ -3348,14 +3362,7 @@
 
   </div>
 
-  <!-- APP FOOTER -->
-  <div style="margin-top: 32px; padding: 16px 0 8px; border-top: 1px solid var(--border); text-align: center;">
-    <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase;">
-      🚑 NCEMS Chart Helper &nbsp;·&nbsp; <span id="footerVersion"></span>
-    </span>
   </div>
-  <script>document.getElementById('footerVersion').textContent = APP_VERSION;</script>
-
 </div>
 
 <!-- GCS MODAL -->
@@ -5245,7 +5252,7 @@ function toggleActivityPill(el, cardId) {
   // Map pill text to output text (for custom phrases)
   const pillToOutput = {
     'Rapid Trauma Assessment/Findings': 'Rapid Trauma Assessment conducted and found [ENTER FINDINGS]',
-    'Rapid Trauma Assessment/No Findings': 'Rapid Trauma Assessment with no pertinent findings',
+    'Rapid Trauma Assessment with no additional pertinent findings.': 'Rapid Trauma Assessment with no additional pertinent findings.',
     'Alert/Oriented': `Patient was ${loc}`,
     'Collar': 'EMS applied a cervical collar',
     'EMS Assisted Medic 350': 'EMS assisted Paramedic 350 within scope of practice',
@@ -5336,7 +5343,7 @@ function initializeActivityCards() {
   const arrivalPills = [
     'Primary Assessment',
     'Rapid Trauma Assessment/Findings',
-    'Rapid Trauma Assessment/No Findings',
+    'Rapid Trauma Assessment with no additional pertinent findings.',
     'Vitals Taken',
     'Alert/Oriented',
     'Denied Pain',
@@ -6947,7 +6954,11 @@ Dictated text: "${transcript}"`;
     if (parsed.patient?.city)    setField('patientCity',    parsed.patient.city,                  'City');
     if (parsed.patient?.state)   setField('patientState',   parsed.patient.state.toUpperCase(),   'State');
     if (parsed.patient?.zip)     setField('patientZip',     parsed.patient.zip,                   'Zip');
-    if (parsed.patient?.phone)   setField('patientPhone',   parsed.patient.phone,                 'Phone');
+    if (parsed.patient?.phone) {
+      setField('patientPhone', parsed.patient.phone, 'Phone');
+      const phoneEl = document.getElementById('patientPhone');
+      if (phoneEl) formatPhone(phoneEl);
+    }
     if (parsed.patient?.sex) {
       const sexVal = parsed.patient.sex.toLowerCase();
       document.getElementById('patientSex').value = sexVal;
@@ -7898,58 +7909,73 @@ async function extractTransportInfo() {
 function buildEmailText() {
   const d = collectChartData();
   const lines = [];
-  const sep = '─'.repeat(40);
+  const sep  = '════════════════════════════════════════';
+  const thin = '────────────────────────────────────────';
 
-  // Header
   const callTypeLabels = {
     lift_assist: 'Lift Assist / Fall', chest_pain: 'Chest Pain / Cardiac',
     respiratory: 'Respiratory Distress', trauma: 'Trauma / Injury',
     diabetic: 'Diabetic Emergency', mva: 'Motor Vehicle Accident'
   };
-  const callLabel = callTypeLabels[d.callType] || d.callType || 'Unknown Call Type';
+  const callLabel  = callTypeLabels[d.callType] || d.callType || 'Unknown Call Type';
   const exportTime = new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
 
-  lines.push('NCEMS CHART EXPORT');
-  lines.push(exportTime);
+  // ── Header ──────────────────────────────────
   lines.push(sep);
-
-  // Patient
-  lines.push('PATIENT');
-  if (d.patientName)    lines.push(`  Name:    ${d.patientName}`);
-  if (d.patientDOB)     lines.push(`  DOB:     ${d.patientDOB}${d.patientAge ? '  (Age ' + d.patientAge + ')' : ''}`);
-  if (d.patientSex)     lines.push(`  Sex:     ${d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1)}`);
-  if (d.patientAddress) lines.push(`  Address: ${d.patientAddress}, ${d.patientCity}, ${d.patientState} ${d.patientZip}`.replace(/, ,|,\s*,/g, ',').trim());
-  if (d.patientPhone)   lines.push(`  Phone:   ${d.patientPhone}`);
+  lines.push('  NCEMS PATIENT CARE REPORT');
+  lines.push(`  ${exportTime}`);
+  lines.push(sep);
   lines.push('');
 
-  // Dispatch
-  lines.push('DISPATCH');
-  lines.push(`  Call Type: ${callLabel}`);
-  if (d.whoCalled911)   lines.push(`  Caller:    ${d.whoCalled911}`);
+  // ── Patient ──────────────────────────────────
+  lines.push('▌ PATIENT INFORMATION');
+  lines.push(thin);
+  if (d.patientName)    lines.push(`  Name     : ${d.patientName}`);
+  if (d.patientDOB) {
+    const ageStr = d.patientAge ? `  (Age ${d.patientAge})` : '';
+    lines.push(`  DOB      : ${d.patientDOB}${ageStr}`);
+  }
+  if (d.patientSex)     lines.push(`  Sex      : ${d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1)}`);
+  if (d.patientAddress) {
+    const addr = [d.patientAddress, d.patientCity, d.patientState, d.patientZip].filter(Boolean).join(', ');
+    lines.push(`  Address  : ${addr}`);
+  }
+  if (d.patientPhone)   lines.push(`  Phone    : ${d.patientPhone}`);
   lines.push('');
 
-  // Scene
-  lines.push('SCENE');
-  if (d.patientLOC)    lines.push(`  LOC:         ${d.patientLOC}`);
-  if (d.sceneNotes)    lines.push(`  Scene Notes: ${d.sceneNotes}`);
+  // ── Dispatch ─────────────────────────────────
+  lines.push('▌ DISPATCH');
+  lines.push(thin);
+  lines.push(`  Call Type : ${callLabel}`);
+  if (d.whoCalled911)   lines.push(`  Caller    : ${d.whoCalled911}`);
   lines.push('');
 
-  // Incident
-  lines.push('INCIDENT');
-  if (d.chiefComplaint)   lines.push(`  CC:   ${d.chiefComplaint}`);
-  if (d.hpiNarrative)     lines.push(`  HPI:  ${d.hpiNarrative}`);
-  if (d.sampleNarrative)  lines.push(`  PMH:  ${d.sampleNarrative}`);
+  // ── Scene ────────────────────────────────────
+  lines.push('▌ SCENE');
+  lines.push(thin);
+  if (d.patientLOC)  lines.push(`  LOC        : ${d.patientLOC}`);
+  if (d.sceneNotes)  lines.push(`  Scene Notes:\n    ${d.sceneNotes.replace(/\n/g, '\n    ')}`);
   lines.push('');
 
-  // Activities / Vitals
+  // ── Incident ─────────────────────────────────
+  lines.push('▌ INCIDENT');
+  lines.push(thin);
+  if (d.chiefComplaint)  lines.push(`  Chief Complaint:\n    ${d.chiefComplaint}`);
+  if (d.hpiNarrative)    lines.push(`  HPI / OPQRST:\n    ${d.hpiNarrative.replace(/\n/g, '\n    ')}`);
+  if (d.sampleNarrative) lines.push(`  PMH / SAMPLE:\n    ${d.sampleNarrative.replace(/\n/g, '\n    ')}`);
+  if (d.medications)     lines.push(`  Medications:\n    ${d.medications.replace(/\n/g, '\n    ')}`);
+  if (d.allergies)       lines.push(`  Allergies  : ${d.allergies}`);
+  lines.push('');
+
+  // ── Activities & Vitals ──────────────────────
   if (d.vitalsCards && d.vitalsCards.length > 0) {
-    lines.push('ACTIVITIES & VITALS');
-    d.vitalsCards.forEach(card => {
+    lines.push('▌ ACTIVITIES & VITALS');
+    lines.push(thin);
+    d.vitalsCards.forEach((card, idx) => {
       if (!card.label) return;
       lines.push('');
-      lines.push(`  [ ${card.label}${card.time ? ' — ' + card.time : ''} ]`);
+      lines.push(`  ┌─ ${card.label.toUpperCase()}${card.time ? '  @' + card.time : ''}`);
 
-      // Vitals row
       const vitals = [];
       if (card.bp)      vitals.push(`BP ${card.bp}`);
       if (card.hr)      vitals.push(`Pulse ${card.hr}`);
@@ -7959,26 +7985,27 @@ function buildEmailText() {
       if (card.skin)    vitals.push(`Skin ${card.skin}`);
       if (card.temp)    vitals.push(`Temp ${card.temp}°F`);
       if (card.glucose) vitals.push(`Glucose ${card.glucose} mg/dL`);
-      if (vitals.length > 0) lines.push(`  Vitals: ${vitals.join(' | ')}`);
+      if (vitals.length > 0) lines.push(`  │  Vitals : ${vitals.join('  |  ')}`);
 
-      // GCS
       if (card.gcsEye || card.gcsVerbal || card.gcsMotor) {
         const e = card.gcsEye || '—', v = card.gcsVerbal || '—', m = card.gcsMotor || '—';
         const total = (parseInt(e)||0) + (parseInt(v)||0) + (parseInt(m)||0);
-        lines.push(`  GCS: Eye ${e} / Verbal ${v} / Motor ${m} = ${total || '—'}`);
+        lines.push(`  │  GCS    : Eye ${e} / Verbal ${v} / Motor ${m}  =  ${total || '—'}`);
       }
-
-      // ED Room
-      if (card.edRoom) lines.push(`  ED Room: ${card.edRoom}`);
-
-      // Activity notes
-      if (card.activity) lines.push(`  Notes: ${card.activity}`);
+      if (card.edRoom)   lines.push(`  │  ED Room: ${card.edRoom}`);
+      if (card.activity) lines.push(`  │  Notes  :\n  │    ${card.activity.replace(/\n/g, '\n  │    ')}`);
+      if (card.selectedPills && card.selectedPills.length > 0) {
+        lines.push(`  │  Actions: ${card.selectedPills.join(', ')}`);
+      }
+      lines.push('  └' + '─'.repeat(38));
     });
     lines.push('');
   }
 
+  // ── Footer ───────────────────────────────────
   lines.push(sep);
-  lines.push('Generated by NCEMS Chart Helper');
+  lines.push('  Generated by NCEMS Chart Helper ' + APP_VERSION);
+  lines.push(sep);
 
   return lines.join('\n');
 }
@@ -8334,14 +8361,54 @@ function saveAppSettings() {
 
 // ======== AGE CALCULATOR ========
 function calcAge() {
-  const dob = document.getElementById('patientDOB').value;
-  if (!dob) return;
+  const raw = document.getElementById('patientDOB').value;
+  if (!raw) return;
+  // Accept YYYY-MM-DD (from picker) or MM/DD/YYYY (typed)
+  let birth;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    birth = new Date(raw + 'T00:00:00');
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw)) {
+    const [m, d, y] = raw.split('/');
+    birth = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  } else { return; }
   const today = new Date();
-  const birth = new Date(dob);
   let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  const mo = today.getMonth() - birth.getMonth();
+  if (mo < 0 || (mo === 0 && today.getDate() < birth.getDate())) age--;
   document.getElementById('patientAge').value = age >= 0 ? age : '';
+}
+
+function formatDOBInput(input) {
+  // Strip non-digits
+  let digits = input.value.replace(/\D/g, '').slice(0, 8);
+  let formatted = digits;
+  if (digits.length > 4) {
+    formatted = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+  } else if (digits.length > 2) {
+    formatted = digits.slice(0,2) + '/' + digits.slice(2);
+  }
+  input.value = formatted;
+  if (digits.length === 8) calcAge();
+}
+
+function syncDOBFromPicker() {
+  const picker = document.getElementById('patientDOBPicker');
+  const textField = document.getElementById('patientDOB');
+  if (!picker.value) return;
+  // picker value is YYYY-MM-DD — convert to MM/DD/YYYY
+  const [y, m, d] = picker.value.split('-');
+  textField.value = `${m}/${d}/${y}`;
+  calcAge();
+}
+
+// ======== PHONE FORMATTER ========
+function formatPhone(input) {
+  const digits = input.value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length === 10) {
+    input.value = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+  } else {
+    input.value = digits;
+  }
 }
 
 // ======== NEW CHART ========
