@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v4.5 -->
-<script>const APP_VERSION = 'v4.5';</script>
+<!-- Version: v4.6 -->
+<script>const APP_VERSION = 'v4.6';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2888,6 +2888,7 @@
             <div style="position:relative; display:flex; align-items:center;">
               <input type="text" id="patientDOB" placeholder="MM/DD/YYYY" maxlength="10"
                 style="font-family:var(--mono); padding-right:38px;"
+                inputmode="numeric"
                 oninput="formatDOBInput(this)"
                 onchange="calcAge()">
               <button type="button" onclick="document.getElementById('patientDOBPicker').showPicker ? document.getElementById('patientDOBPicker').showPicker() : document.getElementById('patientDOBPicker').click()"
@@ -7922,9 +7923,8 @@ async function extractTransportInfo() {
 
 function buildEmailText() {
   const d = collectChartData();
-  const lines = [];
-  const sep  = '════════════════════════════════════════';
-  const thin = '────────────────────────────────────────';
+  const SEP  = '========================================';
+  const THIN = '----------------------------------------';
 
   const callTypeLabels = {
     lift_assist: 'Lift Assist / Fall', chest_pain: 'Chest Pain / Cardiac',
@@ -7934,61 +7934,72 @@ function buildEmailText() {
   const callLabel  = callTypeLabels[d.callType] || d.callType || 'Unknown Call Type';
   const exportTime = new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
 
+  const out = [];
+
+  const sec = (title) => {
+    out.push('');
+    out.push(SEP);
+    out.push('  ' + title);
+    out.push(THIN);
+  };
+
+  const field = (label, value) => {
+    if (!value) return;
+    out.push(`  ${label}: ${value}`);
+  };
+
+  const block = (label, value) => {
+    if (!value) return;
+    out.push(`  ${label}:`);
+    value.split('\n').forEach(line => out.push(`    ${line}`));
+  };
+
   // ── Header ──────────────────────────────────
-  lines.push(sep);
-  lines.push('  NCEMS PATIENT CARE REPORT');
-  lines.push(`  ${exportTime}`);
-  lines.push(sep);
-  lines.push('');
+  out.push(SEP);
+  out.push('  NCEMS PATIENT CARE REPORT');
+  out.push(`  Generated: ${exportTime}`);
+  out.push(SEP);
 
   // ── Patient ──────────────────────────────────
-  lines.push('▌ PATIENT INFORMATION');
-  lines.push(thin);
-  if (d.patientName)    lines.push(`  Name     : ${d.patientName}`);
+  sec('PATIENT INFORMATION');
+  field('Name',    d.patientName);
   if (d.patientDOB) {
-    const ageStr = d.patientAge ? `  (Age ${d.patientAge})` : '';
-    lines.push(`  DOB      : ${d.patientDOB}${ageStr}`);
+    field('DOB', d.patientDOB + (d.patientAge ? `  (Age ${d.patientAge})` : ''));
   }
-  if (d.patientSex)     lines.push(`  Sex      : ${d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1)}`);
+  if (d.patientSex) field('Sex', d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1));
   if (d.patientAddress) {
-    const addr = [d.patientAddress, d.patientCity, d.patientState, d.patientZip].filter(Boolean).join(', ');
-    lines.push(`  Address  : ${addr}`);
+    field('Address', [d.patientAddress, d.patientCity, d.patientState, d.patientZip].filter(Boolean).join(', '));
   }
-  if (d.patientPhone)   lines.push(`  Phone    : ${d.patientPhone}`);
-  lines.push('');
+  field('Phone', d.patientPhone);
 
   // ── Dispatch ─────────────────────────────────
-  lines.push('▌ DISPATCH');
-  lines.push(thin);
-  lines.push(`  Call Type : ${callLabel}`);
-  if (d.whoCalled911)   lines.push(`  Caller    : ${d.whoCalled911}`);
-  lines.push('');
+  sec('DISPATCH');
+  field('Call Type', callLabel);
+  field('Caller',    d.whoCalled911);
 
   // ── Scene ────────────────────────────────────
-  lines.push('▌ SCENE');
-  lines.push(thin);
-  if (d.patientLOC)  lines.push(`  LOC        : ${d.patientLOC}`);
-  if (d.sceneNotes)  lines.push(`  Scene Notes:\n    ${d.sceneNotes.replace(/\n/g, '\n    ')}`);
-  lines.push('');
+  sec('SCENE');
+  field('LOC', d.patientLOC);
+  block('Scene Notes', d.sceneNotes);
 
   // ── Incident ─────────────────────────────────
-  lines.push('▌ INCIDENT');
-  lines.push(thin);
-  if (d.chiefComplaint)  lines.push(`  Chief Complaint:\n    ${d.chiefComplaint}`);
-  if (d.hpiNarrative)    lines.push(`  HPI / OPQRST:\n    ${d.hpiNarrative.replace(/\n/g, '\n    ')}`);
-  if (d.sampleNarrative) lines.push(`  PMH / SAMPLE:\n    ${d.sampleNarrative.replace(/\n/g, '\n    ')}`);
-  if (d.medications)     lines.push(`  Medications:\n    ${d.medications.replace(/\n/g, '\n    ')}`);
-  if (d.allergies)       lines.push(`  Allergies  : ${d.allergies}`);
-  lines.push('');
+  sec('INCIDENT');
+  field('Chief Complaint', d.chiefComplaint);
+  out.push('');
+  block('HPI / OPQRST', d.hpiNarrative);
+  out.push('');
+  block('PMH / SAMPLE',  d.sampleNarrative);
+  if (d.medications) { out.push(''); block('Medications', d.medications); }
+  if (d.allergies)   { out.push(''); field('Allergies', d.allergies); }
 
   // ── Activities & Vitals ──────────────────────
   if (d.vitalsCards && d.vitalsCards.length > 0) {
-    lines.push('▌ ACTIVITIES & VITALS');
-    lines.push(thin);
-    d.vitalsCards.forEach((card, idx) => {
+    sec('ACTIVITIES & VITALS');
+    d.vitalsCards.forEach(card => {
       if (!card.label) return;
-      lines.push('');
-      lines.push(`  ┌─ ${card.label.toUpperCase()}${card.time ? '  @' + card.time : ''}`);
+      out.push('');
+      out.push(`  [ ${card.label.toUpperCase()}${card.time ? '  @' + card.time : ''} ]`);
+      out.push('  ' + THIN.slice(0, 36));
 
       const vitals = [];
       if (card.bp)      vitals.push(`BP ${card.bp}`);
@@ -7997,31 +8008,33 @@ function buildEmailText() {
       if (card.spo2)    vitals.push(`SpO2 ${card.spo2}%`);
       if (card.pain)    vitals.push(`Pain ${card.pain}/10`);
       if (card.skin)    vitals.push(`Skin ${card.skin}`);
-      if (card.temp)    vitals.push(`Temp ${card.temp}°F`);
+      if (card.temp)    vitals.push(`Temp ${card.temp} F`);
       if (card.glucose) vitals.push(`Glucose ${card.glucose} mg/dL`);
-      if (vitals.length > 0) lines.push(`  │  Vitals : ${vitals.join('  |  ')}`);
+      if (vitals.length > 0) out.push(`  Vitals  : ${vitals.join(' | ')}`);
 
       if (card.gcsEye || card.gcsVerbal || card.gcsMotor) {
-        const e = card.gcsEye || '—', v = card.gcsVerbal || '—', m = card.gcsMotor || '—';
+        const e = card.gcsEye || '-', v = card.gcsVerbal || '-', m = card.gcsMotor || '-';
         const total = (parseInt(e)||0) + (parseInt(v)||0) + (parseInt(m)||0);
-        lines.push(`  │  GCS    : Eye ${e} / Verbal ${v} / Motor ${m}  =  ${total || '—'}`);
+        out.push(`  GCS     : Eye ${e} / Verbal ${v} / Motor ${m} = ${total || '-'}`);
       }
-      if (card.edRoom)   lines.push(`  │  ED Room: ${card.edRoom}`);
-      if (card.activity) lines.push(`  │  Notes  :\n  │    ${card.activity.replace(/\n/g, '\n  │    ')}`);
+      if (card.edRoom) out.push(`  ED Room : ${card.edRoom}`);
       if (card.selectedPills && card.selectedPills.length > 0) {
-        lines.push(`  │  Actions: ${card.selectedPills.join(', ')}`);
+        out.push(`  Actions : ${card.selectedPills.join(', ')}`);
       }
-      lines.push('  └' + '─'.repeat(38));
+      if (card.activity) {
+        out.push('  Notes:');
+        card.activity.split('\n').forEach(line => out.push(`    ${line}`));
+      }
     });
-    lines.push('');
   }
 
   // ── Footer ───────────────────────────────────
-  lines.push(sep);
-  lines.push('  Generated by NCEMS Chart Helper ' + APP_VERSION);
-  lines.push(sep);
+  out.push('');
+  out.push(SEP);
+  out.push('  Generated by NCEMS Chart Helper ' + APP_VERSION);
+  out.push(SEP);
 
-  return lines.join('\n');
+  return out.join('\n');
 }
 
 function sendChartEmail() {
@@ -8417,15 +8430,19 @@ function syncDOBFromPicker() {
 
 // ======== PHONE FORMATTER ========
 function formatPhone(input) {
+  // Extract all digits from current value
   const digits = input.value.replace(/\D/g, '');
-  if (digits.length === 10) {
-    // Exactly 10 digits — format as US number
+
+  if (digits.length < 10) {
+    // Still building — show raw digits only
+    input.value = digits;
+  } else if (digits.length === 10) {
+    // Exactly 10 — format as US domestic
     input.value = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
-  } else if (digits.length > 10) {
-    // More than 10 digits — international, leave as raw digits
+  } else {
+    // 11+ digits — international, show raw digits with no formatting
     input.value = digits;
   }
-  // Fewer than 10 — leave as typed (don't strip non-digits mid-entry)
 }
 
 // ======== NEW CHART ========
