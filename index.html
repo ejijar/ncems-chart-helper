@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.0 -->
-<script>const APP_VERSION = 'v5.0';</script>
+<!-- Version: v5.1 -->
+<script>const APP_VERSION = 'v5.1';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1996,30 +1996,17 @@
   }
   .sig-sign-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* Full-screen signature modal */
+  /* Full-screen signature modal — fills screen, works in portrait */
   #sigModal {
     display: none;
     position: fixed;
     inset: 0;
     background: #fff;
-    z-index: 9000;
+    z-index: 9999;
     flex-direction: column;
+    overflow: hidden;
   }
   #sigModal.active { display: flex; }
-
-  /* iOS landscape rotation trick — when modal is active in portrait,
-     rotate the entire modal 90° to simulate landscape */
-  #sigModal.rotate-landscape {
-    width: 100vh;
-    height: 100vw;
-    transform-origin: bottom left;
-    transform: rotate(90deg) translateY(-100%);
-    /* keep it from clipping */
-    top: 0;
-    left: 0;
-    right: auto;
-    bottom: auto;
-  }
 
   .sig-modal-header {
     background: var(--surface);
@@ -2059,13 +2046,13 @@
   #sigModalCanvas {
     flex: 1;
     width: 100%;
+    min-height: 200px;
     background: #fff;
-    border: 2px solid var(--border);
+    border: 2px solid #aaa;
     border-radius: 8px;
     cursor: crosshair;
     touch-action: none;
     display: block;
-    min-height: 0;
   }
   .sig-modal-name {
     flex-shrink: 0;
@@ -8101,6 +8088,8 @@ async function extractTransportInfo() {
 
 function buildEmailText() {
   const d = collectChartData();
+  // Use \r\n — renders correctly when pasted into Zoll, Notes, Word, email, etc.
+  const NL  = '\r\n';
   const SEP  = '========================================';
   const THIN = '----------------------------------------';
 
@@ -8112,107 +8101,104 @@ function buildEmailText() {
   const callLabel  = callTypeLabels[d.callType] || d.callType || 'Unknown Call Type';
   const exportTime = new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
 
-  const out = [];
+  const lines = [];
+  const L  = (s='') => lines.push(s);       // push one line
+  const LL = ()      => { L(); L(); };       // push double blank line (section gap)
 
-  const sec = (title) => {
-    out.push('');
-    out.push(SEP);
-    out.push('  ' + title);
-    out.push(THIN);
+  const sec = title => {
+    LL();
+    L(SEP);
+    L('  ' + title);
+    L(THIN);
+    L();
   };
 
-  const field = (label, value) => {
+  const row = (label, value) => {
     if (!value) return;
-    out.push(`  ${label}: ${value}`);
+    const pad = 12;
+    const labelPadded = (label + ':').padEnd(pad);
+    L(`  ${labelPadded} ${value}`);
   };
 
   const block = (label, value) => {
     if (!value) return;
-    out.push(`  ${label}:`);
-    value.split('\n').forEach(line => out.push(`    ${line}`));
+    L(`  ${label}:`);
+    value.split(/\r?\n/).forEach(line => L(`    ${line}`));
   };
 
-  // ── Header ──────────────────────────────────
-  out.push(SEP);
-  out.push('  NCEMS PATIENT CARE REPORT');
-  out.push(`  Generated: ${exportTime}`);
-  out.push(SEP);
+  // ── Header ──
+  L(SEP);
+  L('  NCEMS PATIENT CARE REPORT');
+  L(`  Generated: ${exportTime}`);
+  L(SEP);
 
-  // ── Patient ──────────────────────────────────
+  // ── Patient ──
   sec('PATIENT INFORMATION');
-  field('Name',    d.patientName);
-  if (d.patientDOB) {
-    field('DOB', d.patientDOB + (d.patientAge ? `  (Age ${d.patientAge})` : ''));
-  }
-  if (d.patientSex) field('Sex', d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1));
-  if (d.patientAddress) {
-    field('Address', [d.patientAddress, d.patientCity, d.patientState, d.patientZip].filter(Boolean).join(', '));
-  }
-  field('Phone', d.patientPhone);
+  row('Name',    d.patientName);
+  if (d.patientDOB) row('DOB', d.patientDOB + (d.patientAge ? `   (Age ${d.patientAge})` : ''));
+  if (d.patientSex) row('Sex', d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1));
+  if (d.patientAddress) row('Address', [d.patientAddress, d.patientCity, d.patientState, d.patientZip].filter(Boolean).join(', '));
+  row('Phone',   d.patientPhone);
 
-  // ── Dispatch ─────────────────────────────────
+  // ── Dispatch ──
   sec('DISPATCH');
-  field('Call Type', callLabel);
-  field('Caller',    d.whoCalled911);
+  row('Call Type', callLabel);
+  row('Caller',    d.whoCalled911);
 
-  // ── Scene ────────────────────────────────────
+  // ── Scene ──
   sec('SCENE');
-  field('LOC', d.patientLOC);
+  row('LOC', d.patientLOC);
+  L();
   block('Scene Notes', d.sceneNotes);
 
-  // ── Incident ─────────────────────────────────
+  // ── Incident ──
   sec('INCIDENT');
-  field('Chief Complaint', d.chiefComplaint);
-  out.push('');
+  row('Chief Complaint', d.chiefComplaint);
+  L();
   block('HPI / OPQRST', d.hpiNarrative);
-  out.push('');
+  L();
   block('PMH / SAMPLE',  d.sampleNarrative);
-  if (d.medications) { out.push(''); block('Medications', d.medications); }
-  if (d.allergies)   { out.push(''); field('Allergies', d.allergies); }
+  if (d.medications) { L(); block('Medications', d.medications); }
+  if (d.allergies)   { L(); row('Allergies',  d.allergies); }
 
-  // ── Activities & Vitals ──────────────────────
+  // ── Activities & Vitals ──
   if (d.vitalsCards && d.vitalsCards.length > 0) {
     sec('ACTIVITIES & VITALS');
     d.vitalsCards.forEach(card => {
       if (!card.label) return;
-      out.push('');
-      out.push(`  [ ${card.label.toUpperCase()}${card.time ? '  @' + card.time : ''} ]`);
-      out.push('  ' + THIN.slice(0, 36));
+      L();
+      L(`  [ ${card.label.toUpperCase()}${card.time ? '  @' + card.time : ''} ]`);
+      L('  ' + THIN);
 
       const vitals = [];
       if (card.bp)      vitals.push(`BP ${card.bp}`);
-      if (card.hr)      vitals.push(`Pulse ${card.hr}`);
+      if (card.hr)      vitals.push(`HR ${card.hr}`);
       if (card.rr)      vitals.push(`RR ${card.rr}`);
       if (card.spo2)    vitals.push(`SpO2 ${card.spo2}%`);
       if (card.pain)    vitals.push(`Pain ${card.pain}/10`);
-      if (card.skin)    vitals.push(`Skin ${card.skin}`);
-      if (card.temp)    vitals.push(`Temp ${card.temp} F`);
+      if (card.skin)    vitals.push(`Skin: ${card.skin}`);
+      if (card.temp)    vitals.push(`Temp ${card.temp}F`);
       if (card.glucose) vitals.push(`Glucose ${card.glucose} mg/dL`);
-      if (vitals.length > 0) out.push(`  Vitals  : ${vitals.join(' | ')}`);
+      if (vitals.length) row('Vitals', vitals.join('   '));
 
       if (card.gcsEye || card.gcsVerbal || card.gcsMotor) {
-        const e = card.gcsEye || '-', v = card.gcsVerbal || '-', m = card.gcsMotor || '-';
-        const total = (parseInt(e)||0) + (parseInt(v)||0) + (parseInt(m)||0);
-        out.push(`  GCS     : Eye ${e} / Verbal ${v} / Motor ${m} = ${total || '-'}`);
+        const e = card.gcsEye||'-', v = card.gcsVerbal||'-', m = card.gcsMotor||'-';
+        const tot = (parseInt(e)||0)+(parseInt(v)||0)+(parseInt(m)||0);
+        row('GCS', `E${e} V${v} M${m} = ${tot||'-'}`);
       }
-      if (card.edRoom) out.push(`  ED Room : ${card.edRoom}`);
-      if (card.selectedPills && card.selectedPills.length > 0) {
-        out.push(`  Actions : ${card.selectedPills.join(', ')}`);
-      }
-      if (card.activity) {
-        out.push('  Notes:');
-        card.activity.split('\n').forEach(line => out.push(`    ${line}`));
-      }
+      if (card.edRoom)                                   row('ED Room', card.edRoom);
+      if (card.selectedPills?.length)                    row('Actions', card.selectedPills.join(', '));
+      if (card.activity) { L(); block('Notes', card.activity); }
     });
   }
 
-  // ── Footer ───────────────────────────────────
-  out.push('');
-  out.push(SEP);
-  out.push('  Generated by NCEMS Chart Helper ' + APP_VERSION);
-  out.push(SEP);
+  // ── Footer ──
+  LL();
+  L(SEP);
+  L('  Generated by NCEMS Chart Helper ' + APP_VERSION);
+  L(SEP);
 
-  return out.join('\n');
+  return lines.join(NL);
 }
 
 function sendChartEmail() {
@@ -9221,43 +9207,22 @@ let sigModalFuture  = [];
 function openSigModal(idx) {
   sigModalIdx = idx;
   const modal = document.getElementById('sigModal');
-
-  // Show modal FIRST so layout is established before canvas sizing
   modal.classList.add('active');
-
-  // Apply orientation — rotate CSS if in portrait (native lock rarely works on iOS)
-  const isPortrait = window.innerHeight > window.innerWidth;
-  if (isPortrait) {
-    if (screen.orientation && typeof screen.orientation.lock === 'function') {
-      screen.orientation.lock('landscape').catch(() => {
-        modal.classList.add('rotate-landscape');
-      });
-    } else {
-      modal.classList.add('rotate-landscape');
-    }
-  }
-
-  // Build AFTER modal is visible so clientWidth/clientHeight are real
-  requestAnimationFrame(() => _buildSigModal());
+  // Use a short delay so the browser completes layout before we measure
+  setTimeout(() => _buildSigModal(), 80);
 }
 
 function closeSigModal() {
-  // Save modal canvas back to the real inline canvas
   _commitSigModal();
   const modal = document.getElementById('sigModal');
   modal.classList.remove('active');
-  modal.classList.remove('rotate-landscape');
-
-  // Release native orientation lock if it was acquired
-  if (screen.orientation && typeof screen.orientation.unlock === 'function') {
-    try { screen.orientation.unlock(); } catch(e) {}
-  }
+  sigModalPad = null;
 }
 
 function sigModalNav(dir) {
   _commitSigModal();
   sigModalIdx = (sigModalIdx + dir + SIG_CONFIGS.length) % SIG_CONFIGS.length;
-  _buildSigModal();
+  setTimeout(() => _buildSigModal(), 30);
 }
 
 function _buildSigModal() {
@@ -9265,101 +9230,101 @@ function _buildSigModal() {
   sigModalHistory = [];
   sigModalFuture  = [];
 
-  // Header
+  // Update header text
   document.getElementById('sigModalTitle').textContent = cfg.title;
   document.getElementById('sigModalStep').textContent  = `${sigModalIdx + 1} of ${SIG_CONFIGS.length}`;
-  document.getElementById('sigModalPrev').disabled = false;
-  document.getElementById('sigModalNext').disabled = false;
 
-  // Name field
+  // Populate name field from inline form
   document.getElementById('sigModalNameLabel').textContent = cfg.nameLabel;
-  const nameVal = document.getElementById(cfg.nameField)?.value || '';
-  document.getElementById('sigModalNameInput').value = nameVal;
+  document.getElementById('sigModalNameInput').value = document.getElementById(cfg.nameField)?.value || '';
 
-  // Canvas — size after a brief layout pass
-  const modalCanvas = document.getElementById('sigModalCanvas');
-  if (sigModalPad) {
-    // Remove old listeners by replacing the canvas
-    sigModalPad = null;
+  // ── Canvas setup ──────────────────────────────
+  // Always work with the original #sigModalCanvas (no cloning)
+  const canvas = document.getElementById('sigModalCanvas');
+  const dpr = window.devicePixelRatio || 1;
+
+  // Measure real CSS size
+  const cssW = canvas.offsetWidth  || canvas.parentElement.clientWidth - 24;
+  const cssH = canvas.offsetHeight || 240;
+
+  // Set backing store dimensions
+  canvas.width  = cssW * dpr;
+  canvas.height = cssH * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);  // reset any previous transform
+  ctx.scale(dpr, dpr);
+  _setCtxStyle(ctx);
+  ctx.lineWidth = 2.5;
+
+  // Pre-fill from inline canvas if it already has a signature
+  const srcData = getSigDataURL(cfg.id);
+  if (srcData) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, cssW, cssH);
+    img.src = srcData;
   }
 
-  requestAnimationFrame(() => {
-    const dpr  = window.devicePixelRatio || 1;
-    const wrap = modalCanvas.parentElement;
-    const w = wrap.clientWidth  - 24; // padding
-    const h = wrap.clientHeight - (document.querySelector('.sig-modal-name').offsetHeight + 34);
-    modalCanvas.style.width  = w + 'px';
-    modalCanvas.style.height = Math.max(h, 180) + 'px';
-    modalCanvas.width  = w * dpr;
-    modalCanvas.height = Math.max(h, 180) * dpr;
+  // ── Event handlers ────────────────────────────
+  // Remove previous listeners by replacing with a fresh clone
+  const fresh = canvas.cloneNode(false);
+  // Copy over the sizing we just set
+  fresh.width  = canvas.width;
+  fresh.height = canvas.height;
+  fresh.style.width  = cssW + 'px';
+  fresh.style.height = cssH + 'px';
+  canvas.parentElement.replaceChild(fresh, canvas);
 
-    const ctx = modalCanvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-    _setCtxStyle(ctx);
-    ctx.lineWidth = 3; // slightly thicker in modal
+  const ctx2 = fresh.getContext('2d');
+  ctx2.setTransform(1, 0, 0, 1, 0, 0);
+  ctx2.scale(dpr, dpr);
+  _setCtxStyle(ctx2);
+  ctx2.lineWidth = 2.5;
 
-    // Pre-populate from existing inline canvas
-    const srcCanvas = document.getElementById(cfg.id);
-    const srcData   = getSigDataURL(cfg.id);
-    if (srcData) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, modalCanvas.width / dpr, modalCanvas.height / dpr);
-      img.src = srcData;
-    }
+  // Re-draw existing signature onto fresh canvas
+  if (srcData) {
+    const img2 = new Image();
+    img2.onload = () => ctx2.drawImage(img2, 0, 0, cssW, cssH);
+    img2.src = srcData;
+  }
 
-    let drawing = false, lastX = 0, lastY = 0;
-    function getPos(e) {
-      const r = modalCanvas.getBoundingClientRect();
-      const src = e.touches ? e.touches[0] : e;
-      return { x: src.clientX - r.left, y: src.clientY - r.top };
-    }
-    function start(e) {
-      e.preventDefault();
-      sigModalHistory.push(modalCanvas.toDataURL());
-      sigModalFuture = [];
-      drawing = true;
-      const pos = getPos(e); lastX = pos.x; lastY = pos.y;
-      ctx.beginPath(); ctx.moveTo(lastX, lastY);
-    }
-    function draw(e) {
-      if (!drawing) return;
-      e.preventDefault();
-      const pos = getPos(e);
-      ctx.lineTo(pos.x, pos.y); ctx.stroke();
-      lastX = pos.x; lastY = pos.y;
-    }
-    function stop() {
-      drawing = false;
-      document.getElementById('sigModalUndo').disabled = sigModalHistory.length === 0;
-      document.getElementById('sigModalRedo').disabled = sigModalFuture.length  === 0;
-    }
+  let drawing = false, lastX = 0, lastY = 0;
 
-    // Remove old listeners cleanly
-    const newCanvas = modalCanvas.cloneNode(false);
-    modalCanvas.parentElement.replaceChild(newCanvas, modalCanvas);
-    // Re-draw content on new canvas
-    const ctx2 = newCanvas.getContext('2d');
-    ctx2.scale(dpr, dpr);
-    _setCtxStyle(ctx2);
-    ctx2.lineWidth = 3;
-    if (srcData) {
-      const img2 = new Image();
-      img2.onload = () => ctx2.drawImage(img2, 0, 0, newCanvas.width / dpr, newCanvas.height / dpr);
-      img2.src = srcData;
-    }
+  function pos(e) {
+    const r = fresh.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
 
-    newCanvas.addEventListener('mousedown',  e => { sigModalHistory.push(newCanvas.toDataURL()); sigModalFuture=[]; drawing=true; const p=getPos2(e,newCanvas); lastX=p.x; lastY=p.y; ctx2.beginPath(); ctx2.moveTo(lastX,lastY); });
-    newCanvas.addEventListener('mousemove',  e => { if(!drawing) return; const p=getPos2(e,newCanvas); ctx2.lineTo(p.x,p.y); ctx2.stroke(); lastX=p.x; lastY=p.y; });
-    newCanvas.addEventListener('mouseup',    () => { drawing=false; _updateModalBtns(); });
-    newCanvas.addEventListener('mouseleave', () => { drawing=false; });
-    newCanvas.addEventListener('touchstart', e => { e.preventDefault(); sigModalHistory.push(newCanvas.toDataURL()); sigModalFuture=[]; drawing=true; const p=getPos2(e,newCanvas); lastX=p.x; lastY=p.y; ctx2.beginPath(); ctx2.moveTo(lastX,lastY); }, { passive: false });
-    newCanvas.addEventListener('touchmove',  e => { if(!drawing) return; e.preventDefault(); const p=getPos2(e,newCanvas); ctx2.lineTo(p.x,p.y); ctx2.stroke(); lastX=p.x; lastY=p.y; }, { passive: false });
-    newCanvas.addEventListener('touchend',   () => { drawing=false; _updateModalBtns(); });
-
-    sigModalPad = { canvas: newCanvas, ctx: ctx2 };
-    document.getElementById('sigModalUndo').disabled = true;
-    document.getElementById('sigModalRedo').disabled = true;
+  fresh.addEventListener('mousedown', e => {
+    sigModalHistory.push(fresh.toDataURL()); sigModalFuture = [];
+    drawing = true; const p = pos(e); lastX = p.x; lastY = p.y;
+    ctx2.beginPath(); ctx2.moveTo(lastX, lastY);
   });
+  fresh.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    const p = pos(e); ctx2.lineTo(p.x, p.y); ctx2.stroke(); lastX = p.x; lastY = p.y;
+  });
+  fresh.addEventListener('mouseup',    () => { drawing = false; _updateModalBtns(); });
+  fresh.addEventListener('mouseleave', () => { drawing = false; });
+
+  fresh.addEventListener('touchstart', e => {
+    e.preventDefault();
+    sigModalHistory.push(fresh.toDataURL()); sigModalFuture = [];
+    drawing = true; const p = pos(e); lastX = p.x; lastY = p.y;
+    ctx2.beginPath(); ctx2.moveTo(lastX, lastY);
+  }, { passive: false });
+  fresh.addEventListener('touchmove', e => {
+    if (!drawing) return; e.preventDefault();
+    const p = pos(e); ctx2.lineTo(p.x, p.y); ctx2.stroke(); lastX = p.x; lastY = p.y;
+  }, { passive: false });
+  fresh.addEventListener('touchend', () => { drawing = false; _updateModalBtns(); });
+
+  sigModalPad = { canvas: fresh, ctx: ctx2, cssW, cssH };
+
+  // Reset undo/redo buttons
+  document.getElementById('sigModalUndo').disabled = true;
+  document.getElementById('sigModalRedo').disabled = true;
 }
 
 function getPos2(e, canvas) {
