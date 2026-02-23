@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v24 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: OfflineQueue-v25 - Read from DOM at stop time, abort recognition cleanly -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -6580,13 +6580,15 @@ async function startPatientVoice() {
         setTimeout(loop, 80);
         return;
       }
-      // User tapped stop — update display, stopPatientVoice handles history/extract
+      // User tapped stop — final commit done, now handle history + extract
       ptRecognition = null;
       const t = ptTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t;
         transEl.classList.add('has-content');
+        addTranscriptToHistory('patient', t);
         document.getElementById('ptExtractBtn').style.display = 'block';
+        extractPatientInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate patient info — name, DOB, address, phone…';
         transEl.classList.remove('has-content');
@@ -6632,18 +6634,7 @@ async function stopPatientVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    // Use ptTranscript directly — it's accurate from the sessionCommitted pattern
-    const t = ptTranscript.trim();
-    if (t.length > 2) {
-      transEl.textContent = t;
-      transEl.classList.add('has-content');
-      addTranscriptToHistory('patient', t);
-      document.getElementById('ptExtractBtn').style.display = 'block';
-      extractPatientInfo();
-    } else {
-      transEl.textContent = 'Tap mic to dictate patient info — name, DOB, address, phone…';
-      transEl.classList.remove('has-content');
-    }
+    // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
   }
 }
 
@@ -6765,7 +6756,9 @@ async function startSceneVoice() {
       const t = sceneTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
+        addTranscriptToHistory('scene', t);
         document.getElementById('sceneExtractBtn').style.display = 'block';
+        extractSceneInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate scene information — LOC, scene notes…';
         transEl.classList.remove('has-content');
@@ -6807,16 +6800,7 @@ async function stopSceneVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    const t = sceneTranscript.trim();
-    if (t.length > 2) {
-      transEl.textContent = t; transEl.classList.add('has-content');
-      addTranscriptToHistory('scene', t);
-      document.getElementById('sceneExtractBtn').style.display = 'block';
-      extractSceneInfo();
-    } else {
-      transEl.textContent = 'Tap mic to dictate scene information — LOC, scene notes…';
-      transEl.classList.remove('has-content');
-    }
+    // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
   }
 }
 
@@ -6929,7 +6913,9 @@ async function startIncidentVoice() {
       const t = incidentTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
+        addTranscriptToHistory('incident', t);
         document.getElementById('incidentExtractBtn').style.display = 'block';
+        extractIncidentInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate incident details…';
         transEl.classList.remove('has-content');
@@ -6970,15 +6956,7 @@ async function stopIncidentVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    const t = incidentTranscript.trim();
-    if (t.length > 2) {
-      transEl.textContent = t; transEl.classList.add('has-content');
-      addTranscriptToHistory('incident', t);
-      document.getElementById('incidentExtractBtn').style.display = 'block';
-    } else {
-      transEl.textContent = 'Tap mic to dictate incident details…';
-      transEl.classList.remove('has-content');
-    }
+    // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
   }
 }
 
@@ -7090,7 +7068,9 @@ async function startVitalsVoice() {
       const t = vitalsTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
+        addTranscriptToHistory('vitals', t);
         document.getElementById('vitalsExtractBtn').style.display = 'block';
+        extractVitalsInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…';
         transEl.classList.remove('has-content');
@@ -7130,18 +7110,7 @@ async function stopVitalsVoice() {
       document.getElementById('vitalsDictateTranscript').classList.remove('has-content');
     }
   }
-  // WebSpeech: use vitalsTranscript directly — accurate from sessionCommitted pattern
-  if (!useWhisper()) {
-    const vTransEl = document.getElementById('vitalsDictateTranscript');
-    const t = vitalsTranscript.trim();
-    if (t.length > 2) {
-      if (vTransEl) { vTransEl.textContent = t; vTransEl.classList.add('has-content'); }
-      addTranscriptToHistory('vitals', t);
-      document.getElementById('vitalsExtractBtn').style.display = 'block';
-    } else {
-      if (vTransEl) { vTransEl.textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…'; vTransEl.classList.remove('has-content'); }
-    }
-  }
+  // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
 }
 
 async function extractVitalsInfo() {
@@ -7309,8 +7278,10 @@ async function startTransportVoice() {
       const t = transportTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
+        addTranscriptToHistory('transport', t);
         const extBtn = document.getElementById('transportExtractBtn');
         if (extBtn) extBtn.style.display = 'block';
+        extractTransportInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate transport info…';
         transEl.classList.remove('has-content');
@@ -7351,20 +7322,7 @@ async function stopTransportVoice() {
       tEl.classList.remove('has-content');
     }
   }
-  // WebSpeech: use transportTranscript directly — accurate from sessionCommitted pattern
-  if (!useWhisper()) {
-    const tEl = document.getElementById('transportDictateTranscript');
-    const t = transportTranscript.trim();
-    if (t.length > 2) {
-      if (tEl) { tEl.textContent = t; tEl.classList.add('has-content'); }
-      addTranscriptToHistory('transport', t);
-      const extBtn = document.getElementById('transportExtractBtn');
-      if (extBtn) extBtn.style.display = 'block';
-    } else if (tEl) {
-      tEl.textContent = 'Tap mic to dictate transport info…';
-      tEl.classList.remove('has-content');
-    }
-  }
+  // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
 }
 
 async function extractTransportInfo() {
