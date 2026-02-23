@@ -6846,6 +6846,8 @@ async function stopVitalsVoice() {
     }
   }
 }
+
+async function extractVitalsInfo() {
   const transcript = vitalsTranscript.trim();
   if (!transcript) return;
 
@@ -7059,14 +7061,10 @@ async function stopTransportVoice() {
     }
   }
 }
+
+async function extractTransportInfo() {
   const transcript = transportTranscript.trim();
   if (!transcript) return;
-
-  const btn = document.getElementById('transportExtractBtn');
-  const status = document.getElementById('transportExtractStatus');
-  const transEl = document.getElementById('transportDictateTranscript');
-
-  if (btn) { btn.textContent = 'Extracting…'; btn.disabled = true; }
   if (status) { status.textContent = ''; status.classList.remove('error', 'success'); }
 
   // Route through universal extractor — fills any field across any section
