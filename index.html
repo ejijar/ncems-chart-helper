@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v25 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: v4.2 -->
+<script>const APP_VERSION = 'v4.2';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2705,6 +2706,13 @@
         </div>
       </button>
       <div class="menu-divider"></div>
+      <button class="menu-item" onclick="openAccount(); toggleMenu();">
+        <span class="menu-icon">👤</span>
+        <div>
+          <div class="menu-title">Account</div>
+          <div class="menu-desc">Email address &amp; preferences</div>
+        </div>
+      </button>
       <button class="menu-item" onclick="openSettings(); toggleMenu();">
         <span class="menu-icon">⚙</span>
         <div>
@@ -2712,12 +2720,11 @@
           <div class="menu-desc">Configure crew information</div>
         </div>
       </button>
-      <div class="menu-divider"></div>
-      <button class="menu-item menu-item-danger" onclick="logoutUser(); toggleMenu();">
-        <span class="menu-icon">👤</span>
+      <button class="menu-item" onclick="openAppSettings(); toggleMenu();">
+        <span class="menu-icon">🔧</span>
         <div>
-          <div class="menu-title">Logout</div>
-          <div class="menu-desc">Sign out of your account</div>
+          <div class="menu-title">App Settings</div>
+          <div class="menu-desc">API keys &amp; voice engine</div>
         </div>
       </button>
     </div>
@@ -3341,6 +3348,14 @@
 
   </div>
 
+  <!-- APP FOOTER -->
+  <div style="margin-top: 32px; padding: 16px 0 8px; border-top: 1px solid var(--border); text-align: center;">
+    <span style="font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase;">
+      🚑 NCEMS Chart Helper &nbsp;·&nbsp; <span id="footerVersion"></span>
+    </span>
+  </div>
+  <script>document.getElementById('footerVersion').textContent = APP_VERSION;</script>
+
 </div>
 
 <!-- GCS MODAL -->
@@ -3443,24 +3458,67 @@
         </select>
       </div>
     </div>
+    <button class="save-btn" onclick="saveSettings()">Save Defaults</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="accountModal" onclick="closeAccountOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Account</div>
+      <button class="modal-close" onclick="closeAccount()">✕</button>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Email Export</div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Your Email Address</label>
+        <input type="email" id="a_email" placeholder="you@example.com" inputmode="email" autocomplete="email">
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Used as the "To:" address when you tap Email Chart to Desktop. Stored locally on this device only.</div>
+      </div>
+    </div>
+
+    <div class="menu-divider" style="margin:16px 0"></div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Session</div>
+    <button class="menu-item menu-item-danger" style="width:100%;margin-bottom:0" onclick="closeAccount(); logoutUser();">
+      <span class="menu-icon">🚪</span>
+      <div>
+        <div class="menu-title">Sign Out</div>
+        <div class="menu-desc">End your current session</div>
+      </div>
+    </button>
+
+    <button class="save-btn" onclick="saveAccount()" style="margin-top:16px">Save</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="appSettingsModal" onclick="closeAppSettingsOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">App Settings</div>
+      <button class="modal-close" onclick="closeAppSettings()">✕</button>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">AI &amp; Voice</div>
     <div class="form-row full">
       <div class="field">
         <label>Anthropic API Key</label>
-        <input type="password" id="s_apikey" placeholder="sk-ant-…" autocomplete="off">
+        <input type="password" id="as_apikey" placeholder="sk-ant-…" autocomplete="off">
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for AI field extraction. Stored locally only.</div>
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>OpenAI API Key <span style="color:var(--text-dim);font-weight:400">(for Whisper voice)</span></label>
-        <input type="password" id="s_openaikey" placeholder="sk-…" autocomplete="off">
+        <input type="password" id="as_openaikey" placeholder="sk-…" autocomplete="off">
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for Whisper dictation (~$0.006/min). Stored locally only.</div>
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>Voice Engine</label>
-        <select id="s_voiceengine">
+        <select id="as_voiceengine">
           <option value="auto">Auto (Web Speech on iPhone, Whisper on Mac)</option>
           <option value="whisper">Whisper (OpenAI) — best accuracy, works everywhere</option>
           <option value="webspeech">Web Speech API — free, instant, iPhone/Chrome only</option>
@@ -3468,7 +3526,8 @@
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Auto recommended. Whisper requires OpenAI key (~$0.006/min).</div>
       </div>
     </div>
-    <button class="save-btn" onclick="saveSettings()">Save Defaults</button>
+
+    <button class="save-btn" onclick="saveAppSettings()" style="margin-top:16px">Save</button>
   </div>
 </div>
 
@@ -4376,6 +4435,7 @@ window.onload = function() {
   checkLogin();
   
   loadSettings();
+  loadAccount();
   updateCallType();  // This will call initializeActivityCards
   setCurrentTimes();
   checkMicPermission();
@@ -7926,12 +7986,12 @@ function buildEmailText() {
 function sendChartEmail() {
   const body = buildEmailText();
   const d = collectChartData();
-  const patientName = d.patientName || 'Unknown Patient';
+  const address = [d.patientAddress, d.patientCity].filter(Boolean).join(', ') || 'Unknown Address';
   const dateStr = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-  const subject = `NCEMS Chart — ${patientName} — ${dateStr}`;
+  const subject = `NCEMS Chart — ${address} — ${dateStr}`;
 
-  // mailto: with encoded subject and body
-  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const toAddress = accountSettings.email || '';
+  const mailto = `mailto:${encodeURIComponent(toAddress)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   // Open mail — works on iOS to open Mail app with draft pre-filled
   window.location.href = mailto;
@@ -8184,9 +8244,6 @@ function openSettings() {
   document.getElementById('s_driver').value = settings.driver || '';
   document.getElementById('s_other').value = settings.other || '';
   document.getElementById('s_team').value = settings.team || 'BLS';
-  document.getElementById('s_apikey').value = settings.apikey || '';
-  document.getElementById('s_openaikey').value = settings.openaikey || '';
-  document.getElementById('s_voiceengine').value = settings.voiceengine || 'auto';
   document.getElementById('settingsModal').classList.add('visible');
 }
 
@@ -8200,15 +8257,13 @@ function closeSettingsOutside(e) {
 
 function saveSettings() {
   settings = {
+    ...settings,
     service: document.getElementById('s_service').value,
     unit: document.getElementById('s_unit').value,
     primary: document.getElementById('s_primary').value,
     driver: document.getElementById('s_driver').value,
     other: document.getElementById('s_other').value,
     team: document.getElementById('s_team').value,
-    apikey: document.getElementById('s_apikey').value.trim(),
-    openaikey: document.getElementById('s_openaikey').value.trim(),
-    voiceengine: document.getElementById('s_voiceengine').value,
   };
   try { localStorage.setItem('ems_crew_settings', JSON.stringify(settings)); } catch(e) {}
   closeSettings();
@@ -8219,6 +8274,62 @@ function loadSettings() {
     const saved = localStorage.getItem('ems_crew_settings');
     if (saved) settings = JSON.parse(saved);
   } catch(e) {}
+}
+
+// ======== ACCOUNT ========
+let accountSettings = { email: '' };
+
+function loadAccount() {
+  try {
+    const saved = localStorage.getItem('ems_account');
+    if (saved) accountSettings = { ...accountSettings, ...JSON.parse(saved) };
+  } catch(e) {}
+}
+
+function openAccount() {
+  document.getElementById('a_email').value = accountSettings.email || '';
+  document.getElementById('accountModal').classList.add('visible');
+}
+
+function closeAccount() {
+  document.getElementById('accountModal').classList.remove('visible');
+}
+
+function closeAccountOutside(e) {
+  if (e.target === document.getElementById('accountModal')) closeAccount();
+}
+
+function saveAccount() {
+  accountSettings.email = document.getElementById('a_email').value.trim();
+  try { localStorage.setItem('ems_account', JSON.stringify(accountSettings)); } catch(e) {}
+  closeAccount();
+  showToast('success', 'Account Saved', accountSettings.email ? `Email set to ${accountSettings.email}` : 'Email address cleared.');
+}
+
+// ======== APP SETTINGS ========
+
+function openAppSettings() {
+  document.getElementById('as_apikey').value = settings.apikey || '';
+  document.getElementById('as_openaikey').value = settings.openaikey || '';
+  document.getElementById('as_voiceengine').value = settings.voiceengine || 'auto';
+  document.getElementById('appSettingsModal').classList.add('visible');
+}
+
+function closeAppSettings() {
+  document.getElementById('appSettingsModal').classList.remove('visible');
+}
+
+function closeAppSettingsOutside(e) {
+  if (e.target === document.getElementById('appSettingsModal')) closeAppSettings();
+}
+
+function saveAppSettings() {
+  settings.apikey      = document.getElementById('as_apikey').value.trim();
+  settings.openaikey   = document.getElementById('as_openaikey').value.trim();
+  settings.voiceengine = document.getElementById('as_voiceengine').value;
+  try { localStorage.setItem('ems_crew_settings', JSON.stringify(settings)); } catch(e) {}
+  closeAppSettings();
+  showToast('success', 'App Settings Saved', 'API keys and voice engine updated.');
 }
 
 // ======== AGE CALCULATOR ========
@@ -8244,10 +8355,26 @@ function newChart() {
      'medHistory','medications','allergies','patientSkin','patientTemp','patientGlucose',
      'transportHospital','edRoom',
      'sceneNotes','refusalReason',
+     'callType',
      'whoCalled911','whoCalled911Other','patientSex','patientLOC'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+
+    // Clear SOAP output panel
+    ['s-text','o-text','a-text','p-text'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+    const outputSection = document.getElementById('outputSection');
+    if (outputSection) outputSection.classList.remove('visible');
+    const outputEmpty = document.getElementById('outputEmpty');
+    if (outputEmpty) { outputEmpty.style.display = 'none'; outputEmpty.style.color = ''; }
+    const outputBadge = document.getElementById('outputCallTypeBadge');
+    if (outputBadge) outputBadge.textContent = '';
+
+    // Reset call type quick reference card
+    try { updateCallType(); } catch(e) {}
 
     // Reset all tap pills
     document.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
@@ -8304,7 +8431,7 @@ function newChart() {
 
     outputGenerated = false;
     autoSaveChartId = null;
-    switchTab('input', document.querySelectorAll('.tab')[1]);
+    switchTab('dispatch', document.querySelectorAll('.tab')[0]);
   });
 }
 
@@ -9491,13 +9618,8 @@ function collectChartData() {
     
     // Incident Info
     chiefComplaint: document.getElementById('chiefComplaint')?.value || '',
-    hpiOnset: document.getElementById('hpiOnset')?.value || '',
-    hpiProvokes: document.getElementById('hpiProvokes')?.value || '',
-    hpiQuality: document.getElementById('hpiQuality')?.value || '',
-    hpiRadiates: document.getElementById('hpiRadiates')?.value || '',
-    hpiSeverity: document.getElementById('hpiSeverity')?.value || '',
-    hpiTime: document.getElementById('hpiTime')?.value || '',
-    pmh: document.getElementById('pmh')?.value || '',
+    hpiNarrative: document.getElementById('hpiNarrative')?.value || '',
+    sampleNarrative: document.getElementById('sampleNarrative')?.value || '',
     medications: document.getElementById('medications')?.value || '',
     allergies: document.getElementById('allergies')?.value || '',
     
@@ -9652,13 +9774,8 @@ function restoreChartData(data) {
   
   // Restore Incident Info
   if (document.getElementById('chiefComplaint')) document.getElementById('chiefComplaint').value = data.chiefComplaint || '';
-  if (document.getElementById('hpiOnset')) document.getElementById('hpiOnset').value = data.hpiOnset || '';
-  if (document.getElementById('hpiProvokes')) document.getElementById('hpiProvokes').value = data.hpiProvokes || '';
-  if (document.getElementById('hpiQuality')) document.getElementById('hpiQuality').value = data.hpiQuality || '';
-  if (document.getElementById('hpiRadiates')) document.getElementById('hpiRadiates').value = data.hpiRadiates || '';
-  if (document.getElementById('hpiSeverity')) document.getElementById('hpiSeverity').value = data.hpiSeverity || '';
-  if (document.getElementById('hpiTime')) document.getElementById('hpiTime').value = data.hpiTime || '';
-  if (document.getElementById('pmh')) document.getElementById('pmh').value = data.pmh || '';
+  if (document.getElementById('hpiNarrative')) document.getElementById('hpiNarrative').value = data.hpiNarrative || '';
+  if (document.getElementById('sampleNarrative')) document.getElementById('sampleNarrative').value = data.sampleNarrative || '';
   if (document.getElementById('medications')) document.getElementById('medications').value = data.medications || '';
   if (document.getElementById('allergies')) document.getElementById('allergies').value = data.allergies || '';
   
@@ -10194,7 +10311,9 @@ function loadScript(src) {
     <div style="text-align: center; margin-bottom: 30px;">
       <div style="font-size: 48px; margin-bottom: 10px;">🚑</div>
       <h2 style="font-family: var(--mono); font-size: 20px; color: var(--accent); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">NCEMS Chart Helper</h2>
-      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-muted); margin: 8px 0 0 0;">Secure Patient Documentation</p>
+      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-muted); margin: 8px 0 4px 0;">Secure Patient Documentation</p>
+      <p id="loginVersionBadge" style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin: 0; letter-spacing: 0.08em; text-transform: uppercase;"></p>
+      <script>document.getElementById('loginVersionBadge').textContent = APP_VERSION;</script>
     </div>
     
     <!-- Login Form -->
