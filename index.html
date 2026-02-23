@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v4.9 -->
-<script>const APP_VERSION = 'v4.9';</script>
+<!-- Version: v5.0 -->
+<script>const APP_VERSION = 'v5.0';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -3200,9 +3200,19 @@
       <span>✦</span> Generate SOAP Narrative
     </button>
 
-    <button class="generate-btn" onclick="sendChartEmail()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin-top:8px;">
-      <span>📧</span> Email Chart to Desktop
-    </button>
+    <!-- Chart Export Options -->
+    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="generate-btn" onclick="copyChartToClipboard()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>📋</span> Copy Chart
+      </button>
+      <button class="generate-btn" onclick="shareChart()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>⬆</span> Share
+      </button>
+      <button class="generate-btn" onclick="sendChartEmail()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>📧</span> Email
+      </button>
+    </div>
+    <div id="copyChartStatus" style="font-family:var(--mono);font-size:11px;color:var(--success);text-align:center;margin-top:6px;min-height:16px;"></div>
 
   </div>
 
@@ -6042,7 +6052,7 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
       <div class="vitals-line-4">
         <div class="vitals-field-full">
           <label>Activity Notes</label>
-          <textarea id="vactivity-${id}" placeholder="What was done at this time…" rows="1" style="resize: vertical; min-height: 38px; overflow-y: hidden;" oninput="autoResizeTextarea(this)"${exclusivityCheck}></textarea>
+          <textarea id="vactivity-${id}" placeholder="What was done at this time…" rows="1" style="min-height: 38px; overflow-y: hidden;" oninput="autoResizeTextarea(this);${isExclusiveCard ? 'checkTransportRefusalExclusivity();' : ''}" autocomplete="off"></textarea>
         </div>
       </div>
       </div>
@@ -8219,6 +8229,57 @@ function sendChartEmail() {
   window.location.href = mailto;
 }
 
+function copyChartToClipboard() {
+  const text = buildEmailText();
+  const statusEl = document.getElementById('copyChartStatus');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (statusEl) { statusEl.textContent = '✓ Chart copied to clipboard — paste anywhere'; clearTimeout(statusEl._t); statusEl._t = setTimeout(() => statusEl.textContent = '', 3000); }
+    }).catch(() => _fallbackCopy(text, statusEl));
+  } else {
+    _fallbackCopy(text, statusEl);
+  }
+}
+
+function _fallbackCopy(text, statusEl) {
+  // iOS < 13.4 fallback — create temp textarea, select, copy
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    if (statusEl) { statusEl.textContent = '✓ Chart copied — paste into Zoll EMS Charts or Notes'; clearTimeout(statusEl._t); statusEl._t = setTimeout(() => statusEl.textContent = '', 3000); }
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '⚠ Could not copy — try Email instead'; }
+  }
+  document.body.removeChild(ta);
+}
+
+async function shareChart() {
+  const text = buildEmailText();
+  const d = collectChartData();
+  const address = [d.patientAddress, d.patientCity].filter(Boolean).join(', ') || 'Unknown Address';
+  const dateStr = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const title = `NCEMS Chart — ${address} — ${dateStr}`;
+  const statusEl = document.getElementById('copyChartStatus');
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text });
+    } catch(e) {
+      // User cancelled or share failed — fall back to copy
+      if (e.name !== 'AbortError') copyChartToClipboard();
+    }
+  } else {
+    // No share API — fall back to clipboard
+    copyChartToClipboard();
+    if (statusEl) { statusEl.textContent = '✓ Copied (Share not available on this device)'; clearTimeout(statusEl._t); statusEl._t = setTimeout(() => statusEl.textContent = '', 3000); }
+  }
+}
+
 async function generateSOAP() {
   const chiefComplaint = document.getElementById('chiefComplaint').value.trim();
   const sceneNotes = document.getElementById('sceneNotes').value.trim();
@@ -9159,30 +9220,25 @@ let sigModalFuture  = [];
 
 function openSigModal(idx) {
   sigModalIdx = idx;
-  _buildSigModal();
   const modal = document.getElementById('sigModal');
+
+  // Show modal FIRST so layout is established before canvas sizing
   modal.classList.add('active');
 
-  // Attempt native orientation lock (works in PWA / Android Chrome)
-  if (screen.orientation && typeof screen.orientation.lock === 'function') {
-    screen.orientation.lock('landscape').catch(() => {
-      // Native lock failed (iOS Safari, non-PWA) — use CSS rotate instead
-      _applyLandscapeRotation(modal);
-    });
-  } else {
-    // No API support — always use CSS rotate
-    _applyLandscapeRotation(modal);
-  }
-}
-
-function _applyLandscapeRotation(modal) {
-  // Only rotate if the device is currently in portrait orientation
+  // Apply orientation — rotate CSS if in portrait (native lock rarely works on iOS)
   const isPortrait = window.innerHeight > window.innerWidth;
   if (isPortrait) {
-    modal.classList.add('rotate-landscape');
-    // Rebuild the modal canvas now that dimensions have changed
-    setTimeout(() => _buildSigModal(), 50);
+    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+      screen.orientation.lock('landscape').catch(() => {
+        modal.classList.add('rotate-landscape');
+      });
+    } else {
+      modal.classList.add('rotate-landscape');
+    }
   }
+
+  // Build AFTER modal is visible so clientWidth/clientHeight are real
+  requestAnimationFrame(() => _buildSigModal());
 }
 
 function closeSigModal() {
