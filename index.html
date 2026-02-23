@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v4.6 -->
-<script>const APP_VERSION = 'v4.6';</script>
+<!-- Version: v4.7 -->
+<script>const APP_VERSION = 'v4.7';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1966,19 +1966,126 @@
     touch-action: none;
   }
 
-  .sig-clear-btn {
+  .sig-action-btn {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-muted);
     border-radius: 4px;
-    padding: 3px 8px;
-    font-family: var(--mono);
-    font-size: 9px;
+    padding: 3px 9px;
+    font-size: 14px;
     cursor: pointer;
     transition: all 0.15s;
+    line-height: 1;
   }
+  .sig-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .sig-action-btn:disabled { opacity: 0.3; cursor: default; }
 
-  .sig-clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+  .sig-sign-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .sig-sign-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Full-screen signature modal */
+  #sigModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 9000;
+    flex-direction: column;
+  }
+  #sigModal.active { display: flex; }
+
+  .sig-modal-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .sig-modal-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .sig-modal-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .sig-modal-step {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .sig-modal-canvas-wrap {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+  #sigModalCanvas {
+    flex: 1;
+    width: 100%;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: crosshair;
+    touch-action: none;
+    display: block;
+    min-height: 0;
+  }
+  .sig-modal-name {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sig-modal-name label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .sig-modal-name input {
+    background: #f8f8f8;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    color: #111;
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 8px 12px;
+    width: 100%;
+  }
+  .sig-modal-footer {
+    flex-shrink: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+  }
 
   .error-msg {
     background: rgba(248,81,73,0.1);
@@ -3323,7 +3430,13 @@
 
         <!-- Patient signature -->
         <div class="sig-block">
-          <div class="sig-label">Patient / Guardian Signature <button class="sig-clear-btn" onclick="clearSig('sigPatient')">Clear</button></div>
+          <div class="sig-label">Patient / Guardian Signature
+            <span style="display:flex;gap:6px;align-items:center;">
+              <button class="sig-action-btn" onclick="undoSig('sigPatient')" id="undo-sigPatient" title="Undo" disabled>↩</button>
+              <button class="sig-action-btn" onclick="redoSig('sigPatient')" id="redo-sigPatient" title="Redo" disabled>↪</button>
+              <button class="sig-sign-btn" onclick="openSigModal(0)">✍ Sign</button>
+            </span>
+          </div>
           <canvas id="sigPatient" class="sig-canvas"></canvas>
           <div class="field" style="margin-top:8px">
             <label style="font-size:11px">Printed Name</label>
@@ -3333,7 +3446,13 @@
 
         <!-- Witness signature -->
         <div class="sig-block">
-          <div class="sig-label">Witness Signature <button class="sig-clear-btn" onclick="clearSig('sigWitness')">Clear</button></div>
+          <div class="sig-label">Witness Signature
+            <span style="display:flex;gap:6px;align-items:center;">
+              <button class="sig-action-btn" onclick="undoSig('sigWitness')" id="undo-sigWitness" title="Undo" disabled>↩</button>
+              <button class="sig-action-btn" onclick="redoSig('sigWitness')" id="redo-sigWitness" title="Redo" disabled>↪</button>
+              <button class="sig-sign-btn" onclick="openSigModal(1)">✍ Sign</button>
+            </span>
+          </div>
           <canvas id="sigWitness" class="sig-canvas"></canvas>
           <div class="field" style="margin-top:8px">
             <label style="font-size:11px">Printed Name</label>
@@ -3343,7 +3462,13 @@
 
         <!-- RMA signature -->
         <div class="sig-block">
-          <div class="sig-label">RMA Administered By <button class="sig-clear-btn" onclick="clearSig('sigRMA')">Clear</button></div>
+          <div class="sig-label">RMA Administered By
+            <span style="display:flex;gap:6px;align-items:center;">
+              <button class="sig-action-btn" onclick="undoSig('sigRMA')" id="undo-sigRMA" title="Undo" disabled>↩</button>
+              <button class="sig-action-btn" onclick="redoSig('sigRMA')" id="redo-sigRMA" title="Redo" disabled>↪</button>
+              <button class="sig-sign-btn" onclick="openSigModal(2)">✍ Sign</button>
+            </span>
+          </div>
           <canvas id="sigRMA" class="sig-canvas"></canvas>
           <div class="field" style="margin-top:8px">
             <label style="font-size:11px">Printed Name</label>
@@ -8843,97 +8968,365 @@ function toggleIncidentLocation() {
 
 // ---- Signature Pads ----
 const sigPads = {};
+const sigHistory = { sigPatient: [], sigWitness: [], sigRMA: [] };  // undo stacks
+const sigFuture  = { sigPatient: [], sigWitness: [], sigRMA: [] };  // redo stacks
+
+// ── Config for the three signature fields ──
+const SIG_CONFIGS = [
+  { id: 'sigPatient', title: 'Patient / Guardian Signature', nameField: 'rf_printedPatient', nameLabel: 'Patient / Guardian Printed Name' },
+  { id: 'sigWitness', title: 'Witness Signature',            nameField: 'rf_printedWitness', nameLabel: 'Witness Printed Name' },
+  { id: 'sigRMA',     title: 'RMA Administered By',          nameField: 'rf_printedRMA',     nameLabel: 'RMA Printed Name' },
+];
 
 function initSignaturePads() {
-  ['sigPatient', 'sigWitness', 'sigRMA'].forEach(id => {
-    const canvas = document.getElementById(id);
-    if (!canvas || sigPads[id]) return;
-    // Set actual pixel dimensions
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    ctx.strokeStyle = '#1a1a2e';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+  SIG_CONFIGS.forEach(cfg => {
+    const canvas = document.getElementById(cfg.id);
+    if (!canvas || sigPads[cfg.id]) return;
+    _initOnePad(cfg.id, canvas);
+  });
+}
 
-    let drawing = false;
-    let lastX = 0, lastY = 0;
+function _initOnePad(id, canvas) {
+  // Size canvas to its CSS display size
+  const rect = canvas.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  _setCtxStyle(ctx);
 
+  let drawing = false, lastX = 0, lastY = 0;
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+  function start(e) {
+    e.preventDefault();
+    // Save snapshot for undo before starting a new stroke
+    _pushHistory(id, canvas);
+    drawing = true;
+    const pos = getPos(e);
+    lastX = pos.x; lastY = pos.y;
+    ctx.beginPath(); ctx.moveTo(lastX, lastY);
+  }
+  function draw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y); ctx.stroke();
+    lastX = pos.x; lastY = pos.y;
+  }
+  function stop() { drawing = false; _updateUndoRedoBtns(id); }
+
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  draw);
+  canvas.addEventListener('mouseup',    stop);
+  canvas.addEventListener('mouseleave', stop);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove',  draw,  { passive: false });
+  canvas.addEventListener('touchend',   stop);
+
+  sigPads[id] = { canvas, ctx };
+}
+
+function _setCtxStyle(ctx) {
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth   = 2;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+}
+
+function _pushHistory(id, canvas) {
+  sigHistory[id].push(canvas.toDataURL());
+  sigFuture[id] = [];  // clear redo on new stroke
+}
+
+function _updateUndoRedoBtns(id) {
+  const undoBtn = document.getElementById('undo-' + id);
+  const redoBtn = document.getElementById('redo-' + id);
+  if (undoBtn) undoBtn.disabled = sigHistory[id].length === 0;
+  if (redoBtn) redoBtn.disabled = sigFuture[id].length === 0;
+}
+
+function _restoreFromDataURL(id, dataURL) {
+  const pad = sigPads[id];
+  if (!pad) return;
+  const { canvas, ctx } = pad;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width  / dpr;
+  const h = canvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+  if (!dataURL) return;
+  const img = new Image();
+  img.onload = () => ctx.drawImage(img, 0, 0, w, h);
+  img.src = dataURL;
+}
+
+function undoSig(id) {
+  if (!sigHistory[id].length) return;
+  const pad = sigPads[id];
+  if (!pad) return;
+  sigFuture[id].push(pad.canvas.toDataURL());
+  const prev = sigHistory[id].pop();
+  _restoreFromDataURL(id, prev);
+  _updateUndoRedoBtns(id);
+}
+
+function redoSig(id) {
+  if (!sigFuture[id].length) return;
+  const pad = sigPads[id];
+  if (!pad) return;
+  sigHistory[id].push(pad.canvas.toDataURL());
+  const next = sigFuture[id].pop();
+  _restoreFromDataURL(id, next);
+  _updateUndoRedoBtns(id);
+}
+
+// ── Signature Modal ──────────────────────────────────────
+let sigModalIdx = 0;
+let sigModalPad = null;
+let sigModalHistory = [];
+let sigModalFuture  = [];
+
+function openSigModal(idx) {
+  sigModalIdx = idx;
+  _buildSigModal();
+  document.getElementById('sigModal').classList.add('active');
+  // Lock to landscape hint on mobile
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('landscape').catch(() => {});
+  }
+}
+
+function closeSigModal() {
+  // Save modal canvas back to the real inline canvas
+  _commitSigModal();
+  document.getElementById('sigModal').classList.remove('active');
+  // Release orientation lock
+  if (screen.orientation && screen.orientation.unlock) {
+    screen.orientation.unlock();
+  }
+}
+
+function sigModalNav(dir) {
+  _commitSigModal();
+  sigModalIdx = (sigModalIdx + dir + SIG_CONFIGS.length) % SIG_CONFIGS.length;
+  _buildSigModal();
+}
+
+function _buildSigModal() {
+  const cfg = SIG_CONFIGS[sigModalIdx];
+  sigModalHistory = [];
+  sigModalFuture  = [];
+
+  // Header
+  document.getElementById('sigModalTitle').textContent = cfg.title;
+  document.getElementById('sigModalStep').textContent  = `${sigModalIdx + 1} of ${SIG_CONFIGS.length}`;
+  document.getElementById('sigModalPrev').disabled = false;
+  document.getElementById('sigModalNext').disabled = false;
+
+  // Name field
+  document.getElementById('sigModalNameLabel').textContent = cfg.nameLabel;
+  const nameVal = document.getElementById(cfg.nameField)?.value || '';
+  document.getElementById('sigModalNameInput').value = nameVal;
+
+  // Canvas — size after a brief layout pass
+  const modalCanvas = document.getElementById('sigModalCanvas');
+  if (sigModalPad) {
+    // Remove old listeners by replacing the canvas
+    sigModalPad = null;
+  }
+
+  requestAnimationFrame(() => {
+    const dpr  = window.devicePixelRatio || 1;
+    const wrap = modalCanvas.parentElement;
+    const w = wrap.clientWidth  - 24; // padding
+    const h = wrap.clientHeight - (document.querySelector('.sig-modal-name').offsetHeight + 34);
+    modalCanvas.style.width  = w + 'px';
+    modalCanvas.style.height = Math.max(h, 180) + 'px';
+    modalCanvas.width  = w * dpr;
+    modalCanvas.height = Math.max(h, 180) * dpr;
+
+    const ctx = modalCanvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    _setCtxStyle(ctx);
+    ctx.lineWidth = 3; // slightly thicker in modal
+
+    // Pre-populate from existing inline canvas
+    const srcCanvas = document.getElementById(cfg.id);
+    const srcData   = getSigDataURL(cfg.id);
+    if (srcData) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, modalCanvas.width / dpr, modalCanvas.height / dpr);
+      img.src = srcData;
+    }
+
+    let drawing = false, lastX = 0, lastY = 0;
     function getPos(e) {
-      const r = canvas.getBoundingClientRect();
+      const r = modalCanvas.getBoundingClientRect();
       const src = e.touches ? e.touches[0] : e;
       return { x: src.clientX - r.left, y: src.clientY - r.top };
     }
-
     function start(e) {
       e.preventDefault();
+      sigModalHistory.push(modalCanvas.toDataURL());
+      sigModalFuture = [];
       drawing = true;
-      const pos = getPos(e);
-      lastX = pos.x; lastY = pos.y;
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
+      const pos = getPos(e); lastX = pos.x; lastY = pos.y;
+      ctx.beginPath(); ctx.moveTo(lastX, lastY);
     }
-
     function draw(e) {
       if (!drawing) return;
       e.preventDefault();
       const pos = getPos(e);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
+      ctx.lineTo(pos.x, pos.y); ctx.stroke();
       lastX = pos.x; lastY = pos.y;
     }
+    function stop() {
+      drawing = false;
+      document.getElementById('sigModalUndo').disabled = sigModalHistory.length === 0;
+      document.getElementById('sigModalRedo').disabled = sigModalFuture.length  === 0;
+    }
 
-    function stop(e) { drawing = false; }
+    // Remove old listeners cleanly
+    const newCanvas = modalCanvas.cloneNode(false);
+    modalCanvas.parentElement.replaceChild(newCanvas, modalCanvas);
+    // Re-draw content on new canvas
+    const ctx2 = newCanvas.getContext('2d');
+    ctx2.scale(dpr, dpr);
+    _setCtxStyle(ctx2);
+    ctx2.lineWidth = 3;
+    if (srcData) {
+      const img2 = new Image();
+      img2.onload = () => ctx2.drawImage(img2, 0, 0, newCanvas.width / dpr, newCanvas.height / dpr);
+      img2.src = srcData;
+    }
 
-    canvas.addEventListener('mousedown', start);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stop);
-    canvas.addEventListener('mouseleave', stop);
-    canvas.addEventListener('touchstart', start, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stop);
+    newCanvas.addEventListener('mousedown',  e => { sigModalHistory.push(newCanvas.toDataURL()); sigModalFuture=[]; drawing=true; const p=getPos2(e,newCanvas); lastX=p.x; lastY=p.y; ctx2.beginPath(); ctx2.moveTo(lastX,lastY); });
+    newCanvas.addEventListener('mousemove',  e => { if(!drawing) return; const p=getPos2(e,newCanvas); ctx2.lineTo(p.x,p.y); ctx2.stroke(); lastX=p.x; lastY=p.y; });
+    newCanvas.addEventListener('mouseup',    () => { drawing=false; _updateModalBtns(); });
+    newCanvas.addEventListener('mouseleave', () => { drawing=false; });
+    newCanvas.addEventListener('touchstart', e => { e.preventDefault(); sigModalHistory.push(newCanvas.toDataURL()); sigModalFuture=[]; drawing=true; const p=getPos2(e,newCanvas); lastX=p.x; lastY=p.y; ctx2.beginPath(); ctx2.moveTo(lastX,lastY); }, { passive: false });
+    newCanvas.addEventListener('touchmove',  e => { if(!drawing) return; e.preventDefault(); const p=getPos2(e,newCanvas); ctx2.lineTo(p.x,p.y); ctx2.stroke(); lastX=p.x; lastY=p.y; }, { passive: false });
+    newCanvas.addEventListener('touchend',   () => { drawing=false; _updateModalBtns(); });
 
-    sigPads[id] = { canvas, ctx };
+    sigModalPad = { canvas: newCanvas, ctx: ctx2 };
+    document.getElementById('sigModalUndo').disabled = true;
+    document.getElementById('sigModalRedo').disabled = true;
   });
 }
 
-function clearSig(id) {
-  const pad = sigPads[id];
-  if (!pad) return;
-  const { canvas, ctx } = pad;
-  ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+function getPos2(e, canvas) {
+  const r = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return { x: src.clientX - r.left, y: src.clientY - r.top };
 }
 
+function _updateModalBtns() {
+  document.getElementById('sigModalUndo').disabled = sigModalHistory.length === 0;
+  document.getElementById('sigModalRedo').disabled = sigModalFuture.length  === 0;
+}
+
+function sigModalUndo() {
+  if (!sigModalHistory.length || !sigModalPad) return;
+  const { canvas, ctx } = sigModalPad;
+  const dpr = window.devicePixelRatio || 1;
+  sigModalFuture.push(canvas.toDataURL());
+  const prev = sigModalHistory.pop();
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  if (prev) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, canvas.width/dpr, canvas.height/dpr); img.src = prev; }
+  _updateModalBtns();
+}
+
+function sigModalRedo() {
+  if (!sigModalFuture.length || !sigModalPad) return;
+  const { canvas, ctx } = sigModalPad;
+  const dpr = window.devicePixelRatio || 1;
+  sigModalHistory.push(canvas.toDataURL());
+  const next = sigModalFuture.pop();
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  if (next) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, canvas.width/dpr, canvas.height/dpr); img.src = next; }
+  _updateModalBtns();
+}
+
+function _commitSigModal() {
+  if (!sigModalPad) return;
+  const cfg = SIG_CONFIGS[sigModalIdx];
+
+  // Save name
+  const nameVal = document.getElementById('sigModalNameInput').value;
+  const nameField = document.getElementById(cfg.nameField);
+  if (nameField) nameField.value = nameVal;
+
+  // Copy modal canvas → inline canvas
+  const modalCanvas = sigModalPad.canvas;
+  const inlineCanvas = document.getElementById(cfg.id);
+  if (!inlineCanvas || !sigPads[cfg.id]) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const modalData = modalCanvas.toDataURL();
+  const isEmpty = modalData.length < 1000;
+
+  // Save undo snapshot for the inline pad
+  _pushHistory(cfg.id, inlineCanvas);
+
+  // Resize inline canvas if needed and redraw
+  const { ctx } = sigPads[cfg.id];
+  const w = inlineCanvas.width  / dpr;
+  const h = inlineCanvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+
+  if (!isEmpty) {
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, 0, 0, w, h); _updateUndoRedoBtns(cfg.id); };
+    img.src = modalData;
+  } else {
+    _updateUndoRedoBtns(cfg.id);
+  }
+}
+
+// ── Fixed restore: waits for canvas to be sized before drawing ──
 function restoreSignature(canvasId, dataURL) {
   if (!dataURL) return;
-  
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  const img = new Image();
-  
-  img.onload = function() {
-    // Clear the canvas first
-    ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
-    
-    // Draw the image onto the canvas
-    ctx.drawImage(img, 0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
-  };
-  
-  img.src = dataURL;
+
+  function doRestore() {
+    const dpr = window.devicePixelRatio || 1;
+    // If the canvas hasn't been sized yet (width=0), re-init the pad first
+    if (canvas.width === 0 || canvas.height === 0) {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0) {
+        // Still not laid out — defer
+        setTimeout(() => doRestore(), 50);
+        return;
+      }
+      canvas.width  = rect.width  * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      _setCtxStyle(ctx);
+      if (!sigPads[canvasId]) sigPads[canvasId] = { canvas, ctx };
+    }
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width  / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, w, h);
+    img.src = dataURL;
+  }
+  doRestore();
 }
 
 function getSigDataURL(id) {
   const canvas = document.getElementById(id);
   if (!canvas) return null;
-  
   const dataURL = canvas.toDataURL('image/png');
-  const isEmpty = dataURL.length < 1000;
-  return isEmpty ? null : dataURL;
+  return dataURL.length < 1000 ? null : dataURL;
 }
 
 // ---- PDF Generation ----
@@ -10538,6 +10931,34 @@ function loadScript(src) {
     </div>
     <div class="protocol-modal-body" id="modalProtocolBody">
       <!-- Protocol details will be populated by JavaScript -->
+    </div>
+  </div>
+</div>
+
+<!-- SIGNATURE MODAL -->
+<div id="sigModal">
+  <div class="sig-modal-header">
+    <span class="sig-modal-title" id="sigModalTitle">Signature</span>
+    <div class="sig-modal-nav">
+      <span class="sig-modal-step" id="sigModalStep"></span>
+      <button class="btn-icon" onclick="sigModalNav(-1)" id="sigModalPrev">◀</button>
+      <button class="btn-icon" onclick="sigModalNav(1)"  id="sigModalNext">▶</button>
+    </div>
+  </div>
+  <div class="sig-modal-canvas-wrap">
+    <canvas id="sigModalCanvas"></canvas>
+    <div class="sig-modal-name">
+      <label id="sigModalNameLabel">Printed Name</label>
+      <input type="text" id="sigModalNameInput" placeholder="Printed name">
+    </div>
+  </div>
+  <div class="sig-modal-footer">
+    <div style="display:flex;gap:8px;">
+      <button class="sig-action-btn" onclick="sigModalUndo()" id="sigModalUndo" title="Undo" style="font-size:18px;" disabled>↩</button>
+      <button class="sig-action-btn" onclick="sigModalRedo()" id="sigModalRedo" title="Redo" style="font-size:18px;" disabled>↪</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" onclick="closeSigModal()">Done</button>
     </div>
   </div>
 </div>
