@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.7 -->
-<script>const APP_VERSION = 'v5.7';</script>
+<!-- Version: v5.8 -->
+<script>const APP_VERSION = 'v5.8';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -3125,7 +3125,7 @@
         <div class="subsection-label">HPI — History of Present Illness <span class="format-tag">OPQRST</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="hpiNarrative" placeholder="Describe the HPI freely — include onset/duration, what makes it better or worse, how the patient describes it, where it is, severity (0–10), and timing/trends." style="min-height:160px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
+            <textarea id="hpiNarrative" placeholder="• Onset / duration&#10;• Provocation / quality&#10;• Severity (0–10) / timing" style="min-height:160px; width:100%;" oninput="bulletInput(this)" onkeydown="bulletKeydown(this,event)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">O</span><div><div class="opqrst-word">Onset</div><div class="opqrst-hint">When/how did it start?</div></div></div>
@@ -3141,7 +3141,7 @@
         <div class="subsection-label" style="margin-top:6px">PMH — Past Medical History <span class="format-tag">SAMPLE</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="sampleNarrative" placeholder="Describe signs/symptoms, allergies, medications, past medical history, last oral intake, and events leading up to this call." style="min-height:160px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
+            <textarea id="sampleNarrative" placeholder="• Signs / symptoms&#10;• Allergies&#10;• Medications / past history" style="min-height:160px; width:100%;" oninput="bulletInput(this)" onkeydown="bulletKeydown(this,event)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">S</span><div><div class="opqrst-word">Signs/Symptoms</div><div class="opqrst-hint">Current associated symptoms</div></div></div>
@@ -6136,6 +6136,127 @@ function autoResizeTextarea(textarea) {
   textarea.style.height = textarea.scrollHeight + 'px';
 }
 
+// ── Bulleted textarea helpers (HPI / PMH) ─────────────────────────────────
+const BULLET = '• ';
+
+// Split arbitrary text into sentences and format as bullet lines
+function textToBullets(text) {
+  if (!text || !text.trim()) return '';
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  // If no sentence-ending punctuation found, treat as one bullet
+  if (sentences.length === 0) return BULLET + text.trim();
+  return sentences.map(s => BULLET + s).join('\n');
+}
+
+// Strip bullet prefixes for export/email so output reads as clean prose
+function stripBullets(text) {
+  if (!text) return '';
+  return text
+    .split('\n')
+    .map(line => line.startsWith(BULLET) ? line.slice(BULLET.length) : line)
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Append bullet-formatted text to a bulleted textarea
+function appendBullets(ta, rawText) {
+  if (!rawText || !rawText.trim()) return;
+  const incoming = textToBullets(rawText);
+  const current  = ta.value.trim();
+  ta.value = current ? current + '\n' + incoming : incoming;
+  autoResizeTextarea(ta);
+  triggerAutoSave();
+}
+
+// Called oninput — three jobs:
+//  1. Ensure the very first character starts with a bullet
+//  2. Handle iOS soft-keyboard Return (keydown may not fire on iOS) —
+//     detect a bare \n that isn't already followed by a bullet and convert it
+//  3. Trigger autosave
+function bulletInput(ta) {
+  const pos = ta.selectionStart;
+  let val = ta.value;
+
+  // Job 1: prefix first line if missing bullet
+  if (val && !val.startsWith(BULLET)) {
+    val = BULLET + val;
+    ta.value = val;
+    ta.setSelectionRange(pos + BULLET.length, pos + BULLET.length);
+    autoResizeTextarea(ta);
+    triggerAutoSave();
+    return;
+  }
+
+  // Job 2: iOS Return key — look for any \n not followed by BULLET and fix it
+  // We scan backwards from cursor to find a bare newline just inserted
+  if (val.includes('\n')) {
+    let changed = false;
+    const fixed = val.replace(/\n(?!• )/g, '\n' + BULLET);
+    if (fixed !== val) {
+      ta.value = fixed;
+      // Restore cursor: each inserted BULLET adds 2 chars per bare newline before cursor
+      const charsAdded = (val.slice(0, pos).match(/\n(?!• )/g) || []).length * BULLET.length;
+      ta.setSelectionRange(pos + charsAdded, pos + charsAdded);
+      changed = true;
+    }
+  }
+
+  autoResizeTextarea(ta);
+  triggerAutoSave();
+}
+
+// Called onkeydown — handles Enter and Backspace
+function bulletKeydown(ta, e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const start = ta.selectionStart;
+    const end   = ta.selectionEnd;
+    const val   = ta.value;
+    ta.value = val.slice(0, start) + '\n' + BULLET + val.slice(end);
+    const cursor = start + 1 + BULLET.length;
+    ta.setSelectionRange(cursor, cursor);
+    autoResizeTextarea(ta);
+    triggerAutoSave();
+    return;
+  }
+
+  // Backspace at the start of a bullet line — remove the bullet and merge with previous line
+  if (e.key === 'Backspace') {
+    const start = ta.selectionStart;
+    const end   = ta.selectionEnd;
+    if (start !== end) return; // let default handle selection deletion
+    const val = ta.value;
+    // Check if cursor is right after the bullet prefix on a non-first line
+    // i.e. the text just before cursor is '\n• '
+    const beforeCursor = val.slice(0, start);
+    if (beforeCursor.endsWith('\n' + BULLET)) {
+      e.preventDefault();
+      // Remove the '\n• ' (3 chars) before cursor
+      const removeLen = 1 + BULLET.length; // \n + bullet
+      ta.value = val.slice(0, start - removeLen) + val.slice(start);
+      ta.setSelectionRange(start - removeLen, start - removeLen);
+      autoResizeTextarea(ta);
+      triggerAutoSave();
+      return;
+    }
+    // Also handle: cursor is at position 2 on the very first line (right after '• ')
+    // and the user wants to clear the bullet — just clear whole field if only bullet remains
+    if (start === BULLET.length && val === BULLET) {
+      e.preventDefault();
+      ta.value = '';
+      ta.setSelectionRange(0, 0);
+      autoResizeTextarea(ta);
+      triggerAutoSave();
+    }
+  }
+}
+
+
 function initAutoResize() {
   document.querySelectorAll('textarea').forEach(ta => {
     // Wire up any textarea not already wired
@@ -7163,12 +7284,16 @@ Dictated text: "${transcript}"`;
       if (!value || !value.toString().trim()) return;
       const el = document.getElementById(id);
       if (!el) return;
+      // HPI and PMH use bullet format
+      const isBulletField = (id === 'hpiNarrative' || id === 'sampleNarrative');
+      const incoming = isBulletField ? textToBullets(value.toString()) : value.toString();
       const had = el.value && el.value.trim();
-      el.value = had ? had + '\n' + value : value;
+      el.value = had ? had + '\n' + incoming : incoming;
       el.classList.add('field-overwritten');
       fieldsPopulated.push(label);
       fieldsOverwritten.push(label);
       setTimeout(() => el.classList.remove('field-overwritten'), 5000);
+      autoResizeTextarea(el);
     };
 
     // PATIENT
@@ -8168,7 +8293,20 @@ function buildEmailText() {
   const block = (label, value) => {
     if (!value) return;
     L(`  ${label}:`);
-    value.split(/\r?\n/).forEach(line => L(`    ${line}`));
+    // Strip bullet prefixes for clean prose output
+    const cleaned = value
+      .split(/\r?\n/)
+      .map(line => line.startsWith('• ') ? line.slice(2) : line)
+      .filter(Boolean)
+      .join(' ');
+    // Wrap at ~80 chars per line for readability
+    const words = cleaned.split(' ');
+    let line = '   ';
+    words.forEach(w => {
+      if ((line + ' ' + w).length > 82) { L(line); line = '    ' + w; }
+      else line += (line.trim() ? ' ' : '') + w;
+    });
+    if (line.trim()) L(line);
   };
 
   // ── Header ──
@@ -8864,8 +9002,10 @@ async function startHPIRecording() {
     function onResult(e) {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { ta.value += e.results[i][0].transcript + ' '; }
-        else interim += e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          const sentence = e.results[i][0].transcript.trim();
+          if (sentence) appendBullets(document.getElementById('hpiNarrative'), sentence);
+        } else interim += e.results[i][0].transcript;
       }
       const statusEl = document.getElementById('hpiVoiceStatus');
       if (statusEl) statusEl.textContent = interim ? '🎙 ' + interim : '🎙 Recording…';
@@ -8906,7 +9046,7 @@ async function stopHPIRecording() {
     const transcript = await whisperStop();
     if (transcript && !transcript.startsWith('ERROR:')) {
       const ta = document.getElementById('hpiNarrative');
-      ta.value = (ta.value ? ta.value + ' ' : '') + transcript;
+      appendBullets(ta, transcript);
       document.getElementById('hpiVoiceStatus').textContent = '✓ Done';
     } else {
       document.getElementById('hpiVoiceStatus').textContent = '✗ Failed — try again';
@@ -8917,7 +9057,7 @@ async function stopHPIRecording() {
     const statusTxt = statusEl ? statusEl.textContent : '';
     if (statusTxt.startsWith('🎙 ') && statusTxt.length > 3) {
       const ta = document.getElementById('hpiNarrative');
-      if (ta) ta.value = (ta.value ? ta.value + ' ' : '') + statusTxt.slice(3).trim();
+      if (ta) appendBullets(ta, statusTxt.slice(3).trim());
     }
   }
   setTimeout(() => {
@@ -8949,8 +9089,10 @@ async function startSAMPLERecording() {
     function onResult(e) {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { ta.value += e.results[i][0].transcript + ' '; }
-        else interim += e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          const sentence = e.results[i][0].transcript.trim();
+          if (sentence) appendBullets(document.getElementById('sampleNarrative'), sentence);
+        } else interim += e.results[i][0].transcript;
       }
       const statusEl = document.getElementById('sampleVoiceStatus');
       if (statusEl) statusEl.textContent = interim ? '🎙 ' + interim : '🎙 Recording…';
@@ -8991,7 +9133,7 @@ async function stopSAMPLERecording() {
     const transcript = await whisperStop();
     if (transcript && !transcript.startsWith('ERROR:')) {
       const ta = document.getElementById('sampleNarrative');
-      ta.value = (ta.value ? ta.value + ' ' : '') + transcript;
+      appendBullets(ta, transcript);
       document.getElementById('sampleVoiceStatus').textContent = '✓ Done';
     } else {
       document.getElementById('sampleVoiceStatus').textContent = '✗ Failed — try again';
@@ -9001,7 +9143,7 @@ async function stopSAMPLERecording() {
     const statusTxt = statusEl ? statusEl.textContent : '';
     if (statusTxt.startsWith('🎙 ') && statusTxt.length > 3) {
       const ta = document.getElementById('sampleNarrative');
-      if (ta) ta.value = (ta.value ? ta.value + ' ' : '') + statusTxt.slice(3).trim();
+      if (ta) appendBullets(ta, statusTxt.slice(3).trim());
     }
   }
   setTimeout(() => {
