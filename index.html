@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v4.8 -->
-<script>const APP_VERSION = 'v4.8';</script>
+<!-- Version: v4.9 -->
+<script>const APP_VERSION = 'v4.9';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2006,6 +2006,20 @@
     flex-direction: column;
   }
   #sigModal.active { display: flex; }
+
+  /* iOS landscape rotation trick — when modal is active in portrait,
+     rotate the entire modal 90° to simulate landscape */
+  #sigModal.rotate-landscape {
+    width: 100vh;
+    height: 100vw;
+    transform-origin: bottom left;
+    transform: rotate(90deg) translateY(-100%);
+    /* keep it from clipping */
+    top: 0;
+    left: 0;
+    right: auto;
+    bottom: auto;
+  }
 
   .sig-modal-header {
     background: var(--surface);
@@ -8603,8 +8617,8 @@ function formatPhone(input) {
 function newChart() {
   showConfirm('New Chart', 'Clear current chart and start a new one? All unsaved data will be lost.', 'Clear & Start New', true, () => {
     // Clear all form fields
-    ['patientName','patientDOB','patientAge','patientAddress','patientCity','patientState',
-     'patientZip','patientPhone','patientWeight','chiefComplaint',
+    ['patientName','patientDOB','patientAge','patientAddress',
+     'patientPhone','patientWeight','chiefComplaint',
      'hpiNarrative','sampleNarrative',
      'sampleSigns','sampleLastIntake','sampleEvents',
      'medHistory','medications','allergies','patientSkin','patientTemp','patientGlucose',
@@ -8614,6 +8628,29 @@ function newChart() {
      'whoCalled911','whoCalled911Other','patientSex','patientLOC'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
+    });
+
+    // Restore location defaults
+    const cityEl  = document.getElementById('patientCity');
+    const stateEl = document.getElementById('patientState');
+    const zipEl   = document.getElementById('patientZip');
+    if (cityEl)  cityEl.value  = 'New Canaan';
+    if (stateEl) stateEl.value = 'CT';
+    if (zipEl)   zipEl.value   = '06840';
+
+    // Clear all signature canvases and reset undo/redo stacks
+    ['sigPatient','sigWitness','sigRMA'].forEach(id => {
+      sigHistory[id] = [];
+      sigFuture[id]  = [];
+      _updateUndoRedoBtns(id);
+      const pad = sigPads[id];
+      if (pad) {
+        const { canvas, ctx } = pad;
+        const dpr = window.devicePixelRatio || 1;
+        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      }
+      // Remove pad entry so initSignaturePads re-initializes cleanly on next Refusal visit
+      delete sigPads[id];
     });
 
     // Clear SOAP output panel
@@ -9123,20 +9160,41 @@ let sigModalFuture  = [];
 function openSigModal(idx) {
   sigModalIdx = idx;
   _buildSigModal();
-  document.getElementById('sigModal').classList.add('active');
-  // Lock to landscape hint on mobile
-  if (screen.orientation && screen.orientation.lock) {
-    screen.orientation.lock('landscape').catch(() => {});
+  const modal = document.getElementById('sigModal');
+  modal.classList.add('active');
+
+  // Attempt native orientation lock (works in PWA / Android Chrome)
+  if (screen.orientation && typeof screen.orientation.lock === 'function') {
+    screen.orientation.lock('landscape').catch(() => {
+      // Native lock failed (iOS Safari, non-PWA) — use CSS rotate instead
+      _applyLandscapeRotation(modal);
+    });
+  } else {
+    // No API support — always use CSS rotate
+    _applyLandscapeRotation(modal);
+  }
+}
+
+function _applyLandscapeRotation(modal) {
+  // Only rotate if the device is currently in portrait orientation
+  const isPortrait = window.innerHeight > window.innerWidth;
+  if (isPortrait) {
+    modal.classList.add('rotate-landscape');
+    // Rebuild the modal canvas now that dimensions have changed
+    setTimeout(() => _buildSigModal(), 50);
   }
 }
 
 function closeSigModal() {
   // Save modal canvas back to the real inline canvas
   _commitSigModal();
-  document.getElementById('sigModal').classList.remove('active');
-  // Release orientation lock
-  if (screen.orientation && screen.orientation.unlock) {
-    screen.orientation.unlock();
+  const modal = document.getElementById('sigModal');
+  modal.classList.remove('active');
+  modal.classList.remove('rotate-landscape');
+
+  // Release native orientation lock if it was acquired
+  if (screen.orientation && typeof screen.orientation.unlock === 'function') {
+    try { screen.orientation.unlock(); } catch(e) {}
   }
 }
 
