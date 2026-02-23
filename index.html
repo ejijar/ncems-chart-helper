@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v22 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: OfflineQueue-v23 - Read from DOM at stop time, abort recognition cleanly -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -6264,7 +6264,8 @@ async function extractSection(section) {
 
     // Standard section-specific extraction
     const text = await claudeAPI([{ role: 'user', content: config.prompt(transcript) }], 400);
-    const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
+    const fenceMatch6267 = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const clean = fenceMatch6267 ? fenceMatch6267[1].trim() : text.trim();
     const parsed = JSON.parse(clean);
     config.fill(parsed);
     setDictateState(section, 'done');
@@ -6410,7 +6411,15 @@ Dictated text: "${transcript}"`;
 
   try {
     const text = await claudeAPI([{ role: 'user', content: prompt }], 2048);
-    let clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
+
+    // Extract JSON from backtick fences if present, otherwise use raw text
+    let clean;
+    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      clean = fenceMatch[1].trim();
+    } else {
+      clean = text.trim();
+    }
     console.log('[extractUniversalInfo] raw text length:', text.length, 'clean:', clean.slice(0, 300));
 
     // If response was truncated mid-JSON, attempt to repair it so we keep any fields that did parse
@@ -7197,7 +7206,8 @@ Dictated text: "${transcript}"` }], 400),
       extractUniversalInfo(transcript, 'vitals')
     ]);
 
-    const clean = vitalsText.replace(/```json[\s\S]*?```|```/g, '').trim();
+    const fenceMatchV = vitalsText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const clean = fenceMatchV ? fenceMatchV[1].trim() : vitalsText.trim();
     const parsed = JSON.parse(clean);
     const id = vitalsCount;
     const vitalsFilled = [];
