@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.5 -->
-<script>const APP_VERSION = 'v5.5';</script>
+<!-- Version: v5.7 -->
+<script>const APP_VERSION = 'v5.7';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1282,14 +1282,13 @@
   /* GCS NORMAL BUTTON */
   .gcs-normal-btn {
     background: var(--surface2);
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--success);
     border-radius: 6px;
-    color: var(--text-muted);
+    color: var(--success);
     font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     cursor: pointer;
     padding: 5px 10px;
     white-space: nowrap;
@@ -1299,8 +1298,8 @@
     min-height: 34px;
   }
 
-  .gcs-normal-btn:hover { border-color: var(--success); color: var(--success); }
-  .gcs-normal-btn:active { background: rgba(63,185,80,0.1); }
+  .gcs-normal-btn:hover  { background: rgba(63,185,80,0.12); }
+  .gcs-normal-btn:active { background: rgba(63,185,80,0.22); }
 
   .vitals-line-1,
   .vitals-line-2,
@@ -1317,9 +1316,19 @@
     grid-template-columns: repeat(3, 1fr);
   }
   
+  /* GCS row: label | Eye | Verbal | Motor | 15✓ — total sits on its own row below */
   .vitals-line-3 {
     margin-top: 10px;
-    grid-template-columns: auto repeat(3, 1fr) auto auto;
+    grid-template-columns: auto 1fr 1fr 1fr auto;
+    align-items: end;
+  }
+
+  /* Total score is placed on its own sub-row via a wrapper div */
+  .gcs-total-subrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
   }
   
   .vitals-line-4 {
@@ -1864,15 +1873,11 @@
     .vitals-line-2 {
       grid-template-columns: 1fr 1fr;
     }
-    
-    .gcs-label {
-      grid-column: 1 / -1;
-    }
-    
-    .gcs-total {
-      grid-column: 1 / -1;
-      padding-left: 0;
-      margin-top: 5px;
+
+    /* GCS row stays 5-column (label + 3 selects + btn) on mobile — no override needed */
+    /* Total sub-row just flows naturally below */
+    .gcs-total-subrow {
+      margin-top: 2px;
     }
 
     /* Header — tighter on small screens */
@@ -2534,14 +2539,15 @@
 
   .hpi-layout {
     display: grid;
-    grid-template-columns: 80% 20%;
-    gap: 12px;
+    grid-template-columns: 1fr 90px;
+    gap: 10px;
     align-items: start;
   }
 
   .hpi-input {
     display: flex;
     flex-direction: column;
+    min-width: 0; /* prevent grid blowout */
   }
 
   .hpi-voice-row {
@@ -2582,10 +2588,12 @@
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 8px 6px;
+    padding: 8px 8px 8px 6px;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .opqrst-item {
@@ -3117,7 +3125,7 @@
         <div class="subsection-label">HPI — History of Present Illness <span class="format-tag">OPQRST</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="hpiNarrative" placeholder="Describe the HPI freely — include onset/duration, what makes it better or worse, how the patient describes it, where it is, severity (0–10), and timing/trends." style="min-height:120px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
+            <textarea id="hpiNarrative" placeholder="Describe the HPI freely — include onset/duration, what makes it better or worse, how the patient describes it, where it is, severity (0–10), and timing/trends." style="min-height:160px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">O</span><div><div class="opqrst-word">Onset</div><div class="opqrst-hint">When/how did it start?</div></div></div>
@@ -3133,7 +3141,7 @@
         <div class="subsection-label" style="margin-top:6px">PMH — Past Medical History <span class="format-tag">SAMPLE</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="sampleNarrative" placeholder="Describe signs/symptoms, allergies, medications, past medical history, last oral intake, and events leading up to this call." style="min-height:120px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
+            <textarea id="sampleNarrative" placeholder="Describe signs/symptoms, allergies, medications, past medical history, last oral intake, and events leading up to this call." style="min-height:160px; width:100%;" oninput="autoResizeTextarea(this)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">S</span><div><div class="opqrst-word">Signs/Symptoms</div><div class="opqrst-hint">Current associated symptoms</div></div></div>
@@ -6039,9 +6047,11 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
             <option value="1">1 - None</option>
           </select>
         </div>
-        <div class="gcs-total" id="vgcs-total-${id}">Total: —</div>
         <button type="button" class="gcs-normal-btn" onclick="setGCSNormal(${id})" title="Set GCS to 15 (Eye 4, Verbal 5, Motor 6)">15 ✓</button>
         <input type="hidden" id="vgcs-${id}" value="">
+      </div>
+      <div class="gcs-total-subrow">
+        <div class="gcs-total" id="vgcs-total-${id}">Total: —</div>
       </div>
       
       ${label === 'Hospital Transfer' ? `
@@ -6066,6 +6076,8 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
             oninput="triggerAutoSave();checkTransportRefusalExclusivity();">
         </div>
       </div>
+      <div style="border-top:1px solid var(--border);margin:10px 0 6px;"></div>
+      <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Activities</div>
       ${pillsHTML}
       ` : pillsHTML}
       
@@ -8802,6 +8814,29 @@ function newChart() {
 
     outputGenerated = false;
     autoSaveChartId = null;
+
+    // ── Refusal tab: reset all checkboxes and radios to unchecked ──
+    [
+      'rf_sameAsHome',
+      'rf_informed1', 'rf_informed2', 'rf_informed3', 'rf_informed4',
+      'rf_disp1', 'rf_disp2',
+      'rf_refusedSign'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+    // Show incident location fields (sameAsHome is now unchecked)
+    try { toggleIncidentLocation(); } catch(e) {}
+    // Clear refusal text fields
+    [
+      'rf_incidentAddress','rf_incidentCity','rf_incidentState','rf_incidentZip',
+      'rf_custodyName','rf_mdName','rf_advice','rf_explanation',
+      'rf_printedPatient','rf_printedWitness','rf_printedRMA','rf_unitRMA'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+
     switchTab('dispatch', document.querySelectorAll('.tab')[0]);
   });
 }
