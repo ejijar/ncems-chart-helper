@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v19 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: OfflineQueue-v20 - Read from DOM at stop time, abort recognition cleanly -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -6401,7 +6401,7 @@ Return ONLY the JSON object, no other text.
 Dictated text: "${transcript}"`;
 
   try {
-    const text = await claudeAPI([{ role: 'user', content: prompt }], 600);
+    const text = await claudeAPI([{ role: 'user', content: prompt }], 1200);
     const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
     const parsed = JSON.parse(clean);
     
@@ -6537,7 +6537,9 @@ async function startPatientVoice() {
         setTimeout(loop, 80);
         return;
       }
-      // User tapped stop — commit any trailing interim text, then process
+      // User tapped stop — commit any trailing interim text
+      // NOTE: addTranscriptToHistory and extractPatientInfo are called by stopPatientVoice,
+      // not here, to avoid double-firing when abort() triggers onEnd.
       if (ptInterim.trim()) ptTranscript += ptInterim.trim() + ' ';
       ptInterim = '';
       ptRecognition = null;
@@ -6546,8 +6548,6 @@ async function startPatientVoice() {
         transEl.textContent = t;
         transEl.classList.add('has-content');
         document.getElementById('ptExtractBtn').style.display = 'block';
-        addTranscriptToHistory('patient', t);
-        extractPatientInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate patient info — name, DOB, address, phone…';
         transEl.classList.remove('has-content');
@@ -6724,9 +6724,7 @@ async function startSceneVoice() {
       const t = sceneTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
-        addTranscriptToHistory('scene', t);
         document.getElementById('sceneExtractBtn').style.display = 'block';
-        extractSceneInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate scene information — LOC, scene notes…';
         transEl.classList.remove('has-content');
@@ -6886,7 +6884,6 @@ async function startIncidentVoice() {
       const t = incidentTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
-        addTranscriptToHistory('incident', t);
         document.getElementById('incidentExtractBtn').style.display = 'block';
       } else {
         transEl.textContent = 'Tap mic to dictate incident details…';
@@ -7044,7 +7041,6 @@ async function startVitalsVoice() {
       const t = vitalsTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
-        addTranscriptToHistory('vitals', t);
         document.getElementById('vitalsExtractBtn').style.display = 'block';
       } else {
         transEl.textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…';
@@ -7259,7 +7255,6 @@ async function startTransportVoice() {
       const t = transportTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t; transEl.classList.add('has-content');
-        addTranscriptToHistory('transport', t);
         const extBtn = document.getElementById('transportExtractBtn');
         if (extBtn) extBtn.style.display = 'block';
       } else {
@@ -7665,6 +7660,7 @@ function calcAge() {
 // ======== NEW CHART ========
 function newChart() {
   showConfirm('New Chart', 'Clear current chart and start a new one? All unsaved data will be lost.', 'Clear & Start New', true, () => {
+    // Clear all form fields
     ['patientName','patientDOB','patientAge','patientAddress','patientCity','patientState',
      'patientZip','patientPhone','patientWeight','chiefComplaint',
      'hpiNarrative','sampleNarrative',
@@ -7676,15 +7672,55 @@ function newChart() {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-  // Also reset the dispatchPriority select
-  const dp = document.getElementById('dispatchPriority');
-  if (dp) dp.selectedIndex = 0;
+
+    // Reset selects
+    const dp = document.getElementById('dispatchPriority');
+    if (dp) dp.selectedIndex = 0;
     document.querySelectorAll('.check-pill').forEach(p => p.classList.remove('selected'));
+
+    // Reset vitals
     document.getElementById('vitals-container').innerHTML = '';
     vitalsCount = 0;
     addVitalsRow();
+
+    // Reset JS transcript variables
+    ptTranscript = ''; sceneTranscript = ''; incidentTranscript = '';
+    vitalsTranscript = ''; transportTranscript = '';
+    secTranscript = {}; secTranscriptLog = {};
+
+    // Reset all dictate display divs and extract buttons
+    const dictateReset = [
+      { trans: 'ptDictateTranscript',        placeholder: 'Tap mic to dictate patient info — name, DOB, address, phone…',       btn: 'ptExtractBtn',        status: 'ptExtractStatus' },
+      { trans: 'sceneDictateTranscript',      placeholder: 'Tap mic to dictate scene information — LOC, scene notes…',            btn: 'sceneExtractBtn',     status: 'sceneExtractStatus' },
+      { trans: 'incidentDictateTranscript',   placeholder: 'Tap mic to dictate incident details — chief complaint, HPI, PMH…',   btn: 'incidentExtractBtn',  status: 'incidentExtractStatus' },
+      { trans: 'vitalsDictateTranscript',     placeholder: 'Tap mic to dictate activities — vitals, what was done, interventions…', btn: 'vitalsExtractBtn', status: 'vitalsExtractStatus' },
+      { trans: 'transportDictateTranscript',  placeholder: 'Tap mic to dictate transport info…',                                  btn: 'transportExtractBtn', status: 'transportExtractStatus' },
+    ];
+    dictateReset.forEach(({ trans, placeholder, btn, status }) => {
+      const t = document.getElementById(trans);
+      if (t) { t.textContent = placeholder; t.classList.remove('has-content'); }
+      const b = document.getElementById(btn);
+      if (b) { b.style.display = 'none'; b.textContent = 'Extract →'; b.disabled = false; }
+      const s = document.getElementById(status);
+      if (s) { s.textContent = ''; s.className = s.className.replace(/\s*(success|error)\s*/g, ' ').trim(); s.style.color = ''; }
+    });
+
+    // Clear transcript history panels
+    ['patient','scene','incident','vitals','transport'].forEach(section => {
+      const h = document.getElementById(section + '-transcript-history');
+      if (h) h.innerHTML = '<div class="transcript-history-empty">No transcripts yet</div>';
+    });
+
+    // Clear section dictate bars and transcripts
+    document.querySelectorAll('[id^="sec-bar-"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[id^="sec-trans-"]').forEach(el => el.innerHTML = '');
+    document.querySelectorAll('[id^="sec-transcript-"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[id^="sec-toggle-"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[id^="sec-status-"]').forEach(el => { el.textContent = ''; el.style.color = ''; });
+    document.querySelectorAll('[id^="sec-state-"]').forEach(el => { el.textContent = ''; el.className = 'sec-dictate-state'; });
+
     outputGenerated = false;
-    autoSaveChartId = null; // Reset auto-save chart ID for new chart
+    autoSaveChartId = null;
     switchTab('input', document.querySelectorAll('.tab')[0]);
   });
 }
@@ -8687,6 +8723,32 @@ async function signupUser() {
 // Logout user
 function logoutUser() {
   showConfirm('Sign Out', 'You will need to sign in again to access saved charts.', 'Sign Out', true, () => {
+    // Clear in-memory transcript state so next user sees a clean slate
+    ptTranscript = ''; sceneTranscript = ''; incidentTranscript = '';
+    vitalsTranscript = ''; transportTranscript = '';
+    secTranscript = {}; secTranscriptLog = {};
+
+    // Reset all dictate display divs and history panels
+    const dictateReset = [
+      { trans: 'ptDictateTranscript',       placeholder: 'Tap mic to dictate patient info — name, DOB, address, phone…',        btn: 'ptExtractBtn',       status: 'ptExtractStatus' },
+      { trans: 'sceneDictateTranscript',     placeholder: 'Tap mic to dictate scene information — LOC, scene notes…',             btn: 'sceneExtractBtn',    status: 'sceneExtractStatus' },
+      { trans: 'incidentDictateTranscript',  placeholder: 'Tap mic to dictate incident details — chief complaint, HPI, PMH…',    btn: 'incidentExtractBtn', status: 'incidentExtractStatus' },
+      { trans: 'vitalsDictateTranscript',    placeholder: 'Tap mic to dictate activities — vitals, what was done, interventions…', btn: 'vitalsExtractBtn',  status: 'vitalsExtractStatus' },
+      { trans: 'transportDictateTranscript', placeholder: 'Tap mic to dictate transport info…',                                   btn: 'transportExtractBtn', status: 'transportExtractStatus' },
+    ];
+    dictateReset.forEach(({ trans, placeholder, btn, status }) => {
+      const t = document.getElementById(trans);
+      if (t) { t.textContent = placeholder; t.classList.remove('has-content'); }
+      const b = document.getElementById(btn);
+      if (b) { b.style.display = 'none'; b.textContent = 'Extract →'; b.disabled = false; }
+      const s = document.getElementById(status);
+      if (s) { s.textContent = ''; s.style.color = ''; }
+    });
+    ['patient','scene','incident','vitals','transport'].forEach(section => {
+      const h = document.getElementById(section + '-transcript-history');
+      if (h) h.innerHTML = '<div class="transcript-history-empty">No transcripts yet</div>';
+    });
+
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('emsEncryptionKey');
     showLoginScreen();
