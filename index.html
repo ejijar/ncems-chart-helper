@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.18 -->
-<script>const APP_VERSION = 'v5.18';</script>
+<!-- Version: v5.19 -->
+<script>const APP_VERSION = 'v5.19';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -7062,6 +7062,7 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return null;
   let current = null;
+  let stopped = false;
 
   const rec = new SR();
   rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US';
@@ -7079,10 +7080,8 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
     if (e.error === 'no-speech') return;
     if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
   };
-  rec.onend = () => {
-    current = null;
-    onDone();
-  };
+  // onend may or may not fire on iOS after abort() — onDone is called explicitly from stop() instead
+  rec.onend = () => { current = null; };
 
   try { rec.start(); } catch(err) {
     showMicBanner('⚠ Could not start mic: ' + err.message);
@@ -7090,7 +7089,13 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
   }
 
   return {
-    stop: () => { if (current) { try { current.abort(); } catch(e) {} current = null; } }
+    stop: () => {
+      if (stopped) return;
+      stopped = true;
+      if (current) { try { current.abort(); } catch(e) {} current = null; }
+      // Call onDone immediately — don't wait for onend (unreliable on iOS Safari with continuous:true)
+      onDone();
+    }
   };
 }
 
