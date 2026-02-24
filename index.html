@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v19 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: OfflineQueue-v25 - Read from DOM at stop time, abort recognition cleanly -->
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -5961,15 +5961,19 @@ async function wsSectionStart(section, btn) {
   btn.textContent = '⏹';
   setDictateState(section, 'listening');
 
+  let sessionCommitted = '';
+  let interim = '';
+
   function onResult(e) {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) secTranscript[section] += e.results[i][0].transcript + ' ';
+    interim = '';
+    sessionCommitted = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
       else interim += e.results[i][0].transcript;
     }
-    const t = secTranscript[section].trim();
-    const display = (t + (interim ? ' ' + interim : '')).trim();
-    const words = t ? t.split(/\s+/).length : 0;
+    const committed = (secTranscript[section] || '') + sessionCommitted;
+    const display = (committed + interim).trim();
+    const words = committed.trim() ? committed.trim().split(/\s+/).length : 0;
     const stateEl = document.getElementById('sec-state-' + section);
     if (stateEl) stateEl.textContent = '🎙 ' + (words > 0 ? words + ' word' + (words !== 1 ? 's' : '') + ' captured…' : 'Listening…');
     const transTextEl = document.getElementById('sec-trans-' + section);
@@ -5980,6 +5984,9 @@ async function wsSectionStart(section, btn) {
     if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
   }
   function onEnd() {
+    // Commit this session before potentially restarting
+    if (sessionCommitted.trim()) { secTranscript[section] = (secTranscript[section] || '') + sessionCommitted; sessionCommitted = ''; }
+    if (interim.trim()) { secTranscript[section] = (secTranscript[section] || '') + interim.trim() + ' '; interim = ''; }
     if (secRecording[section]) { setTimeout(loop, 80); return; }
     // User tapped stop — process transcript
     secRecognition[section] = null;
@@ -6000,6 +6007,7 @@ async function wsSectionStart(section, btn) {
   }
   function loop() {
     if (!secRecording[section]) return;
+    sessionCommitted = ''; interim = '';
     const rec = new SR();
     rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
     rec.onresult = onResult; rec.onerror = onErr; rec.onend = onEnd;
@@ -6256,7 +6264,8 @@ async function extractSection(section) {
 
     // Standard section-specific extraction
     const text = await claudeAPI([{ role: 'user', content: config.prompt(transcript) }], 400);
-    const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
+    const fenceMatch6267 = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const clean = fenceMatch6267 ? fenceMatch6267[1].trim() : text.trim();
     const parsed = JSON.parse(clean);
     config.fill(parsed);
     setDictateState(section, 'done');
@@ -6401,8 +6410,31 @@ Return ONLY the JSON object, no other text.
 Dictated text: "${transcript}"`;
 
   try {
-    const text = await claudeAPI([{ role: 'user', content: prompt }], 600);
-    const clean = text.replace(/```json[\s\S]*?```|```/g, '').trim();
+    const text = await claudeAPI([{ role: 'user', content: prompt }], 2048);
+
+    // Extract JSON from backtick fences if present, otherwise use raw text
+    let clean;
+    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fenceMatch) {
+      clean = fenceMatch[1].trim();
+    } else {
+      clean = text.trim();
+    }
+    console.log('[extractUniversalInfo] raw text length:', text.length, 'clean:', clean.slice(0, 300));
+
+    // If response was truncated mid-JSON, attempt to repair it so we keep any fields that did parse
+    if (!clean.endsWith('}')) {
+      console.warn('[extractUniversalInfo] JSON appears truncated, attempting repair');
+      const lastBrace = clean.lastIndexOf('}');
+      if (lastBrace > 0) {
+        clean = clean.slice(0, lastBrace + 1);
+        let depth = 0;
+        for (const ch of clean) { if (ch === '{') depth++; else if (ch === '}') depth--; }
+        for (let i = 0; i < depth; i++) clean += '}';
+      }
+    }
+
+    console.log('[extractUniversalInfo] attempting JSON.parse on:', clean.slice(0, 200));
     const parsed = JSON.parse(clean);
     
     const fieldsPopulated = [];
@@ -6513,19 +6545,21 @@ async function startPatientVoice() {
 
     ptRecording = true;
     let ptInterim = '';
+    let sessionCommitted = ''; // text committed in THIS recognition session only
     document.getElementById('ptVoiceBtn').classList.add('recording');
     document.getElementById('ptVoiceBtn').textContent = '⏹';
 
     function onResult(e) {
       ptInterim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          ptTranscript += e.results[i][0].transcript + ' ';
+          sessionCommitted += e.results[i][0].transcript + ' ';
         } else {
           ptInterim += e.results[i][0].transcript;
         }
       }
-      const display = (ptTranscript + ptInterim).trim();
+      const display = (ptTranscript + sessionCommitted + ptInterim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onErr(e) {
@@ -6533,20 +6567,27 @@ async function startPatientVoice() {
       if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
     }
     function onEnd() {
+      // Commit this session's results into ptTranscript before potentially restarting
+      if (sessionCommitted.trim()) {
+        ptTranscript += sessionCommitted;
+        sessionCommitted = '';
+      }
+      if (ptInterim.trim()) {
+        ptTranscript += ptInterim.trim() + ' ';
+        ptInterim = '';
+      }
       if (ptRecording) {
         setTimeout(loop, 80);
         return;
       }
-      // User tapped stop — commit any trailing interim text, then process
-      if (ptInterim.trim()) ptTranscript += ptInterim.trim() + ' ';
-      ptInterim = '';
+      // User tapped stop — final commit done, now handle history + extract
       ptRecognition = null;
       const t = ptTranscript.trim();
       if (t.length > 2) {
         transEl.textContent = t;
         transEl.classList.add('has-content');
-        document.getElementById('ptExtractBtn').style.display = 'block';
         addTranscriptToHistory('patient', t);
+        document.getElementById('ptExtractBtn').style.display = 'block';
         extractPatientInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate patient info — name, DOB, address, phone…';
@@ -6555,6 +6596,8 @@ async function startPatientVoice() {
     }
     function loop() {
       if (!ptRecording) return;
+      sessionCommitted = '';
+      ptInterim = '';
       const rec = new SR();
       rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = onErr; rec.onend = onEnd;
@@ -6591,20 +6634,7 @@ async function stopPatientVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    // Read the displayed text directly — it always reflects what the user saw (including interim)
-    if (ptRecognition) { try { ptRecognition.abort(); } catch(e) {} ptRecognition = null; }
-    const t = wsReadDisplayed('ptDictateTranscript', ptTranscript);
-    if (t.length > 2) {
-      ptTranscript = t;
-      transEl.textContent = t;
-      transEl.classList.add('has-content');
-      addTranscriptToHistory('patient', t);
-      document.getElementById('ptExtractBtn').style.display = 'block';
-      extractPatientInfo();
-    } else {
-      transEl.textContent = 'Tap mic to dictate patient info — name, DOB, address, phone…';
-      transEl.classList.remove('has-content');
-    }
+    // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
   }
 }
 
@@ -6705,21 +6735,23 @@ async function startSceneVoice() {
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
     sceneRecording = true;
     let sceneInterim = '';
+    let sessionCommitted = '';
     document.getElementById('sceneVoiceBtn').classList.add('recording');
     document.getElementById('sceneVoiceBtn').textContent = '⏹';
     function onResult(e) {
       sceneInterim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sceneTranscript += e.results[i][0].transcript + ' ';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else sceneInterim += e.results[i][0].transcript;
       }
-      const display = (sceneTranscript + sceneInterim).trim();
+      const display = (sceneTranscript + sessionCommitted + sceneInterim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { sceneTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (sceneInterim.trim()) { sceneTranscript += sceneInterim.trim() + ' '; sceneInterim = ''; }
       if (sceneRecording) { setTimeout(loop, 80); return; }
-      if (sceneInterim.trim()) sceneTranscript += sceneInterim.trim() + ' ';
-      sceneInterim = '';
       sceneRecognition = null;
       const t = sceneTranscript.trim();
       if (t.length > 2) {
@@ -6734,6 +6766,7 @@ async function startSceneVoice() {
     }
     function loop() {
       if (!sceneRecording) return;
+      sessionCommitted = ''; sceneInterim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
       rec.onend = onEnd;
@@ -6767,18 +6800,7 @@ async function stopSceneVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    if (sceneRecognition) { try { sceneRecognition.abort(); } catch(e) {} sceneRecognition = null; }
-    const t = wsReadDisplayed('sceneDictateTranscript', sceneTranscript);
-    if (t.length > 2) {
-      sceneTranscript = t;
-      transEl.textContent = t; transEl.classList.add('has-content');
-      addTranscriptToHistory('scene', t);
-      document.getElementById('sceneExtractBtn').style.display = 'block';
-      extractSceneInfo();
-    } else {
-      transEl.textContent = 'Tap mic to dictate scene information — LOC, scene notes…';
-      transEl.classList.remove('has-content');
-    }
+    // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
   }
 }
 
@@ -6869,18 +6891,23 @@ async function startIncidentVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
     incidentRecording = true;
+    let sessionCommitted = '';
+    let interim = '';
     document.getElementById('incidentVoiceBtn').classList.add('recording');
     document.getElementById('incidentVoiceBtn').textContent = '⏹';
     function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) incidentTranscript += e.results[i][0].transcript + ' ';
+      interim = '';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else interim += e.results[i][0].transcript;
       }
-      const display = (incidentTranscript + interim).trim();
+      const display = (incidentTranscript + sessionCommitted + interim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { incidentTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (interim.trim()) { incidentTranscript += interim.trim() + ' '; interim = ''; }
       if (incidentRecording) { setTimeout(loop, 80); return; }
       incidentRecognition = null;
       const t = incidentTranscript.trim();
@@ -6888,6 +6915,7 @@ async function startIncidentVoice() {
         transEl.textContent = t; transEl.classList.add('has-content');
         addTranscriptToHistory('incident', t);
         document.getElementById('incidentExtractBtn').style.display = 'block';
+        extractIncidentInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate incident details…';
         transEl.classList.remove('has-content');
@@ -6895,6 +6923,7 @@ async function startIncidentVoice() {
     }
     function loop() {
       if (!incidentRecording) return;
+      sessionCommitted = ''; interim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
       rec.onend = onEnd;
@@ -6927,17 +6956,7 @@ async function stopIncidentVoice() {
       transEl.classList.remove('has-content');
     }
   } else {
-    if (incidentRecognition) { try { incidentRecognition.abort(); } catch(e) {} incidentRecognition = null; }
-    const t = wsReadDisplayed('incidentDictateTranscript', incidentTranscript);
-    if (t.length > 2) {
-      incidentTranscript = t;
-      transEl.textContent = t; transEl.classList.add('has-content');
-      addTranscriptToHistory('incident', t);
-      document.getElementById('incidentExtractBtn').style.display = 'block';
-    } else {
-      transEl.textContent = 'Tap mic to dictate incident details…';
-      transEl.classList.remove('has-content');
-    }
+    // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
   }
 }
 
@@ -7027,18 +7046,23 @@ async function startVitalsVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
     vitalsRecording = true;
+    let sessionCommitted = '';
+    let interim = '';
     document.getElementById('vitalsVoiceBtn').classList.add('recording');
     document.getElementById('vitalsVoiceBtn').textContent = '⏹';
     function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) vitalsTranscript += e.results[i][0].transcript + ' ';
+      interim = '';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else interim += e.results[i][0].transcript;
       }
-      const display = (vitalsTranscript + interim).trim();
+      const display = (vitalsTranscript + sessionCommitted + interim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { vitalsTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (interim.trim()) { vitalsTranscript += interim.trim() + ' '; interim = ''; }
       if (vitalsRecording) { setTimeout(loop, 80); return; }
       vitalsRecognition = null;
       const t = vitalsTranscript.trim();
@@ -7046,6 +7070,7 @@ async function startVitalsVoice() {
         transEl.textContent = t; transEl.classList.add('has-content');
         addTranscriptToHistory('vitals', t);
         document.getElementById('vitalsExtractBtn').style.display = 'block';
+        extractVitalsInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…';
         transEl.classList.remove('has-content');
@@ -7053,6 +7078,7 @@ async function startVitalsVoice() {
     }
     function loop() {
       if (!vitalsRecording) return;
+      sessionCommitted = ''; interim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') showMicBanner('⚠ ' + e.error); };
       rec.onend = onEnd;
@@ -7084,20 +7110,7 @@ async function stopVitalsVoice() {
       document.getElementById('vitalsDictateTranscript').classList.remove('has-content');
     }
   }
-  // WebSpeech: onend handler in the loop processes the transcript
-  if (!useWhisper()) {
-    if (vitalsRecognition) { try { vitalsRecognition.abort(); } catch(e) {} vitalsRecognition = null; }
-    const t = wsReadDisplayed('vitalsDictateTranscript', vitalsTranscript);
-    const vTransEl = document.getElementById('vitalsDictateTranscript');
-    if (t.length > 2) {
-      vitalsTranscript = t;
-      if (vTransEl) { vTransEl.textContent = t; vTransEl.classList.add('has-content'); }
-      addTranscriptToHistory('vitals', t);
-      document.getElementById('vitalsExtractBtn').style.display = 'block';
-    } else {
-      if (vTransEl) { vTransEl.textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…'; vTransEl.classList.remove('has-content'); }
-    }
-  }
+  // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
 }
 
 async function extractVitalsInfo() {
@@ -7154,7 +7167,8 @@ Dictated text: "${transcript}"` }], 400),
       extractUniversalInfo(transcript, 'vitals')
     ]);
 
-    const clean = vitalsText.replace(/```json[\s\S]*?```|```/g, '').trim();
+    const fenceMatchV = vitalsText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const clean = fenceMatchV ? fenceMatchV[1].trim() : vitalsText.trim();
     const parsed = JSON.parse(clean);
     const id = vitalsCount;
     const vitalsFilled = [];
@@ -7242,18 +7256,23 @@ async function startTransportVoice() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { showMicBanner('⚠ Web Speech not available.'); return; }
     transportRecording = true;
+    let sessionCommitted = '';
+    let interim = '';
     document.getElementById('transportVoiceBtn').classList.add('recording');
     document.getElementById('transportVoiceBtn').textContent = '⏹';
     function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) transportTranscript += e.results[i][0].transcript + ' ';
+      interim = '';
+      sessionCommitted = '';
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
         else interim += e.results[i][0].transcript;
       }
-      const display = (transportTranscript + interim).trim();
+      const display = (transportTranscript + sessionCommitted + interim).trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
     }
     function onEnd() {
+      if (sessionCommitted.trim()) { transportTranscript += sessionCommitted; sessionCommitted = ''; }
+      if (interim.trim()) { transportTranscript += interim.trim() + ' '; interim = ''; }
       if (transportRecording) { setTimeout(loop, 80); return; }
       transportRecognition = null;
       const t = transportTranscript.trim();
@@ -7262,6 +7281,7 @@ async function startTransportVoice() {
         addTranscriptToHistory('transport', t);
         const extBtn = document.getElementById('transportExtractBtn');
         if (extBtn) extBtn.style.display = 'block';
+        extractTransportInfo();
       } else {
         transEl.textContent = 'Tap mic to dictate transport info…';
         transEl.classList.remove('has-content');
@@ -7269,6 +7289,7 @@ async function startTransportVoice() {
     }
     function loop() {
       if (!transportRecording) return;
+      sessionCommitted = ''; interim = '';
       const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
       rec.onresult = onResult; rec.onerror = e => {};
       rec.onend = onEnd;
@@ -7301,22 +7322,7 @@ async function stopTransportVoice() {
       tEl.classList.remove('has-content');
     }
   }
-  // WebSpeech: read from DOM directly
-  if (!useWhisper()) {
-    if (transportRecognition) { try { transportRecognition.abort(); } catch(e) {} transportRecognition = null; }
-    const t = wsReadDisplayed('transportDictateTranscript', transportTranscript);
-    const tEl = document.getElementById('transportDictateTranscript');
-    if (t.length > 2) {
-      transportTranscript = t;
-      if (tEl) { tEl.textContent = t; tEl.classList.add('has-content'); }
-      addTranscriptToHistory('transport', t);
-      const extBtn = document.getElementById('transportExtractBtn');
-      if (extBtn) extBtn.style.display = 'block';
-    } else if (tEl) {
-      tEl.textContent = 'Tap mic to dictate transport info…';
-      tEl.classList.remove('has-content');
-    }
-  }
+  // WebSpeech: onEnd handles transcript commit, history, and extract after abort fires
 }
 
 async function extractTransportInfo() {
@@ -7581,7 +7587,7 @@ async function claudeAPI(messages, max_tokens = 1000) {
   if (!isOnline()) {
     throw new Error('OFFLINE');
   }
-  console.log('[claudeAPI] calling with key:', apiKey.slice(0,12) + '…', 'max_tokens:', max_tokens);
+  console.log('[claudeAPI] calling, max_tokens:', max_tokens);
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -7602,7 +7608,13 @@ async function claudeAPI(messages, max_tokens = 1000) {
     throw new Error(`API error ${response.status}: ${err?.error?.message || response.statusText}`);
   }
   const data = await response.json();
-  return data.content?.map(c => c.text || '').join('') || '';
+  console.log('[claudeAPI] stop_reason:', data.stop_reason, 'content blocks:', data.content?.length);
+  const text = data.content?.map(c => c.text || '').join('') || '';
+  console.log('[claudeAPI] response text (first 500):', text.slice(0, 500));
+  if (data.stop_reason === 'max_tokens') {
+    console.warn('[claudeAPI] WARNING: response was truncated by max_tokens limit!');
+  }
+  return text;
 }
 
 // ======== SETTINGS ========
@@ -7665,6 +7677,7 @@ function calcAge() {
 // ======== NEW CHART ========
 function newChart() {
   showConfirm('New Chart', 'Clear current chart and start a new one? All unsaved data will be lost.', 'Clear & Start New', true, () => {
+    // Clear all form fields
     ['patientName','patientDOB','patientAge','patientAddress','patientCity','patientState',
      'patientZip','patientPhone','patientWeight','chiefComplaint',
      'hpiNarrative','sampleNarrative',
@@ -7676,15 +7689,55 @@ function newChart() {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-  // Also reset the dispatchPriority select
-  const dp = document.getElementById('dispatchPriority');
-  if (dp) dp.selectedIndex = 0;
+
+    // Reset selects
+    const dp = document.getElementById('dispatchPriority');
+    if (dp) dp.selectedIndex = 0;
     document.querySelectorAll('.check-pill').forEach(p => p.classList.remove('selected'));
+
+    // Reset vitals
     document.getElementById('vitals-container').innerHTML = '';
     vitalsCount = 0;
     addVitalsRow();
+
+    // Reset JS transcript variables
+    ptTranscript = ''; sceneTranscript = ''; incidentTranscript = '';
+    vitalsTranscript = ''; transportTranscript = '';
+    secTranscript = {}; secTranscriptLog = {};
+
+    // Reset all dictate display divs and extract buttons
+    const dictateReset = [
+      { trans: 'ptDictateTranscript',        placeholder: 'Tap mic to dictate patient info — name, DOB, address, phone…',       btn: 'ptExtractBtn',        status: 'ptExtractStatus' },
+      { trans: 'sceneDictateTranscript',      placeholder: 'Tap mic to dictate scene information — LOC, scene notes…',            btn: 'sceneExtractBtn',     status: 'sceneExtractStatus' },
+      { trans: 'incidentDictateTranscript',   placeholder: 'Tap mic to dictate incident details — chief complaint, HPI, PMH…',   btn: 'incidentExtractBtn',  status: 'incidentExtractStatus' },
+      { trans: 'vitalsDictateTranscript',     placeholder: 'Tap mic to dictate activities — vitals, what was done, interventions…', btn: 'vitalsExtractBtn', status: 'vitalsExtractStatus' },
+      { trans: 'transportDictateTranscript',  placeholder: 'Tap mic to dictate transport info…',                                  btn: 'transportExtractBtn', status: 'transportExtractStatus' },
+    ];
+    dictateReset.forEach(({ trans, placeholder, btn, status }) => {
+      const t = document.getElementById(trans);
+      if (t) { t.textContent = placeholder; t.classList.remove('has-content'); }
+      const b = document.getElementById(btn);
+      if (b) { b.style.display = 'none'; b.textContent = 'Extract →'; b.disabled = false; }
+      const s = document.getElementById(status);
+      if (s) { s.textContent = ''; s.className = s.className.replace(/\s*(success|error)\s*/g, ' ').trim(); s.style.color = ''; }
+    });
+
+    // Clear transcript history panels
+    ['patient','scene','incident','vitals','transport'].forEach(section => {
+      const h = document.getElementById(section + '-transcript-history');
+      if (h) h.innerHTML = '<div class="transcript-history-empty">No transcripts yet</div>';
+    });
+
+    // Clear section dictate bars and transcripts
+    document.querySelectorAll('[id^="sec-bar-"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[id^="sec-trans-"]').forEach(el => el.innerHTML = '');
+    document.querySelectorAll('[id^="sec-transcript-"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[id^="sec-toggle-"]').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('[id^="sec-status-"]').forEach(el => { el.textContent = ''; el.style.color = ''; });
+    document.querySelectorAll('[id^="sec-state-"]').forEach(el => { el.textContent = ''; el.className = 'sec-dictate-state'; });
+
     outputGenerated = false;
-    autoSaveChartId = null; // Reset auto-save chart ID for new chart
+    autoSaveChartId = null;
     switchTab('input', document.querySelectorAll('.tab')[0]);
   });
 }
@@ -8687,6 +8740,32 @@ async function signupUser() {
 // Logout user
 function logoutUser() {
   showConfirm('Sign Out', 'You will need to sign in again to access saved charts.', 'Sign Out', true, () => {
+    // Clear in-memory transcript state so next user sees a clean slate
+    ptTranscript = ''; sceneTranscript = ''; incidentTranscript = '';
+    vitalsTranscript = ''; transportTranscript = '';
+    secTranscript = {}; secTranscriptLog = {};
+
+    // Reset all dictate display divs and history panels
+    const dictateReset = [
+      { trans: 'ptDictateTranscript',       placeholder: 'Tap mic to dictate patient info — name, DOB, address, phone…',        btn: 'ptExtractBtn',       status: 'ptExtractStatus' },
+      { trans: 'sceneDictateTranscript',     placeholder: 'Tap mic to dictate scene information — LOC, scene notes…',             btn: 'sceneExtractBtn',    status: 'sceneExtractStatus' },
+      { trans: 'incidentDictateTranscript',  placeholder: 'Tap mic to dictate incident details — chief complaint, HPI, PMH…',    btn: 'incidentExtractBtn', status: 'incidentExtractStatus' },
+      { trans: 'vitalsDictateTranscript',    placeholder: 'Tap mic to dictate activities — vitals, what was done, interventions…', btn: 'vitalsExtractBtn',  status: 'vitalsExtractStatus' },
+      { trans: 'transportDictateTranscript', placeholder: 'Tap mic to dictate transport info…',                                   btn: 'transportExtractBtn', status: 'transportExtractStatus' },
+    ];
+    dictateReset.forEach(({ trans, placeholder, btn, status }) => {
+      const t = document.getElementById(trans);
+      if (t) { t.textContent = placeholder; t.classList.remove('has-content'); }
+      const b = document.getElementById(btn);
+      if (b) { b.style.display = 'none'; b.textContent = 'Extract →'; b.disabled = false; }
+      const s = document.getElementById(status);
+      if (s) { s.textContent = ''; s.style.color = ''; }
+    });
+    ['patient','scene','incident','vitals','transport'].forEach(section => {
+      const h = document.getElementById(section + '-transcript-history');
+      if (h) h.innerHTML = '<div class="transcript-history-empty">No transcripts yet</div>';
+    });
+
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('emsEncryptionKey');
     showLoginScreen();
