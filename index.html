@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: OfflineQueue-v25 - Read from DOM at stop time, abort recognition cleanly -->
+<!-- Version: v5.19 -->
+<script>const APP_VERSION = 'v5.19';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -249,9 +250,10 @@
   }
 
   textarea {
-    resize: vertical;
-    min-height: 150px;
+    resize: none;
+    min-height: 60px;
     line-height: 1.5;
+    overflow-y: hidden;
   }
 
   select {
@@ -1280,14 +1282,13 @@
   /* GCS NORMAL BUTTON */
   .gcs-normal-btn {
     background: var(--surface2);
-    border: 1px solid var(--border);
+    border: 1.5px solid var(--success);
     border-radius: 6px;
-    color: var(--text-muted);
+    color: var(--success);
     font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     cursor: pointer;
     padding: 5px 10px;
     white-space: nowrap;
@@ -1297,8 +1298,8 @@
     min-height: 34px;
   }
 
-  .gcs-normal-btn:hover { border-color: var(--success); color: var(--success); }
-  .gcs-normal-btn:active { background: rgba(63,185,80,0.1); }
+  .gcs-normal-btn:hover  { background: rgba(63,185,80,0.12); }
+  .gcs-normal-btn:active { background: rgba(63,185,80,0.22); }
 
   .vitals-line-1,
   .vitals-line-2,
@@ -1315,9 +1316,19 @@
     grid-template-columns: repeat(3, 1fr);
   }
   
+  /* GCS row: label | Eye | Verbal | Motor | 15✓ — total sits on its own row below */
   .vitals-line-3 {
     margin-top: 10px;
-    grid-template-columns: auto repeat(3, 1fr) auto auto;
+    grid-template-columns: auto 1fr 1fr 1fr auto;
+    align-items: end;
+  }
+
+  /* Total score is placed on its own sub-row via a wrapper div */
+  .gcs-total-subrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
   }
   
   .vitals-line-4 {
@@ -1856,21 +1867,196 @@
     line-height: 1.4;
   }
 
+  /* ── Reference Tab ────────────────────────────────────── */
+  .ref-action-bar {
+    display: flex;
+    gap: 12px;
+    padding: 16px 0 8px;
+  }
+  .ref-capture-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 20px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-muted);
+  }
+  .ref-capture-btn:hover, .ref-capture-btn:active {
+    border-color: var(--accent);
+    background: rgba(249,115,22,0.05);
+    color: var(--accent);
+  }
+  .ref-btn-icon { font-size: 28px; line-height: 1; }
+  .ref-btn-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .ref-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 48px 24px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .ref-empty-icon  { font-size: 44px; opacity: 0.4; }
+  .ref-empty-text  { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .ref-empty-sub   { font-size: 12px; max-width: 260px; line-height: 1.5; }
+
+  .ref-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    padding-bottom: 32px;
+  }
+
+  .ref-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ref-thumb-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 75%; /* 4:3 aspect */
+    cursor: pointer;
+    overflow: hidden;
+    background: #111;
+  }
+  .ref-thumb-wrap img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.15s;
+  }
+  .ref-thumb-wrap:hover img { opacity: 0.85; }
+  .ref-thumb-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .ref-thumb-wrap:hover .ref-thumb-overlay { opacity: 1; }
+
+  .ref-card-body {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ref-caption-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 5px 8px;
+    width: 100%;
+    resize: none;
+  }
+  .ref-caption-input::placeholder { color: var(--text-dim); }
+  .ref-card-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .ref-save-btn, .ref-delete-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 5px 4px;
+    cursor: pointer;
+    transition: all 0.12s;
+    text-align: center;
+  }
+  .ref-save-btn:hover   { border-color: var(--success); color: var(--success); }
+  .ref-delete-btn:hover { border-color: var(--danger);  color: var(--danger);  }
+
+  /* Lightbox */
+  #refLightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 9990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .ref-lb-inner {
+    display: flex;
+    flex-direction: column;
+    max-width: min(900px, 100%);
+    max-height: 100%;
+    width: 100%;
+    gap: 8px;
+  }
+  .ref-lb-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .ref-lb-caption-display {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: #fff;
+    opacity: 0.85;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #refLbImg {
+    width: 100%;
+    max-height: calc(100vh - 100px);
+    object-fit: contain;
+    border-radius: 8px;
+    display: block;
+  }
+
   /* RESPONSIVE — iPhone optimized */
   @media (max-width: 500px) {
-    .vitals-line-1,
+    .ref-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .ref-capture-btn { padding: 16px 8px; }
+    .ref-btn-icon { font-size: 24px; }
+  }
     .vitals-line-2 {
       grid-template-columns: 1fr 1fr;
     }
-    
-    .gcs-label {
-      grid-column: 1 / -1;
-    }
-    
-    .gcs-total {
-      grid-column: 1 / -1;
-      padding-left: 0;
-      margin-top: 5px;
+
+    /* GCS row stays 5-column (label + 3 selects + btn) on mobile — no override needed */
+    /* Total sub-row just flows naturally below */
+    .gcs-total-subrow {
+      margin-top: 2px;
     }
 
     /* Header — tighter on small screens */
@@ -1964,19 +2150,208 @@
     touch-action: none;
   }
 
-  .sig-clear-btn {
+  .sig-action-btn {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--text-muted);
     border-radius: 4px;
-    padding: 3px 8px;
-    font-family: var(--mono);
-    font-size: 9px;
+    padding: 3px 9px;
+    font-size: 14px;
     cursor: pointer;
     transition: all 0.15s;
+    line-height: 1;
+  }
+  .sig-action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .sig-action-btn:disabled { opacity: 0.3; cursor: default; }
+
+  .sig-sign-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 3px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .sig-sign-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Full-screen signature modal — fills screen, works in portrait */
+  #sigModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 9999;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #sigModal.active { display: flex; }
+
+  .sig-modal-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+  .sig-modal-title {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex: 1;
+  }
+  .sig-modal-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .sig-modal-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: 4px;
+  }
+  .sig-modal-step {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .sig-modal-canvas-wrap {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+  #sigModalCanvas {
+    flex: 1;
+    width: 100%;
+    /* Cap height so it never stretches vertically on tall screens */
+    min-height: 140px;
+    max-height: 260px;
+    background: #fff;
+    border: 2px solid #aaa;
+    border-radius: 8px;
+    cursor: crosshair;
+    touch-action: none;
+    display: block;
+  }
+  .sig-modal-name {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sig-modal-name label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .sig-modal-name input {
+    background: #f8f8f8;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    color: #111;
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 8px 12px;
+    width: 100%;
+  }
+  .sig-modal-footer { display: none; }
+
+  /* ── Desktop / tablet: constrained centred dialog, not full-screen ── */
+  @media (min-width: 700px) {
+    #sigModal {
+      /* Centred card, not a full-screen takeover */
+      inset: unset;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(680px, 90vw);
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.28);
+    }
+    /* Dim backdrop via a pseudo-overlay — we inject it in JS */
+    #sigModalBackdrop {
+      display: block;
+    }
+    #sigModalCanvas {
+      min-height: 180px;
+      max-height: 220px;
+    }
+    .sig-rotate-hint { display: none !important; }
   }
 
-  .sig-clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+  /* ── Mobile portrait: bottom sheet ── */
+  @media (max-width: 699px) and (orientation: portrait) {
+    #sigModal {
+      top: auto;
+      bottom: 0;
+      left: 0; right: 0;
+      height: auto;
+      max-height: 70vh;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+      transform: none;
+    }
+    #sigModalCanvas {
+      min-height: 140px;
+      max-height: 32vh;
+    }
+    .sig-rotate-hint { display: flex !important; }
+  }
+
+  /* ── Mobile landscape: full-screen (max drawing space) ── */
+  @media (max-width: 699px) and (orientation: landscape) {
+    #sigModal {
+      top: 0; bottom: 0; left: 0; right: 0;
+      height: 100%;
+      border-radius: 0;
+      transform: none;
+    }
+    #sigModalCanvas {
+      min-height: 100px;
+      max-height: none;  /* fill whatever space is available */
+    }
+    .sig-rotate-hint { display: none !important; }
+  }
+
+  /* Backdrop for desktop dialog mode */
+  #sigModalBackdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9998;
+  }
+
+  .sig-rotate-hint {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    padding: 4px 0 0;
+    flex-shrink: 0;
+  }
 
   .error-msg {
     background: rgba(248,81,73,0.1);
@@ -2424,14 +2799,15 @@
 
   .hpi-layout {
     display: grid;
-    grid-template-columns: 80% 20%;
-    gap: 12px;
+    grid-template-columns: 1fr 90px;
+    gap: 10px;
     align-items: start;
   }
 
   .hpi-input {
     display: flex;
     flex-direction: column;
+    min-width: 0; /* prevent grid blowout */
   }
 
   .hpi-voice-row {
@@ -2472,10 +2848,12 @@
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 8px 6px;
+    padding: 8px 8px 8px 6px;
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .opqrst-item {
@@ -2726,9 +3104,14 @@
           <div class="menu-desc">API keys &amp; voice engine</div>
         </div>
       </button>
+      <div class="menu-divider"></div>
+      <div style="padding: 10px 12px; text-align: center;">
+        <span style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase;" id="menuVersion"></span>
+      </div>
     </div>
   </div>
 </div>
+<script>document.getElementById('menuVersion').textContent = '🚑 NCEMS Chart Helper · ' + APP_VERSION;</script>
 
 <div id="micStatusBanner" style="display:none;background:#3d1a1a;color:#f87171;font-family:var(--mono);font-size:12px;padding:10px 16px;text-align:center;letter-spacing:0.02em;line-height:1.6;white-space:pre-wrap"></div>
 <div id="offlineQueueBanner" style="display:none;background:#1c2a1c;color:#3fb950;font-family:var(--mono);font-size:12px;padding:10px 16px;text-align:center;letter-spacing:0.02em;cursor:pointer" onclick="processExtractionQueue()">
@@ -2742,6 +3125,7 @@
     <div class="tabs" id="tabBar">
       <button class="tab active" onclick="switchTab('dispatch', this)">Dispatch</button>
       <button class="tab" onclick="switchTab('input', this)">On-Scene</button>
+      <button class="tab" onclick="switchTab('reference', this)">Reference</button>
       <button class="tab" onclick="switchTab('output', this)">Chart</button>
       <button class="tab" onclick="switchTab('refusal', this)">Refusal</button>
     </div>
@@ -2789,7 +3173,7 @@
             <label>Who Called 911</label>
             <div class="pill-group" id="whoCalled911Pills" style="margin-top:4px">
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Patient')">Patient</button>
-              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Wife')">Wife</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Spouse')">Spouse</button>
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Relative')">Relative</button>
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Bystander')">Bystander</button>
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Other')">Other</button>
@@ -2870,7 +3254,7 @@
         <div class="form-row full">
           <div class="field">
             <label>Phone</label>
-            <input type="tel" id="patientPhone" placeholder="(XXX) XXX-XXXX">
+            <input type="tel" id="patientPhone" placeholder="(XXX) XXX-XXXX" oninput="formatPhone(this)">
           </div>
         </div>
 
@@ -2878,7 +3262,17 @@
         <div class="form-row three">
           <div class="field" style="grid-column: span 2">
             <label>Date of Birth</label>
-            <input type="date" id="patientDOB" onchange="calcAge()" style="font-family:var(--mono)">
+            <div style="position:relative; display:flex; align-items:center;">
+              <input type="text" id="patientDOB" placeholder="MM/DD/YYYY" maxlength="10"
+                style="font-family:var(--mono); padding-right:38px;"
+                inputmode="numeric"
+                oninput="formatDOBInput(this)"
+                onchange="calcAge()">
+              <button type="button" onclick="document.getElementById('patientDOBPicker').showPicker ? document.getElementById('patientDOBPicker').showPicker() : document.getElementById('patientDOBPicker').click()"
+                style="position:absolute;right:8px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:0;line-height:1;" title="Open calendar">📅</button>
+              <input type="date" id="patientDOBPicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;"
+                onchange="syncDOBFromPicker()">
+            </div>
           </div>
           <div class="field">
             <label>Age <span style="color:var(--text-dim);font-size:9px">(auto)</span></label>
@@ -2950,7 +3344,7 @@
 
         <div class="field">
           <label>Scene Notes</label>
-          <textarea id="sceneNotes" placeholder="Describe the scene upon arrival. Where was the patient? How did the patient look (alert, communicative, unconscious, etc.)? Who else was there?" style="min-height:120px"></textarea>
+          <textarea id="sceneNotes" placeholder="Describe the scene upon arrival. Where was the patient? How did the patient look (alert, communicative, unconscious, etc.)? Who else was there?" style="min-height:120px" oninput="autoResizeTextarea(this)"></textarea>
         </div>
       </div>
     </div>
@@ -2992,7 +3386,7 @@
         <div class="subsection-label">HPI — History of Present Illness <span class="format-tag">OPQRST</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="hpiNarrative" placeholder="Describe the HPI freely — include onset/duration, what makes it better or worse, how the patient describes it, where it is, severity (0–10), and timing/trends." style="min-height:130px"></textarea>
+            <textarea id="hpiNarrative" placeholder="• Onset / duration&#10;• Provocation / quality&#10;• Severity (0–10) / timing" style="min-height:160px; width:100%;" oninput="bulletInput(this)" onkeydown="bulletKeydown(this,event)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">O</span><div><div class="opqrst-word">Onset</div><div class="opqrst-hint">When/how did it start?</div></div></div>
@@ -3008,7 +3402,7 @@
         <div class="subsection-label" style="margin-top:6px">PMH — Past Medical History <span class="format-tag">SAMPLE</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
-            <textarea id="sampleNarrative" placeholder="Describe signs/symptoms, allergies, medications, past medical history, last oral intake, and events leading up to this call." style="min-height:130px"></textarea>
+            <textarea id="sampleNarrative" placeholder="• Signs / symptoms&#10;• Allergies&#10;• Medications / past history" style="min-height:160px; width:100%;" oninput="bulletInput(this)" onkeydown="bulletKeydown(this,event)"></textarea>
           </div>
           <div class="opqrst-sidebar">
             <div class="opqrst-item"><span class="opqrst-letter">S</span><div><div class="opqrst-word">Signs/Symptoms</div><div class="opqrst-hint">Current associated symptoms</div></div></div>
@@ -3062,9 +3456,50 @@
       <span>✦</span> Generate SOAP Narrative
     </button>
 
-    <button class="generate-btn" onclick="sendChartEmail()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin-top:8px;">
-      <span>📧</span> Email Chart to Desktop
-    </button>
+    <!-- Chart Export Options -->
+    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="generate-btn" onclick="copyChartToClipboard()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>📋</span> Copy Chart
+      </button>
+      <button class="generate-btn" onclick="shareChart()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>⬆</span> Share
+      </button>
+      <button class="generate-btn" onclick="sendChartEmail()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>📧</span> Email
+      </button>
+    </div>
+    <div id="copyChartStatus" style="font-family:var(--mono);font-size:11px;color:var(--success);text-align:center;margin-top:6px;min-height:16px;"></div>
+
+  </div>
+
+  <!-- ====== REFERENCE TAB ====== -->
+  <div id="tab-reference" style="display:none">
+
+    <!-- Hidden file inputs — wired via JS -->
+    <input type="file" id="refPhotoCamera" accept="image/*" capture="environment" style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
+    <input type="file" id="refPhotoUpload" accept="image/*"                       style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
+
+    <!-- Action bar -->
+    <div class="ref-action-bar">
+      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoCamera').click()">
+        <span class="ref-btn-icon">📷</span>
+        <span class="ref-btn-label">Camera</span>
+      </button>
+      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoUpload').click()">
+        <span class="ref-btn-icon">🖼</span>
+        <span class="ref-btn-label">Upload</span>
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="ref-empty" id="refEmpty">
+      <div class="ref-empty-icon">📸</div>
+      <div class="ref-empty-text">No reference photos yet</div>
+      <div class="ref-empty-sub">Tap Camera to shoot on-scene, or Upload from your photo library</div>
+    </div>
+
+    <!-- Photo grid -->
+    <div class="ref-grid" id="refGrid"></div>
 
   </div>
 
@@ -3214,13 +3649,13 @@
         <div class="form-row full">
           <div class="field">
             <label>Advice Given to Patient by EMS</label>
-            <textarea id="rf_advice" placeholder="Document the specific advice given to the patient..." style="min-height:70px"></textarea>
+            <textarea id="rf_advice" placeholder="Document the specific advice given to the patient..." style="min-height:70px" oninput="autoResizeTextarea(this)"></textarea>
           </div>
         </div>
         <div class="form-row full">
           <div class="field">
             <label>Patient Explanation for Refusal</label>
-            <textarea id="rf_explanation" placeholder="Document the patient's stated reason for refusing care..." style="min-height:70px"></textarea>
+            <textarea id="rf_explanation" placeholder="Document the patient's stated reason for refusing care..." style="min-height:70px" oninput="autoResizeTextarea(this)"></textarea>
           </div>
         </div>
       </div>
@@ -3306,7 +3741,13 @@
 
         <!-- Patient signature -->
         <div class="sig-block">
-          <div class="sig-label">Patient / Guardian Signature <button class="sig-clear-btn" onclick="clearSig('sigPatient')">Clear</button></div>
+          <div class="sig-label">Patient / Guardian Signature
+            <span style="display:flex;gap:6px;align-items:center;">
+              <button class="sig-action-btn" onclick="undoSig('sigPatient')" id="undo-sigPatient" title="Undo" disabled>↩</button>
+              <button class="sig-action-btn" onclick="redoSig('sigPatient')" id="redo-sigPatient" title="Redo" disabled>↪</button>
+              <button class="sig-sign-btn" onclick="openSigModal(0)">✍ Sign</button>
+            </span>
+          </div>
           <canvas id="sigPatient" class="sig-canvas"></canvas>
           <div class="field" style="margin-top:8px">
             <label style="font-size:11px">Printed Name</label>
@@ -3316,7 +3757,13 @@
 
         <!-- Witness signature -->
         <div class="sig-block">
-          <div class="sig-label">Witness Signature <button class="sig-clear-btn" onclick="clearSig('sigWitness')">Clear</button></div>
+          <div class="sig-label">Witness Signature
+            <span style="display:flex;gap:6px;align-items:center;">
+              <button class="sig-action-btn" onclick="undoSig('sigWitness')" id="undo-sigWitness" title="Undo" disabled>↩</button>
+              <button class="sig-action-btn" onclick="redoSig('sigWitness')" id="redo-sigWitness" title="Redo" disabled>↪</button>
+              <button class="sig-sign-btn" onclick="openSigModal(1)">✍ Sign</button>
+            </span>
+          </div>
           <canvas id="sigWitness" class="sig-canvas"></canvas>
           <div class="field" style="margin-top:8px">
             <label style="font-size:11px">Printed Name</label>
@@ -3326,7 +3773,13 @@
 
         <!-- RMA signature -->
         <div class="sig-block">
-          <div class="sig-label">RMA Administered By <button class="sig-clear-btn" onclick="clearSig('sigRMA')">Clear</button></div>
+          <div class="sig-label">RMA Administered By
+            <span style="display:flex;gap:6px;align-items:center;">
+              <button class="sig-action-btn" onclick="undoSig('sigRMA')" id="undo-sigRMA" title="Undo" disabled>↩</button>
+              <button class="sig-action-btn" onclick="redoSig('sigRMA')" id="redo-sigRMA" title="Redo" disabled>↪</button>
+              <button class="sig-sign-btn" onclick="openSigModal(2)">✍ Sign</button>
+            </span>
+          </div>
           <canvas id="sigRMA" class="sig-canvas"></canvas>
           <div class="field" style="margin-top:8px">
             <label style="font-size:11px">Printed Name</label>
@@ -3347,6 +3800,7 @@
 
   </div>
 
+  </div>
 </div>
 
 <!-- GCS MODAL -->
@@ -4437,6 +4891,12 @@ window.onload = function() {
   
   // Attach auto-save listeners to all inputs
   attachAutoSaveListeners();
+
+  // Wire up and resize all textareas
+  initAutoResize();
+
+  // Suppress iOS Safari autofill on all non-login fields
+  suppressAutofill();
   
   // Click outside menu to close
   document.addEventListener('click', function(e) {
@@ -4471,23 +4931,16 @@ function checkMicPermission() {
     showMicBanner('⚠ Must be served over http. Open Terminal: cd to file folder, run: python3 -m http.server 8080  then open http://localhost:8080');
     return;
   }
-  if (!window.MediaRecorder) {
-    showMicBanner('⚠ MediaRecorder not supported in this browser. Use Safari 14.1+, Chrome, or Edge.');
-    return;
-  }
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      stream.getTracks().forEach(t => t.stop());
-      hideMicBanner();
-    }).catch(err => {
-      if (err.name === 'NotAllowedError') {
-        showMicBanner('⚠ Microphone access denied. Safari → Settings → Websites → Microphone → Allow this site.');
-      } else if (err.name === 'NotFoundError') {
-        showMicBanner('⚠ No microphone found. Check System Settings → Sound → Input.');
-      } else {
-        showMicBanner('⚠ Microphone error: ' + err.name);
+  // Do NOT call getUserMedia here on iOS Safari — it opens and immediately closes the
+  // audio session, which poisons the Web Speech API audio session for the rest of the
+  // page lifetime (recognizer fires onend immediately with no results).
+  // Instead, check permissions passively via the Permissions API if available.
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: 'microphone' }).then(result => {
+      if (result.state === 'denied') {
+        showMicBanner('⚠ Microphone access denied. Settings → Safari → Microphone → Allow.');
       }
-    });
+    }).catch(() => { /* Permissions API not fully supported — ignore */ });
   }
 }
 
@@ -4516,7 +4969,7 @@ function setCurrentTimes() {
 }
 
 // ======== TABS ========
-const TAB_ORDER = ['dispatch', 'input', 'output', 'refusal'];
+const TAB_ORDER = ['dispatch', 'input', 'reference', 'output', 'refusal'];
 
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -4527,10 +4980,11 @@ function switchTab(tab, el) {
     const idx = TAB_ORDER.indexOf(tab);
     document.querySelectorAll('.tab')[idx]?.classList.add('active');
   }
-  document.getElementById('tab-dispatch').style.display = tab === 'dispatch' ? 'block' : 'none';
-  document.getElementById('tab-input').style.display = tab === 'input' ? 'block' : 'none';
-  document.getElementById('tab-output').style.display = tab === 'output' ? 'block' : 'none';
-  document.getElementById('tab-refusal').style.display = tab === 'refusal' ? 'block' : 'none';
+  document.getElementById('tab-dispatch').style.display  = tab === 'dispatch'  ? 'block' : 'none';
+  document.getElementById('tab-input').style.display     = tab === 'input'     ? 'block' : 'none';
+  document.getElementById('tab-reference').style.display = tab === 'reference' ? 'block' : 'none';
+  document.getElementById('tab-output').style.display    = tab === 'output'    ? 'block' : 'none';
+  document.getElementById('tab-refusal').style.display   = tab === 'refusal'   ? 'block' : 'none';
 
   if (tab === 'output' && !outputGenerated) {
     document.getElementById('outputEmpty').style.display = 'block';
@@ -4742,6 +5196,28 @@ function updateCallType() {
 //   - For systolics < 100 (e.g. 80, 90), user types space or "/" to split
 //   - Backspace past slash removes it cleanly
 
+// Auto-format temperature: digits-only entry, insert decimal on blur
+// e.g. "986" → "98.6", "1000" → "100.0", "975" → "97.5"
+function formatTempOnBlur(el) {
+  const raw = el.value.replace(/[^0-9]/g, '');
+  if (!raw) return;
+  const n = parseInt(raw, 10);
+  // Reasonable range: 850–1150 (entered as 850=85.0 to 1150=115.0)
+  // If user typed 3 digits treat last as tenths: 986 → 98.6
+  // If user typed 4 digits treat last as tenths: 1004 → 100.4
+  if (raw.length >= 3) {
+    const intPart  = raw.slice(0, -1);
+    const tenths   = raw.slice(-1);
+    const val = parseFloat(intPart + '.' + tenths);
+    if (val >= 85.0 && val <= 115.0) {
+      el.value = val.toFixed(1);
+      return;
+    }
+  }
+  // Fallback: leave as-is if can't make sense of it
+  el.value = raw;
+}
+
 function formatBPInput(el) {
   let raw = el.value;
 
@@ -4805,6 +5281,8 @@ function setTimeNow(fieldId) {
   el.value = hh + ':' + mm;
   el.classList.add('field-overwritten');
   setTimeout(() => el.classList.remove('field-overwritten'), 2000);
+  // Direct .value assignment bypasses oninput — trigger exclusivity check manually
+  checkTransportRefusalExclusivity();
 }
 
 function adjustTime(fieldId, deltaMins) {
@@ -4824,18 +5302,23 @@ function adjustTime(fieldId, deltaMins) {
   const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
   const mm = String(totalMins % 60).padStart(2, '0');
   el.value = hh + ':' + mm;
+  // Direct .value assignment bypasses oninput — trigger exclusivity check manually
+  checkTransportRefusalExclusivity();
 }
 
 // ======== GCS QUICK-FILL ========
 
 function setGCSNormal(cardId) {
-  const eye   = document.getElementById('vgcs-eye-'   + cardId);
+  const eye    = document.getElementById('vgcs-eye-'    + cardId);
   const verbal = document.getElementById('vgcs-verbal-' + cardId);
   const motor  = document.getElementById('vgcs-motor-'  + cardId);
-  if (eye)   eye.value   = '4';
+  if (eye)    eye.value    = '4';
   if (verbal) verbal.value = '5';
   if (motor)  motor.value  = '6';
   updateGCS(cardId);
+  // GCS 15 button sets values directly — must trigger exclusivity manually
+  checkTransportRefusalExclusivity();
+  triggerAutoSave();
 }
 
 // ======== VITALS ========
@@ -4879,6 +5362,7 @@ function toggleActivityPill(el, cardId) {
     // Hospital pills don't add text themselves
     // They just store the selected hospital for use by "Transport Commenced"
     // Don't add to activity field
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -4937,32 +5421,13 @@ function toggleActivityPill(el, cardId) {
     
     activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
     autoResizeTextarea(activityField);
+    checkTransportRefusalExclusivity();
     return;
   }
   // Handle "Transport Commenced", "Patient Comforted", and "Transport Uneventful" pills - uses selected hospital
   if (pillText === 'Transport Commenced' || pillText === 'Patient Comforted' || pillText === 'Transport Uneventful') {
-    // Find which hospital is selected in the Transport card
-    // We need to look for the Transport card specifically
-    const allCards = document.querySelectorAll('.vitals-card');
-    let selectedHospital = '[HOSPITAL]';
-    
-    // Find the Transport card
-    allCards.forEach(card => {
-      const label = card.querySelector('.vitals-card-label');
-      if (label && label.textContent.includes('Transport')) {
-        // This is the Transport card - check for selected hospital
-        const norwalkPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Norwalk Hospital');
-        const stamfordPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Stamford Hospital');
-        
-        if (norwalkPill && norwalkPill.classList.contains('selected')) {
-          selectedHospital = 'Norwalk Hospital';
-        } else if (stamfordPill && stamfordPill.classList.contains('selected')) {
-          selectedHospital = 'Stamford Hospital';
-        }
-      }
-    });
+    const transportId = getTransportCardId();
+    const selectedHospital = transportId ? getTransportHospital(transportId) : '[HOSPITAL]';
     
     let outputText;
     if (pillText === 'Transport Commenced') {
@@ -5020,40 +5485,21 @@ function toggleActivityPill(el, cardId) {
       }
     }
     
+    checkTransportRefusalExclusivity();
     return;
   }
   
   // Handle "Arrived at Hospital" pill - uses selected hospital from Transport card
   if (pillText === 'Arrived at Hospital') {
-    // Find which hospital is selected in the Transport card
-    const allCards = document.querySelectorAll('.vitals-card');
-    let selectedHospital = '[HOSPITAL]';
-    
-    // Find the Transport card
-    allCards.forEach(card => {
-      const label = card.querySelector('.vitals-card-label');
-      if (label && label.textContent.includes('Transport')) {
-        // This is the Transport card - check for selected hospital
-        const norwalkPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Norwalk Hospital');
-        const stamfordPill = Array.from(card.querySelectorAll('.activity-pill'))
-          .find(p => p.textContent.trim() === 'Stamford Hospital');
-        
-        if (norwalkPill && norwalkPill.classList.contains('selected')) {
-          selectedHospital = 'Norwalk Hospital';
-        } else if (stamfordPill && stamfordPill.classList.contains('selected')) {
-          selectedHospital = 'Stamford Hospital';
-        }
-      }
-    });
-    
-    const outputText = `Arrived at ${selectedHospital} ED without incident`;
+    const transportId = getTransportCardId();
+    const selectedHospital = transportId ? getTransportHospital(transportId) : '[HOSPITAL]';
+    const outputText = `Arrived at ${selectedHospital} without incident`;
     const currentValue = activityField.value;
     const pills = currentValue.split('. ').filter(p => p.trim()).map(p => p.replace(/\.$/, '').trim());
     
     if (el.classList.contains('selected')) {
-      // Remove any existing "Arrived at ... ED without incident" text first
-      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' ED without incident'));
+      // Remove any existing "Arrived at ... without incident" text first
+      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' without incident'));
       if (!filteredPills.includes(outputText)) {
         filteredPills.push(outputText);
       }
@@ -5061,11 +5507,12 @@ function toggleActivityPill(el, cardId) {
       autoResizeTextarea(activityField);
     } else {
       // Remove pill text
-      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' ED without incident'));
+      const filteredPills = pills.filter(p => !p.startsWith('Arrived at ') || !p.includes(' without incident'));
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
     }
     
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5080,48 +5527,17 @@ function toggleActivityPill(el, cardId) {
     const pills = currentValue.split('. ').filter(p => p.trim()).map(p => p.replace(/\.$/, '').trim());
     
     if (el.classList.contains('selected')) {
-      // Remove any existing "Patient brought to ED Room ..." text first
       const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
-      if (!filteredPills.includes(outputText)) {
-        filteredPills.push(outputText);
-      }
+      if (!filteredPills.includes(outputText)) filteredPills.push(outputText);
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
     } else {
-      // Remove pill text
       const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
     }
     
-    return;
-  }
-  
-  // Handle "Patient Room" pill - uses ED Room field from Hospital Transfer card
-  if (pillText === 'Patient Room') {
-    // Get the ED Room value from this card
-    const edRoomField = document.getElementById('ved-room-' + cardId);
-    const edRoom = edRoomField?.value.trim() || '[ROOM NUMBER]';
-    
-    const outputText = `Patient brought to ED Room ${edRoom}`;
-    const currentValue = activityField.value;
-    const pills = currentValue.split('. ').filter(p => p.trim()).map(p => p.replace(/\.$/, '').trim());
-    
-    if (el.classList.contains('selected')) {
-      // Remove any existing "Patient brought to ED Room ..." text first
-      const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
-      if (!filteredPills.includes(outputText)) {
-        filteredPills.push(outputText);
-      }
-      activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
-      autoResizeTextarea(activityField);
-    } else {
-      // Remove pill text
-      const filteredPills = pills.filter(p => !p.startsWith('Patient brought to ED Room '));
-      activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
-      autoResizeTextarea(activityField);
-    }
-    
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5162,6 +5578,7 @@ function toggleActivityPill(el, cardId) {
     
     activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
     autoResizeTextarea(activityField);
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5190,6 +5607,7 @@ function toggleActivityPill(el, cardId) {
       autoResizeTextarea(activityField);
     }
     
+    checkTransportRefusalExclusivity();
     return;
   }
   
@@ -5236,7 +5654,7 @@ function toggleActivityPill(el, cardId) {
   // Map pill text to output text (for custom phrases)
   const pillToOutput = {
     'Rapid Trauma Assessment/Findings': 'Rapid Trauma Assessment conducted and found [ENTER FINDINGS]',
-    'Rapid Trauma Assessment/No Findings': 'Rapid Trauma Assessment with no pertinent findings',
+    'Rapid Trauma Assessment/No Findings': 'Rapid Trauma Assessment with no additional pertinent findings',
     'Alert/Oriented': `Patient was ${loc}`,
     'Collar': 'EMS applied a cervical collar',
     'EMS Assisted Medic 350': 'EMS assisted Paramedic 350 within scope of practice',
@@ -5277,6 +5695,7 @@ function toggleActivityPill(el, cardId) {
       if (newValue && !newValue.endsWith('.')) newValue += '.';
       activityField.value = newValue;
       autoResizeTextarea(activityField);
+      checkTransportRefusalExclusivity();
       return;
     } else if (pillText === 'Medic 350 Care') {
       // Remove "Paramedic 350 assumed care. See Paramedic 350 Chart for further information"
@@ -5289,18 +5708,22 @@ function toggleActivityPill(el, cardId) {
       if (newValue && !newValue.endsWith('.')) newValue += '.';
       activityField.value = newValue;
       autoResizeTextarea(activityField);
+      checkTransportRefusalExclusivity();
       return;
     } else {
       // Regular pills - filter out the matching text
       const filteredPills = pills.filter(p => p !== outputText);
       activityField.value = filteredPills.length > 0 ? filteredPills.join('. ') + '.' : '';
       autoResizeTextarea(activityField);
+      checkTransportRefusalExclusivity();
       return;
     }
   }
   
   activityField.value = pills.length > 0 ? pills.join('. ') + '.' : '';
   autoResizeTextarea(activityField);
+  checkTransportRefusalExclusivity();
+  triggerAutoSave();
 }
 
 function toggleActivityCard(id) {
@@ -5328,7 +5751,7 @@ function initializeActivityCards() {
     'Primary Assessment',
     'Rapid Trauma Assessment/Findings',
     'Rapid Trauma Assessment/No Findings',
-    'Vitals Taken',
+    'Vitals taken',
     'Alert/Oriented',
     'Denied Pain',
     'Denied LOC',
@@ -5344,7 +5767,7 @@ function initializeActivityCards() {
   
   // Define activity pills (for Activity #1, #2, etc. - no assessment pills, includes Patient Secured/Loaded)
   const activityPills = [
-    'Vitals Taken',
+    'Vitals taken',
     'Alert/Oriented',
     'Denied Pain',
     'Denied LOC',
@@ -5364,8 +5787,6 @@ function initializeActivityCards() {
   // Define the transport pills
   const transportPills = [
     'Vitals Re-Assessed',
-    'Norwalk Hospital',
-    'Stamford Hospital',
     'Transport Commenced',
     'Patient Comforted',
     'Transport Uneventful',
@@ -5396,7 +5817,10 @@ function initializeActivityCards() {
   addVitalsRow('Transport', true, transportPills);  // Transport card open with transport pills
   addVitalsRow('Hospital Transfer', true, hospitalArrivalPills);  // Hospital Transfer card open with hospital arrival pills
   addVitalsRow('Refusal', false, refusalPills);  // Refusal card closed with refusal pills
-  
+
+  // Suppress iOS autofill on newly created vitals fields
+  if (typeof suppressAutofill === 'function') suppressAutofill();
+
   // Position the Add Activity button
   positionAddActivityButton();
 }
@@ -5509,8 +5933,12 @@ function checkTransportRefusalExclusivity() {
       refusalContent.style.display = 'none';
       if (refusalBadge) refusalBadge.textContent = '▸';
     }
+    // Also lock the Refusal tab
+    _setRefusalTabLocked(true);
   } else {
     enableCard(refusalCardId);
+    // Unlock the Refusal tab
+    _setRefusalTabLocked(false);
   }
   
   // If Refusal has data, disable both Transport and Hospital Transfer AND close them
@@ -5546,23 +5974,30 @@ function checkTransportRefusalExclusivity() {
 }
 
 function cardHasData(cardId) {
-  // Check if any field in the card has data
-  const time = document.getElementById('vt-' + cardId)?.value;
-  const bp = document.getElementById('vbp-' + cardId)?.value;
-  const hr = document.getElementById('vhr-' + cardId)?.value;
-  const rr = document.getElementById('vrr-' + cardId)?.value;
-  const spo2 = document.getElementById('vspo2-' + cardId)?.value;
-  const pain = document.getElementById('vpain-' + cardId)?.value;
-  const skin = document.getElementById('vskin-' + cardId)?.value;
-  const temp = document.getElementById('vtemp-' + cardId)?.value;
-  const glucose = document.getElementById('vglucose-' + cardId)?.value;
+  const card = document.getElementById('vrow-' + cardId);
+  if (!card) return false;
+
+  // Check form field values
+  const time     = document.getElementById('vt-'        + cardId)?.value;
+  const bp       = document.getElementById('vbp-'       + cardId)?.value;
+  const hr       = document.getElementById('vhr-'       + cardId)?.value;
+  const rr       = document.getElementById('vrr-'       + cardId)?.value;
+  const spo2     = document.getElementById('vspo2-'     + cardId)?.value;
+  const pain     = document.getElementById('vpain-'     + cardId)?.value;
+  const skin     = document.getElementById('vskin-'     + cardId)?.value;
+  const temp     = document.getElementById('vtemp-'     + cardId)?.value;
+  const glucose  = document.getElementById('vglucose-'  + cardId)?.value;
   const activity = document.getElementById('vactivity-' + cardId)?.value;
-  const gcsEye = document.getElementById('vgcs-eye-' + cardId)?.value;
-  const gcsVerbal = document.getElementById('vgcs-verbal-' + cardId)?.value;
-  const gcsMotor = document.getElementById('vgcs-motor-' + cardId)?.value;
-  const edRoom = document.getElementById('ved-room-' + cardId)?.value;
-  
-  return !!(time || bp || hr || rr || spo2 || pain || skin || temp || glucose || activity || gcsEye || gcsVerbal || gcsMotor || edRoom);
+  const gcsEye   = document.getElementById('vgcs-eye-'  + cardId)?.value;
+  const gcsVerbal= document.getElementById('vgcs-verbal-'+ cardId)?.value;
+  const gcsMotor = document.getElementById('vgcs-motor-'+ cardId)?.value;
+  const edRoom   = document.getElementById('ved-room-'  + cardId)?.value;
+
+  // Also check if any pill is selected (activity pills or hospital selector)
+  const hasPill = card.querySelectorAll('.activity-pill.selected').length > 0;
+  const hasHosp = card.querySelectorAll('.transport-hosp-pill.selected').length > 0;
+
+  return !!(time || bp || hr || rr || spo2 || pain || skin || temp || glucose || activity || gcsEye || gcsVerbal || gcsMotor || edRoom || hasPill || hasHosp);
 }
 
 function disableCard(cardId, message) {
@@ -5631,6 +6066,46 @@ function enableCard(cardId) {
   }
 }
 
+// Lock/unlock the Refusal tab contents when patient is transported
+function _setRefusalTabLocked(locked) {
+  const tabEl = document.getElementById('tab-refusal');
+  if (!tabEl) return;
+
+  if (locked) {
+    // Add overlay banner and disable all inputs inside the refusal tab
+    if (!document.getElementById('refusalTabLockBanner')) {
+      const banner = document.createElement('div');
+      banner.id = 'refusalTabLockBanner';
+      banner.style.cssText = `
+        position: sticky; top: 0; z-index: 100;
+        background: rgba(248,81,73,0.12); border: 1px solid rgba(248,81,73,0.4);
+        border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;
+        font-family: var(--mono); font-size: 12px; font-weight: 600;
+        color: var(--danger); text-align: center; letter-spacing: 0.04em;
+      `;
+      banner.textContent = '⚠ REFUSAL LOCKED — Patient was transported';
+      tabEl.insertBefore(banner, tabEl.firstChild);
+    }
+    // Disable all inputs, selects, textareas, buttons (except tab navigation)
+    tabEl.querySelectorAll('input, select, textarea, button:not(.tab)').forEach(el => {
+      el.disabled = true;
+    });
+    // Disable signature Sign buttons and canvas interaction
+    tabEl.querySelectorAll('.sig-canvas').forEach(c => c.style.pointerEvents = 'none');
+    tabEl.style.opacity = '0.65';
+  } else {
+    // Remove banner
+    const banner = document.getElementById('refusalTabLockBanner');
+    if (banner) banner.remove();
+    // Re-enable all inputs
+    tabEl.querySelectorAll('input, select, textarea, button').forEach(el => {
+      el.disabled = false;
+    });
+    tabEl.querySelectorAll('.sig-canvas').forEach(c => c.style.pointerEvents = '');
+    tabEl.style.opacity = '';
+  }
+}
+
 function addNumberedActivity() {
   // Count existing numbered activities (On-Scene Activity #1, On-Scene Activity #2, etc.)
   const container = document.getElementById('vitals-container');
@@ -5660,7 +6135,7 @@ function addNumberedActivity() {
   
   // Define activity pills (no assessments, includes Patient Secured/Loaded)
   const activityPills = [
-    'Vitals Taken',
+    'Vitals taken',
     'Alert/Oriented',
     'Denied Pain',
     'Denied LOC',
@@ -5778,7 +6253,7 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
       <div class="vitals-card-content" id="vitals-content-${id}" style="${!isOpen ? 'display:none' : ''}">
       <div class="vitals-time-header">
         <label>Time</label>
-        <input type="text" id="vt-${id}" placeholder="HH:MM" pattern="^([01]\\d|2[0-3]):([0-5]\\d)$" title="24-hour format (00:00 to 23:59)" maxlength="5" oninput="formatTimeInput(this)"${exclusivityCheck}>
+        <input type="text" id="vt-${id}" placeholder="HH:MM" pattern="^([01]\\d|2[0-3]):([0-5]\\d)$" title="24-hour format (00:00 to 23:59)" maxlength="5" oninput="formatTimeInput(this)" autocomplete="off"${exclusivityCheck}>
         <button type="button" class="time-now-btn" onclick="setTimeNow('vt-${id}')" title="Insert current time">🕐</button>
         <button type="button" class="time-adj-btn" onclick="adjustTime('vt-${id}', -1)" title="−1 minute">−</button>
         <button type="button" class="time-adj-btn" onclick="adjustTime('vt-${id}', +1)" title="+1 minute">+</button>
@@ -5787,39 +6262,39 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
       <div class="vitals-line-1">
         <div class="vitals-field">
           <label>BP</label>
-          <input type="text" id="vbp-${id}" placeholder="--/--" inputmode="numeric" oninput="formatBPInput(this)" onkeydown="handleBPKeydown(this,event)"${exclusivityCheck}>
+          <input type="text" id="vbp-${id}" placeholder="--/--" inputmode="numeric" oninput="formatBPInput(this)" onkeydown="handleBPKeydown(this,event)" autocomplete="off"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>Pulse</label>
-          <input type="number" id="vhr-${id}" placeholder="—" min="20" max="300" inputmode="numeric"${exclusivityCheck}>
+          <input type="number" id="vhr-${id}" placeholder="—" min="20" max="300" inputmode="numeric" autocomplete="off"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>RR</label>
-          <input type="number" id="vrr-${id}" placeholder="—" min="4" max="60" inputmode="numeric"${exclusivityCheck}>
+          <input type="number" id="vrr-${id}" placeholder="—" min="4" max="60" inputmode="numeric" autocomplete="off"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>SpO2 %</label>
-          <input type="number" id="vspo2-${id}" placeholder="—" min="0" max="100" step="1" inputmode="numeric"
+          <input type="number" id="vspo2-${id}" placeholder="—" min="0" max="100" step="1" inputmode="numeric" autocomplete="off"
             oninput="this.value=Math.min(100,Math.max(0,Math.round(this.value)))${isExclusiveCard ? ';checkTransportRefusalExclusivity()' : ''}"${isExclusiveCard ? '' : ''}>
         </div>
         <div class="vitals-field">
           <label>Pain (0-10)</label>
-          <input type="text" id="vpain-${id}" placeholder="—" inputmode="numeric"${exclusivityCheck}>
+          <input type="text" id="vpain-${id}" placeholder="—" inputmode="numeric" autocomplete="off"${exclusivityCheck}>
         </div>
       </div>
       
       <div class="vitals-line-2">
         <div class="vitals-field">
           <label>Skin</label>
-          <input type="text" id="vskin-${id}" placeholder="—"${exclusivityCheck}>
+          <input type="text" id="vskin-${id}" placeholder="—" autocomplete="off"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>Temp (F°)</label>
-          <input type="text" id="vtemp-${id}" placeholder="—" inputmode="decimal"${exclusivityCheck}>
+          <input type="text" id="vtemp-${id}" placeholder="—" inputmode="numeric" autocomplete="off" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onblur="formatTempOnBlur(this)" ${exclusivityCheck.replace(/^\ /, '')}>
         </div>
         <div class="vitals-field">
           <label>Glucose (mg/dL)</label>
-          <input type="number" id="vglucose-${id}" placeholder="—" inputmode="numeric"${exclusivityCheck}>
+          <input type="number" id="vglucose-${id}" placeholder="—" inputmode="numeric" autocomplete="off"${exclusivityCheck}>
         </div>
       </div>
       
@@ -5858,25 +6333,44 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
             <option value="1">1 - None</option>
           </select>
         </div>
-        <div class="gcs-total" id="vgcs-total-${id}">Total: —</div>
         <button type="button" class="gcs-normal-btn" onclick="setGCSNormal(${id})" title="Set GCS to 15 (Eye 4, Verbal 5, Motor 6)">15 ✓</button>
         <input type="hidden" id="vgcs-${id}" value="">
+      </div>
+      <div class="gcs-total-subrow">
+        <div class="gcs-total" id="vgcs-total-${id}">Total: —</div>
       </div>
       
       ${label === 'Hospital Transfer' ? `
       <div class="vitals-line-4">
         <div class="vitals-field-full">
           <label>ED Room</label>
-          <input type="text" id="ved-room-${id}" placeholder="e.g., Room 5, Bay 3"${exclusivityCheck}>
+          <input type="text" id="ved-room-${id}" placeholder="e.g., Room 5, Bay 3" autocomplete="off"${exclusivityCheck}>
         </div>
       </div>
+      ${pillsHTML}
+      ` : label === 'Transport' ? `
+      <div class="vitals-line-4">
+        <div class="vitals-field-full">
+          <label>Hospital</label>
+          <div class="check-group" style="margin-top:4px;gap:6px;flex-wrap:wrap;" id="vhosp-pills-${id}">
+            <div class="check-pill transport-hosp-pill" onclick="selectTransportHospital(this,${id})" data-val="Norwalk Hospital">Norwalk Hospital</div>
+            <div class="check-pill transport-hosp-pill" onclick="selectTransportHospital(this,${id})" data-val="Stamford Hospital">Stamford Hospital</div>
+            <div class="check-pill transport-hosp-pill" onclick="selectTransportHospital(this,${id})" data-val="Other">Other</div>
+          </div>
+          <input type="text" id="vhosp-other-${id}" placeholder="Enter hospital name…" autocomplete="off"
+            style="display:none;margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:7px 10px;width:100%;"
+            oninput="triggerAutoSave();checkTransportRefusalExclusivity();">
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:10px 0 6px;"></div>
+      <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;">Activities</div>
       ${pillsHTML}
       ` : pillsHTML}
       
       <div class="vitals-line-4">
         <div class="vitals-field-full">
           <label>Activity Notes</label>
-          <textarea id="vactivity-${id}" placeholder="What was done at this time…" rows="1" style="resize: vertical; min-height: 38px; overflow-y: hidden;" oninput="autoResizeTextarea(this)"${exclusivityCheck}></textarea>
+          <textarea id="vactivity-${id}" placeholder="What was done at this time…" rows="1" style="min-height: 38px; overflow-y: hidden;" oninput="autoResizeTextarea(this);${isExclusiveCard ? 'checkTransportRefusalExclusivity();' : ''}" autocomplete="off"></textarea>
         </div>
       </div>
       </div>
@@ -5924,10 +6418,164 @@ function updateGCS(id) {
 }
 
 function autoResizeTextarea(textarea) {
-  // Reset height to measure scrollHeight properly
   textarea.style.height = 'auto';
-  // Set height to scrollHeight to fit content
   textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+// ── Bulleted textarea helpers (HPI / PMH) ─────────────────────────────────
+const BULLET = '• ';
+
+// Split arbitrary text into sentences and format as bullet lines
+function textToBullets(text) {
+  if (!text || !text.trim()) return '';
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean);
+  // If no sentence-ending punctuation found, treat as one bullet
+  if (sentences.length === 0) return BULLET + text.trim();
+  return sentences.map(s => BULLET + s).join('\n');
+}
+
+// Strip bullet prefixes for export/email so output reads as clean prose
+function stripBullets(text) {
+  if (!text) return '';
+  return text
+    .split('\n')
+    .map(line => line.startsWith(BULLET) ? line.slice(BULLET.length) : line)
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Append bullet-formatted text to a bulleted textarea
+function appendBullets(ta, rawText) {
+  if (!rawText || !rawText.trim()) return;
+  const incoming = textToBullets(rawText);
+  const current  = ta.value.trim();
+  ta.value = current ? current + '\n' + incoming : incoming;
+  autoResizeTextarea(ta);
+  triggerAutoSave();
+}
+
+// Called oninput — three jobs:
+//  1. Ensure the very first character starts with a bullet
+//  2. Handle iOS soft-keyboard Return (keydown may not fire on iOS) —
+//     detect a bare \n that isn't already followed by a bullet and convert it
+//  3. Trigger autosave
+function bulletInput(ta) {
+  const pos = ta.selectionStart;
+  let val = ta.value;
+
+  // Job 1: prefix first line if missing bullet
+  if (val && !val.startsWith(BULLET)) {
+    val = BULLET + val;
+    ta.value = val;
+    ta.setSelectionRange(pos + BULLET.length, pos + BULLET.length);
+    autoResizeTextarea(ta);
+    triggerAutoSave();
+    return;
+  }
+
+  // Job 2: iOS Return key — look for any \n not followed by BULLET and fix it
+  // We scan backwards from cursor to find a bare newline just inserted
+  if (val.includes('\n')) {
+    let changed = false;
+    const fixed = val.replace(/\n(?!• )/g, '\n' + BULLET);
+    if (fixed !== val) {
+      ta.value = fixed;
+      // Restore cursor: each inserted BULLET adds 2 chars per bare newline before cursor
+      const charsAdded = (val.slice(0, pos).match(/\n(?!• )/g) || []).length * BULLET.length;
+      ta.setSelectionRange(pos + charsAdded, pos + charsAdded);
+      changed = true;
+    }
+  }
+
+  autoResizeTextarea(ta);
+  triggerAutoSave();
+}
+
+// Called onkeydown — handles Enter and Backspace
+function bulletKeydown(ta, e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const start = ta.selectionStart;
+    const end   = ta.selectionEnd;
+    const val   = ta.value;
+    ta.value = val.slice(0, start) + '\n' + BULLET + val.slice(end);
+    const cursor = start + 1 + BULLET.length;
+    ta.setSelectionRange(cursor, cursor);
+    autoResizeTextarea(ta);
+    triggerAutoSave();
+    return;
+  }
+
+  // Backspace at the start of a bullet line — remove the bullet and merge with previous line
+  if (e.key === 'Backspace') {
+    const start = ta.selectionStart;
+    const end   = ta.selectionEnd;
+    if (start !== end) return; // let default handle selection deletion
+    const val = ta.value;
+    // Check if cursor is right after the bullet prefix on a non-first line
+    // i.e. the text just before cursor is '\n• '
+    const beforeCursor = val.slice(0, start);
+    if (beforeCursor.endsWith('\n' + BULLET)) {
+      e.preventDefault();
+      // Remove the '\n• ' (3 chars) before cursor
+      const removeLen = 1 + BULLET.length; // \n + bullet
+      ta.value = val.slice(0, start - removeLen) + val.slice(start);
+      ta.setSelectionRange(start - removeLen, start - removeLen);
+      autoResizeTextarea(ta);
+      triggerAutoSave();
+      return;
+    }
+    // Also handle: cursor is at position 2 on the very first line (right after '• ')
+    // and the user wants to clear the bullet — just clear whole field if only bullet remains
+    if (start === BULLET.length && val === BULLET) {
+      e.preventDefault();
+      ta.value = '';
+      ta.setSelectionRange(0, 0);
+      autoResizeTextarea(ta);
+      triggerAutoSave();
+    }
+  }
+}
+
+
+function initAutoResize() {
+  document.querySelectorAll('textarea').forEach(ta => {
+    // Wire up any textarea not already wired
+    if (!ta.dataset.autoResize) {
+      ta.dataset.autoResize = '1';
+      ta.addEventListener('input', () => autoResizeTextarea(ta));
+    }
+    // Resize to fit existing content
+    autoResizeTextarea(ta);
+  });
+}
+
+// ======== SUPPRESS iOS SAFARI AUTOFILL ========
+// iOS Safari aggressively autofills fields that lack autocomplete attributes,
+// using its own heuristics (field names, nearby labels, placeholders).
+// This causes wrong data to appear in refusal/vitals fields on new charts.
+// Fix: set autocomplete="off" on every input/textarea/select that isn't a
+// deliberate login/auth field.
+const AUTOFILL_KEEP = new Set([
+  'loginUsername','loginPassword','signupUsername','signupPassword',
+  'signupPasswordConfirm','a_email','as_apikey','as_openaikey'
+]);
+
+function suppressAutofill() {
+  document.querySelectorAll('input, textarea, select').forEach(el => {
+    if (AUTOFILL_KEEP.has(el.id)) return;
+    if (el.getAttribute('autocomplete') === 'off') return;
+    el.setAttribute('autocomplete', 'off');
+    // iOS also respects these:
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('autocapitalize', 'off');
+    el.setAttribute('spellcheck', 'false');
+  });
 }
 
 function formatTimeInput(input) {
@@ -6118,52 +6766,47 @@ function getVitals() {
 
 // ======== VOICE ========
 function toggleVoice() {
-  isRecording ? stopRecording() : startRecording();
+  if (isRecording) { stopRecording(); return; }
+  // IMPORTANT: rec.start() must be called in the synchronous call stack of the user gesture.
+  // Calling an async function from here loses the gesture context on iOS Safari.
+  if (useWhisper()) { startRecordingWhisper(); } else { startRecordingWS(); }
 }
 
-async function startRecording() {
-  if (useWhisper()) {
-    const ok = await whisperStart('scene');
-    if (!ok) return;
-    isRecording = true;
-    startVisualizer('sceneWaveform');
-    document.getElementById('sceneWaveform').classList.add('active');
-    document.getElementById('voiceBtn').classList.add('recording');
-    document.getElementById('voiceBtn').textContent = '⏹';
-    document.getElementById('voiceStatus').textContent = '🎙 Recording… tap to stop';
-    document.getElementById('voiceStatus').classList.add('active');
-  } else {
-    // Web Speech
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
-    const textarea = document.getElementById('sceneNotes');
-    isRecording = true;
-    let sceneInterim = '';
-    function onResult(e) {
-      sceneInterim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { textarea.value += e.results[i][0].transcript + ' '; }
-        else sceneInterim += e.results[i][0].transcript;
-      }
-      const statusEl = document.getElementById('voiceStatus');
-      if (statusEl) statusEl.textContent = sceneInterim ? '🎙 ' + sceneInterim : '🎙 Recording… tap to stop';
-    }
-    function loop() {
-      if (!isRecording) return;
-      const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') showMicBanner('⚠ ' + e.error); };
-      rec.onend = () => { if (isRecording) setTimeout(loop, 80); };
-      recognition = rec; try { rec.start(); } catch(e) { if (isRecording) setTimeout(loop, 200); }
-    }
-    loop();
-    startVisualizer('sceneWaveform');
-    document.getElementById('sceneWaveform').classList.add('active');
-    document.getElementById('voiceBtn').classList.add('recording');
-    document.getElementById('voiceBtn').textContent = '⏹';
-    document.getElementById('voiceStatus').textContent = '🎙 Recording… tap to stop';
-    document.getElementById('voiceStatus').classList.add('active');
-  }
+// Synchronous Web Speech start — called directly from toggleVoice (gesture context preserved)
+function startRecordingWS() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+  const textarea = document.getElementById('sceneNotes');
+  isRecording = true;
+  recognition = makeWsLoop({
+    isActive:  () => isRecording,
+    onFinal:   (text) => { textarea.value += text + ' '; autoResizeTextarea(textarea); },
+    onInterim: (text) => { const s = document.getElementById('voiceStatus'); if (s) s.textContent = text ? '🎙 ' + text : '🎙 Recording… tap to stop'; },
+    onDone:    () => { recognition = null; }
+  });
+  startVisualizer('sceneWaveform');
+  document.getElementById('sceneWaveform').classList.add('active');
+  document.getElementById('voiceBtn').classList.add('recording');
+  document.getElementById('voiceBtn').textContent = '⏹';
+  document.getElementById('voiceStatus').textContent = '🎙 Recording… tap to stop';
+  document.getElementById('voiceStatus').classList.add('active');
 }
+
+// Async Whisper start — only called when Whisper engine is active (no gesture requirement)
+async function startRecordingWhisper() {
+  const ok = await whisperStart('scene');
+  if (!ok) return;
+  isRecording = true;
+  startVisualizer('sceneWaveform');
+  document.getElementById('sceneWaveform').classList.add('active');
+  document.getElementById('voiceBtn').classList.add('recording');
+  document.getElementById('voiceBtn').textContent = '⏹';
+  document.getElementById('voiceStatus').textContent = '🎙 Recording… tap to stop';
+  document.getElementById('voiceStatus').classList.add('active');
+}
+
+// Keep startRecording as alias for backward compat (e.g. any onclick still referencing it)
+async function startRecording() { if (useWhisper()) await startRecordingWhisper(); else startRecordingWS(); }
 
 async function stopRecording() {
   isRecording = false;
@@ -6190,7 +6833,7 @@ async function stopRecording() {
       document.getElementById('voiceStatus').classList.remove('active');
     }, 3000);
   } else {
-    if (recognition) { try { recognition.abort(); } catch(e) {} recognition = null; }
+    if (recognition) { const h = recognition; recognition = null; if (h && typeof h.stop === 'function') h.stop(); }
     // Commit any interim text shown in status to textarea
     const statusEl = document.getElementById('voiceStatus');
     const statusTxt = statusEl ? statusEl.textContent : '';
@@ -6407,109 +7050,128 @@ function useWhisper() {
 }
 
 // ======== WEB SPEECH ENGINE (iPhone Safari / Chrome) ========
-async function wsSectionStart(section, btn) {
+// Shared helper — builds a self-restarting Web Speech recognition loop.
+// Uses continuous:false + auto-restart because iOS Safari silently ignores continuous:true.
+// Finals are committed to `onFinal` immediately on each result so they survive restarts.
+// `isActive()` — return true while recording should continue.
+// `onFinal(text)` — called with each committed sentence.
+// `onInterim(text)` — called with live interim text (may be '').
+// `onDone()` — called once when isActive() returns false on end.
+// Returns { stop } — call stop() to end cleanly.
+function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    showToast('error', 'Web Speech Unavailable', 'SR:' + !!window.SpeechRecognition + ' webkit:' + !!window.webkitSpeechRecognition);
-    return;
+  if (!SR) return null;
+  let current = null;
+  let stopped = false;
+  let doneFired = false;
+  const onceDone = () => { if (!doneFired) { doneFired = true; onDone(); } };
+
+  function loop() {
+    if (stopped || !isActive()) { onceDone(); return; }
+    const rec = new SR();
+    rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
+    current = rec;
+
+    rec.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) onFinal(e.results[i][0].transcript);
+        else interim += e.results[i][0].transcript;
+      }
+      onInterim(interim);
+    };
+    rec.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
+      if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
+    };
+    rec.onend = () => {
+      current = null;
+      if (stopped) { onceDone(); return; }
+      if (isActive()) {
+        // iOS ended naturally (silence/timeout) — restart immediately
+        setTimeout(loop, 80);
+      } else {
+        onceDone();
+      }
+    };
+
+    try { rec.start(); } catch(err) {
+      showMicBanner('⚠ Could not start mic: ' + err.message);
+    }
   }
 
-  const bar = document.getElementById('sec-bar-' + section);
+  loop();
+
+  return {
+    stop: () => {
+      if (stopped) return;
+      stopped = true;
+      if (current) { try { current.abort(); } catch(e) {} current = null; }
+      // Belt-and-suspenders: if onend doesn't fire after abort (can happen on some iOS versions),
+      // call onceDone after a short delay. The onceDone guard ensures it only fires once.
+      setTimeout(onceDone, 300);
+    }
+  };
+}
+
+
+function wsSectionStart(section, btn) {
+  const bar     = document.getElementById('sec-bar-'  + section);
   const statusEl = document.getElementById('sec-status-' + section);
   bar.style.display = 'flex';
   statusEl.textContent = '';
   secTranscript[section] = '';
-  secRecording[section] = true;
+  secRecording[section]  = true;
   btn.classList.add('recording');
   btn.textContent = '⏹';
   setDictateState(section, 'listening');
 
-  let sessionCommitted = '';
-  let interim = '';
-
-  function onResult(e) {
-    interim = '';
-    sessionCommitted = '';
-    for (let i = 0; i < e.results.length; i++) {
-      if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
-      else interim += e.results[i][0].transcript;
+  const loop = makeWsLoop({
+    isActive:  () => !!secRecording[section],
+    onFinal:   (text) => {
+      secTranscript[section] = (secTranscript[section] || '') + text + ' ';
+      const words = secTranscript[section].trim().split(/\s+/).filter(Boolean).length;
+      const stateEl = document.getElementById('sec-state-' + section);
+      if (stateEl) stateEl.textContent = '🎙 ' + words + ' word' + (words !== 1 ? 's' : '') + ' captured…';
+      const transTextEl = document.getElementById('sec-trans-' + section);
+      if (transTextEl) transTextEl.textContent = secTranscript[section].trim();
+    },
+    onInterim: (interim) => {
+      if (!interim) return;
+      const stateEl = document.getElementById('sec-state-' + section);
+      if (stateEl && !(secTranscript[section] || '').trim()) stateEl.textContent = '🎙 ' + interim;
+    },
+    onDone: () => {
+      secRecognition[section] = null;
+      const t = (secTranscript[section] || '').trim();
+      if (t.length > 2) {
+        if (!secTranscriptLog[section]) secTranscriptLog[section] = [];
+        secTranscriptLog[section].push(t);
+        secTranscript[section] = secTranscriptLog[section].join(' ');
+        setDictateState(section, 'processing', secTranscript[section].split(/\s+/).length);
+        updateTranscriptDisplay(section);
+        const toggleEl = document.getElementById('sec-toggle-' + section);
+        if (toggleEl) toggleEl.style.display = 'block';
+        extractSection(section);
+      } else {
+        setDictateState(section, 'error', 'No speech detected — try again');
+        setTimeout(() => { const b = document.getElementById('sec-bar-' + section); if (b) b.style.display = 'none'; }, 2500);
+      }
     }
-    const committed = (secTranscript[section] || '') + sessionCommitted;
-    const display = (committed + interim).trim();
-    const words = committed.trim() ? committed.trim().split(/\s+/).length : 0;
-    const stateEl = document.getElementById('sec-state-' + section);
-    if (stateEl) stateEl.textContent = '🎙 ' + (words > 0 ? words + ' word' + (words !== 1 ? 's' : '') + ' captured…' : 'Listening…');
-    const transTextEl = document.getElementById('sec-trans-' + section);
-    if (transTextEl && display) transTextEl.textContent = display;
-  }
-  function onErr(e) {
-    if (e.error === 'no-speech') return;
-    if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
-  }
-  function onEnd() {
-    // Commit this session before potentially restarting
-    if (sessionCommitted.trim()) { secTranscript[section] = (secTranscript[section] || '') + sessionCommitted; sessionCommitted = ''; }
-    if (interim.trim()) { secTranscript[section] = (secTranscript[section] || '') + interim.trim() + ' '; interim = ''; }
-    if (secRecording[section]) { setTimeout(loop, 80); return; }
-    // User tapped stop — process transcript
-    secRecognition[section] = null;
-    const t = (secTranscript[section] || '').trim();
-    if (t.length > 2) {
-      if (!secTranscriptLog[section]) secTranscriptLog[section] = [];
-      secTranscriptLog[section].push(t);
-      secTranscript[section] = secTranscriptLog[section].join(' ');
-      setDictateState(section, 'processing', secTranscript[section].split(/\s+/).length);
-      updateTranscriptDisplay(section);
-      const toggleEl = document.getElementById('sec-toggle-' + section);
-      if (toggleEl) toggleEl.style.display = 'block';
-      extractSection(section);
-    } else {
-      setDictateState(section, 'error', 'No speech detected — try again');
-      setTimeout(() => { const b = document.getElementById('sec-bar-' + section); if (b) b.style.display = 'none'; }, 2500);
-    }
-  }
-  function loop() {
-    if (!secRecording[section]) return;
-    sessionCommitted = ''; interim = '';
-    const rec = new SR();
-    rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-    rec.onresult = onResult; rec.onerror = onErr; rec.onend = onEnd;
-    secRecognition[section] = rec;
-    try { rec.start(); } catch(e) { if (secRecording[section]) setTimeout(loop, 200); }
-  }
-  loop();
+  });
+  secRecognition[section] = loop;
 }
 
 function wsSectionStop(section, btn) {
   secRecording[section] = false;
-  if (secRecognition[section]) { try { secRecognition[section].abort(); } catch(e) {} secRecognition[section] = null; }
   btn.classList.remove('recording');
   btn.textContent = '🎙';
   stopVisualizer();
   const canvas = document.getElementById('sec-wave-' + section);
   if (canvas) { canvas.style.display = 'none'; canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); }
-
-  // Read displayed transcript from DOM (includes interim text shown on screen)
-  const transTextEl = document.getElementById('sec-trans-' + section);
-  const displayed = transTextEl ? transTextEl.textContent.trim() : '';
-  const t = (displayed && !displayed.startsWith('🎙') && displayed.length > 2)
-    ? displayed
-    : (secTranscript[section] || '').trim();
-
-  if (t.length > 2) {
-    secTranscript[section] = t;
-    if (!secTranscriptLog[section]) secTranscriptLog[section] = [];
-    secTranscriptLog[section].push(t);
-    secTranscript[section] = secTranscriptLog[section].join(' ');
-    setDictateState(section, 'processing', secTranscript[section].split(/\s+/).length);
-    updateTranscriptDisplay(section);
-    const toggleEl = document.getElementById('sec-toggle-' + section);
-    if (toggleEl) toggleEl.style.display = 'block';
-    extractSection(section);
-  } else {
-    setDictateState(section, 'error', 'No speech detected — try again');
-    setTimeout(() => { const bar = document.getElementById('sec-bar-' + section); if (bar) bar.style.display = 'none'; }, 2500);
-  }
+  const h = secRecognition[section];
+  secRecognition[section] = null;
+  if (h && typeof h.stop === 'function') h.stop();
 }
 
 function setDictateState(section, state, extra) {
@@ -6860,7 +7522,7 @@ RULES:
 - patient.sex: "male" or "female" lowercase only, else ""
 - patient.state: two-letter abbreviation (CT, NY, etc.), else ""
 - dispatch.callType: match to one of: "lift_assist", "chest_pain", "respiratory", "trauma", "diabetic", "mva" — closest match, else ""
-- dispatch.whoCalled911: one of "Patient", "Wife", "Relative", "Bystander", "Other", or specific text if unclear
+- dispatch.whoCalled911: one of "Patient", "Spouse", "Relative", "Bystander", "Other", or specific text if unclear
 - scene.loc: EXACTLY one of: "Alert and Oriented x4", "Alert and Oriented x3", "Alert and Oriented x2", "Alert and Oriented x1", "Altered Mental Status", "Unconscious" — or "" if not mentioned
 - scene.sceneNotes: scene description, environment, positioning, who was present
 - incident.chiefComplaint: the patient's main complaint, quoted if possible
@@ -6922,12 +7584,16 @@ Dictated text: "${transcript}"`;
       if (!value || !value.toString().trim()) return;
       const el = document.getElementById(id);
       if (!el) return;
+      // HPI and PMH use bullet format
+      const isBulletField = (id === 'hpiNarrative' || id === 'sampleNarrative');
+      const incoming = isBulletField ? textToBullets(value.toString()) : value.toString();
       const had = el.value && el.value.trim();
-      el.value = had ? had + '\n' + value : value;
+      el.value = had ? had + '\n' + incoming : incoming;
       el.classList.add('field-overwritten');
       fieldsPopulated.push(label);
       fieldsOverwritten.push(label);
       setTimeout(() => el.classList.remove('field-overwritten'), 5000);
+      autoResizeTextarea(el);
     };
 
     // PATIENT
@@ -6938,7 +7604,11 @@ Dictated text: "${transcript}"`;
     if (parsed.patient?.city)    setField('patientCity',    parsed.patient.city,                  'City');
     if (parsed.patient?.state)   setField('patientState',   parsed.patient.state.toUpperCase(),   'State');
     if (parsed.patient?.zip)     setField('patientZip',     parsed.patient.zip,                   'Zip');
-    if (parsed.patient?.phone)   setField('patientPhone',   parsed.patient.phone,                 'Phone');
+    if (parsed.patient?.phone) {
+      setField('patientPhone', parsed.patient.phone, 'Phone');
+      const phoneEl = document.getElementById('patientPhone');
+      if (phoneEl) formatPhone(phoneEl);
+    }
     if (parsed.patient?.sex) {
       const sexVal = parsed.patient.sex.toLowerCase();
       document.getElementById('patientSex').value = sexVal;
@@ -6957,7 +7627,7 @@ Dictated text: "${transcript}"`;
     }
     if (parsed.dispatch?.whoCalled911) {
       const wVal = parsed.dispatch.whoCalled911;
-      const knownW = ['Patient','Wife','Relative','Bystander','Other'];
+      const knownW = ['Patient','Spouse','Relative','Bystander','Other'];
       const matchW = knownW.find(k => k.toLowerCase() === wVal.toLowerCase()) || 'Other';
       document.querySelectorAll('#whoCalled911Pills .tap-pill').forEach(p => {
         p.classList.toggle('selected', p.textContent.trim() === matchW);
@@ -7025,76 +7695,40 @@ let ptRecognition = null;
 let ptTranscript = '';
 
 function togglePatientVoice() {
-  ptRecording ? stopPatientVoice() : startPatientVoice();
+  if (ptRecording) { stopPatientVoice(); return; }
+  if (useWhisper()) { startPatientVoiceWhisper(); } else { startPatientVoiceWS(); }
 }
 
-async function startPatientVoice() {
-  // Reset any previous state
-  if (ptRecognition) { try { ptRecognition.abort(); } catch(e) {} ptRecognition = null; }
+// Synchronous WS start — rec.start() called directly in gesture context
+function startPatientVoiceWS() {
+  if (ptRecognition) { try { ptRecognition.stop(); } catch(e) {} ptRecognition = null; }
   ptTranscript = '';
-  ptRecording = false;
-
   const transEl = document.getElementById('ptDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
   document.getElementById('ptExtractStatus').textContent = '';
   document.getElementById('ptExtractBtn').style.display = 'none';
 
-  if (useWhisper()) {
-    const ok = await whisperStart('patient');
-    if (!ok) { transEl.textContent = 'Tap mic to dictate patient info…'; return; }
-    ptRecording = true;
-    document.getElementById('ptVoiceBtn').classList.add('recording');
-    document.getElementById('ptVoiceBtn').textContent = '⏹';
-    startVisualizer('ptWaveform');
-    document.getElementById('ptWaveform').classList.add('active');
-  } else {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+  ptRecording = true;
+  document.getElementById('ptVoiceBtn').classList.add('recording');
+  document.getElementById('ptVoiceBtn').textContent = '⏹';
 
-    ptRecording = true;
-    let ptInterim = '';
-    let sessionCommitted = ''; // text committed in THIS recognition session only
-    document.getElementById('ptVoiceBtn').classList.add('recording');
-    document.getElementById('ptVoiceBtn').textContent = '⏹';
-
-    function onResult(e) {
-      ptInterim = '';
-      sessionCommitted = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          sessionCommitted += e.results[i][0].transcript + ' ';
-        } else {
-          ptInterim += e.results[i][0].transcript;
-        }
-      }
-      const display = (ptTranscript + sessionCommitted + ptInterim).trim();
+  ptRecognition = makeWsLoop({
+    isActive:  () => ptRecording,
+    onFinal:   (text) => {
+      ptTranscript += text + ' ';
+      const display = ptTranscript.trim();
       if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
-    }
-    function onErr(e) {
-      if (e.error === 'no-speech') return;
-      if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked — Settings → Safari → Microphone → Allow');
-    }
-    function onEnd() {
-      // Commit this session's results into ptTranscript before potentially restarting
-      if (sessionCommitted.trim()) {
-        ptTranscript += sessionCommitted;
-        sessionCommitted = '';
-      }
-      if (ptInterim.trim()) {
-        ptTranscript += ptInterim.trim() + ' ';
-        ptInterim = '';
-      }
-      if (ptRecording) {
-        setTimeout(loop, 80);
-        return;
-      }
-      // User tapped stop — final commit done, now handle history + extract
+    },
+    onInterim: (text) => {
+      const display = (ptTranscript + text).trim();
+      if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
+    },
+    onDone: () => {
       ptRecognition = null;
       const t = ptTranscript.trim();
       if (t.length > 2) {
-        transEl.textContent = t;
-        transEl.classList.add('has-content');
+        transEl.textContent = t; transEl.classList.add('has-content');
         addTranscriptToHistory('patient', t);
         document.getElementById('ptExtractBtn').style.display = 'block';
         extractPatientInfo();
@@ -7103,23 +7737,31 @@ async function startPatientVoice() {
         transEl.classList.remove('has-content');
       }
     }
-    function loop() {
-      if (!ptRecording) return;
-      sessionCommitted = '';
-      ptInterim = '';
-      const rec = new SR();
-      rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = onErr; rec.onend = onEnd;
-      ptRecognition = rec;
-      try { rec.start(); } catch(e) { if (ptRecording) setTimeout(loop, 200); }
-    }
-    loop();
-  }
+  });
 }
+
+async function startPatientVoiceWhisper() {
+  ptTranscript = '';
+  const transEl = document.getElementById('ptDictateTranscript');
+  transEl.textContent = '🎙 Listening…';
+  transEl.classList.remove('has-content');
+  document.getElementById('ptExtractStatus').textContent = '';
+  document.getElementById('ptExtractBtn').style.display = 'none';
+  const ok = await whisperStart('patient');
+  if (!ok) { transEl.textContent = 'Tap mic to dictate patient info…'; return; }
+  ptRecording = true;
+  document.getElementById('ptVoiceBtn').classList.add('recording');
+  document.getElementById('ptVoiceBtn').textContent = '⏹';
+  startVisualizer('ptWaveform');
+  document.getElementById('ptWaveform').classList.add('active');
+}
+
+// Keep alias for any legacy callers
+async function startPatientVoice() { if (useWhisper()) await startPatientVoiceWhisper(); else startPatientVoiceWS(); }
 
 async function stopPatientVoice() {
   ptRecording = false;
-  if (ptRecognition) { try { ptRecognition.abort(); } catch(e) {} ptRecognition = null; }
+  if (ptRecognition) { const h = ptRecognition; ptRecognition = null; if (h && typeof h.stop === 'function') h.stop(); }
 
   stopVisualizer();
   const wv = document.getElementById('ptWaveform');
@@ -7217,50 +7859,33 @@ let sceneTranscript = '';
 let sceneRecognition = null;
 
 function toggleSceneVoice() {
-  sceneRecording ? stopSceneVoice() : startSceneVoice();
+  if (sceneRecording) { stopSceneVoice(); return; }
+  if (useWhisper()) { startSceneVoiceWhisper(); } else { startSceneVoiceWS(); }
 }
 
-async function startSceneVoice() {
-  if (sceneRecognition) { try { sceneRecognition.abort(); } catch(e) {} sceneRecognition = null; }
+function startSceneVoiceWS() {
+  if (sceneRecognition) { try { sceneRecognition.stop(); } catch(e) {} sceneRecognition = null; }
   sceneTranscript = '';
-  sceneRecording = false;
-
   const transEl = document.getElementById('sceneDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
   document.getElementById('sceneExtractStatus').textContent = '';
   document.getElementById('sceneExtractBtn').style.display = 'none';
 
-  if (useWhisper()) {
-    const ok = await whisperStart('scene');
-    if (!ok) { transEl.textContent = 'Tap mic to dictate scene information…'; return; }
-    sceneRecording = true;
-    document.getElementById('sceneVoiceBtn').classList.add('recording');
-    document.getElementById('sceneVoiceBtn').textContent = '⏹';
-    startVisualizer('sceneWaveform');
-    document.getElementById('sceneWaveform').classList.add('active');
-  } else {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
-    sceneRecording = true;
-    let sceneInterim = '';
-    let sessionCommitted = '';
-    document.getElementById('sceneVoiceBtn').classList.add('recording');
-    document.getElementById('sceneVoiceBtn').textContent = '⏹';
-    function onResult(e) {
-      sceneInterim = '';
-      sessionCommitted = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
-        else sceneInterim += e.results[i][0].transcript;
-      }
-      const display = (sceneTranscript + sessionCommitted + sceneInterim).trim();
-      if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
-    }
-    function onEnd() {
-      if (sessionCommitted.trim()) { sceneTranscript += sessionCommitted; sessionCommitted = ''; }
-      if (sceneInterim.trim()) { sceneTranscript += sceneInterim.trim() + ' '; sceneInterim = ''; }
-      if (sceneRecording) { setTimeout(loop, 80); return; }
+  sceneRecording = true;
+  document.getElementById('sceneVoiceBtn').classList.add('recording');
+  document.getElementById('sceneVoiceBtn').textContent = '⏹';
+  sceneRecognition = makeWsLoop({
+    isActive:  () => sceneRecording,
+    onFinal:   (text) => {
+      sceneTranscript += text + ' ';
+      transEl.textContent = sceneTranscript.trim(); transEl.classList.add('has-content');
+    },
+    onInterim: (text) => {
+      const d = (sceneTranscript + text).trim();
+      if (d) { transEl.textContent = d; transEl.classList.add('has-content'); }
+    },
+    onDone: () => {
       sceneRecognition = null;
       const t = sceneTranscript.trim();
       if (t.length > 2) {
@@ -7268,25 +7893,32 @@ async function startSceneVoice() {
         addTranscriptToHistory('scene', t);
         document.getElementById('sceneExtractBtn').style.display = 'block';
         extractSceneInfo();
-      } else {
-        transEl.textContent = 'Tap mic to dictate scene information — LOC, scene notes…';
-        transEl.classList.remove('has-content');
-      }
+      } else { transEl.textContent = 'Tap mic to dictate scene information — LOC, scene notes…'; transEl.classList.remove('has-content'); }
     }
-    function loop() {
-      if (!sceneRecording) return;
-      sessionCommitted = ''; sceneInterim = '';
-      const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
-      rec.onend = onEnd;
-      sceneRecognition = rec; try { rec.start(); } catch(e) { if (sceneRecording) setTimeout(loop, 200); }
-    }
-    loop();
-  }
+  });
 }
+
+async function startSceneVoiceWhisper() {
+  sceneTranscript = '';
+  const transEl = document.getElementById('sceneDictateTranscript');
+  transEl.textContent = '🎙 Listening…';
+  transEl.classList.remove('has-content');
+  document.getElementById('sceneExtractStatus').textContent = '';
+  document.getElementById('sceneExtractBtn').style.display = 'none';
+  const ok = await whisperStart('scene');
+  if (!ok) { transEl.textContent = 'Tap mic to dictate scene information…'; return; }
+  sceneRecording = true;
+  document.getElementById('sceneVoiceBtn').classList.add('recording');
+  document.getElementById('sceneVoiceBtn').textContent = '⏹';
+  startVisualizer('sceneWaveform');
+  document.getElementById('sceneWaveform').classList.add('active');
+}
+
+async function startSceneVoice() { if (useWhisper()) await startSceneVoiceWhisper(); else startSceneVoiceWS(); }
 
 async function stopSceneVoice() {
   sceneRecording = false;
+  if (sceneRecognition) { const h = sceneRecognition; sceneRecognition = null; if (h && typeof h.stop === 'function') h.stop(); }
   stopVisualizer();
   const wv = document.getElementById('sceneWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
@@ -7374,50 +8006,33 @@ let incidentTranscript = '';
 let incidentRecognition = null;
 
 function toggleIncidentVoice() {
-  incidentRecording ? stopIncidentVoice() : startIncidentVoice();
+  if (incidentRecording) { stopIncidentVoice(); return; }
+  if (useWhisper()) { startIncidentVoiceWhisper(); } else { startIncidentVoiceWS(); }
 }
 
-async function startIncidentVoice() {
-  if (incidentRecognition) { try { incidentRecognition.abort(); } catch(e) {} incidentRecognition = null; }
+function startIncidentVoiceWS() {
+  if (incidentRecognition) { try { incidentRecognition.stop(); } catch(e) {} incidentRecognition = null; }
   incidentTranscript = '';
-  incidentRecording = false;
-
   const transEl = document.getElementById('incidentDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
   document.getElementById('incidentExtractStatus').textContent = '';
   document.getElementById('incidentExtractBtn').style.display = 'none';
 
-  if (useWhisper()) {
-    const ok = await whisperStart('incident');
-    if (!ok) { transEl.textContent = 'Tap mic to dictate incident details…'; return; }
-    incidentRecording = true;
-    document.getElementById('incidentVoiceBtn').classList.add('recording');
-    document.getElementById('incidentVoiceBtn').textContent = '⏹';
-    startVisualizer('incidentWaveform');
-    document.getElementById('incidentWaveform').classList.add('active');
-  } else {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available'); return; }
-    incidentRecording = true;
-    let sessionCommitted = '';
-    let interim = '';
-    document.getElementById('incidentVoiceBtn').classList.add('recording');
-    document.getElementById('incidentVoiceBtn').textContent = '⏹';
-    function onResult(e) {
-      interim = '';
-      sessionCommitted = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
-        else interim += e.results[i][0].transcript;
-      }
-      const display = (incidentTranscript + sessionCommitted + interim).trim();
-      if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
-    }
-    function onEnd() {
-      if (sessionCommitted.trim()) { incidentTranscript += sessionCommitted; sessionCommitted = ''; }
-      if (interim.trim()) { incidentTranscript += interim.trim() + ' '; interim = ''; }
-      if (incidentRecording) { setTimeout(loop, 80); return; }
+  incidentRecording = true;
+  document.getElementById('incidentVoiceBtn').classList.add('recording');
+  document.getElementById('incidentVoiceBtn').textContent = '⏹';
+  incidentRecognition = makeWsLoop({
+    isActive:  () => incidentRecording,
+    onFinal:   (text) => {
+      incidentTranscript += text + ' ';
+      transEl.textContent = incidentTranscript.trim(); transEl.classList.add('has-content');
+    },
+    onInterim: (text) => {
+      const d = (incidentTranscript + text).trim();
+      if (d) { transEl.textContent = d; transEl.classList.add('has-content'); }
+    },
+    onDone: () => {
       incidentRecognition = null;
       const t = incidentTranscript.trim();
       if (t.length > 2) {
@@ -7425,25 +8040,32 @@ async function startIncidentVoice() {
         addTranscriptToHistory('incident', t);
         document.getElementById('incidentExtractBtn').style.display = 'block';
         extractIncidentInfo();
-      } else {
-        transEl.textContent = 'Tap mic to dictate incident details…';
-        transEl.classList.remove('has-content');
-      }
+      } else { transEl.textContent = 'Tap mic to dictate incident details…'; transEl.classList.remove('has-content'); }
     }
-    function loop() {
-      if (!incidentRecording) return;
-      sessionCommitted = ''; interim = '';
-      const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => { if (e.error === 'not-allowed') showMicBanner('⚠ Mic blocked'); };
-      rec.onend = onEnd;
-      incidentRecognition = rec; try { rec.start(); } catch(e) { if (incidentRecording) setTimeout(loop, 200); }
-    }
-    loop();
-  }
+  });
 }
+
+async function startIncidentVoiceWhisper() {
+  incidentTranscript = '';
+  const transEl = document.getElementById('incidentDictateTranscript');
+  transEl.textContent = '🎙 Listening…';
+  transEl.classList.remove('has-content');
+  document.getElementById('incidentExtractStatus').textContent = '';
+  document.getElementById('incidentExtractBtn').style.display = 'none';
+  const ok = await whisperStart('incident');
+  if (!ok) { transEl.textContent = 'Tap mic to dictate incident details…'; return; }
+  incidentRecording = true;
+  document.getElementById('incidentVoiceBtn').classList.add('recording');
+  document.getElementById('incidentVoiceBtn').textContent = '⏹';
+  startVisualizer('incidentWaveform');
+  document.getElementById('incidentWaveform').classList.add('active');
+}
+
+async function startIncidentVoice() { if (useWhisper()) await startIncidentVoiceWhisper(); else startIncidentVoiceWS(); }
 
 async function stopIncidentVoice() {
   incidentRecording = false;
+  if (incidentRecognition) { const h = incidentRecognition; incidentRecognition = null; if (h && typeof h.stop === 'function') h.stop(); }
   stopVisualizer();
   const wv = document.getElementById('incidentWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
@@ -7533,46 +8155,31 @@ let vitalsTranscript = '';
 let vitalsRecognition = null;
 
 function toggleVitalsVoice() {
-  vitalsRecording ? stopVitalsVoice() : startVitalsVoice();
+  if (vitalsRecording) { stopVitalsVoice(); return; }
+  if (useWhisper()) { startVitalsVoiceWhisper(); } else { startVitalsVoiceWS(); }
 }
 
-async function startVitalsVoice() {
+function startVitalsVoiceWS() {
   vitalsTranscript = '';
   const transEl = document.getElementById('vitalsDictateTranscript');
   transEl.textContent = '🎙 Listening…';
   transEl.classList.remove('has-content');
   document.getElementById('vitalsExtractStatus').textContent = '';
 
-  if (useWhisper()) {
-    const ok = await whisperStart('vitals');
-    if (!ok) { transEl.textContent = 'Tap mic to dictate activities…'; return; }
-    vitalsRecording = true;
-    document.getElementById('vitalsVoiceBtn').classList.add('recording');
-    document.getElementById('vitalsVoiceBtn').textContent = '⏹';
-    startVisualizer('vitalsWaveform');
-    document.getElementById('vitalsWaveform').classList.add('active');
-  } else {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
-    vitalsRecording = true;
-    let sessionCommitted = '';
-    let interim = '';
-    document.getElementById('vitalsVoiceBtn').classList.add('recording');
-    document.getElementById('vitalsVoiceBtn').textContent = '⏹';
-    function onResult(e) {
-      interim = '';
-      sessionCommitted = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
-        else interim += e.results[i][0].transcript;
-      }
-      const display = (vitalsTranscript + sessionCommitted + interim).trim();
-      if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
-    }
-    function onEnd() {
-      if (sessionCommitted.trim()) { vitalsTranscript += sessionCommitted; sessionCommitted = ''; }
-      if (interim.trim()) { vitalsTranscript += interim.trim() + ' '; interim = ''; }
-      if (vitalsRecording) { setTimeout(loop, 80); return; }
+  vitalsRecording = true;
+  document.getElementById('vitalsVoiceBtn').classList.add('recording');
+  document.getElementById('vitalsVoiceBtn').textContent = '⏹';
+  vitalsRecognition = makeWsLoop({
+    isActive:  () => vitalsRecording,
+    onFinal:   (text) => {
+      vitalsTranscript += text + ' ';
+      transEl.textContent = vitalsTranscript.trim(); transEl.classList.add('has-content');
+    },
+    onInterim: (text) => {
+      const d = (vitalsTranscript + text).trim();
+      if (d) { transEl.textContent = d; transEl.classList.add('has-content'); }
+    },
+    onDone: () => {
       vitalsRecognition = null;
       const t = vitalsTranscript.trim();
       if (t.length > 2) {
@@ -7580,25 +8187,31 @@ async function startVitalsVoice() {
         addTranscriptToHistory('vitals', t);
         document.getElementById('vitalsExtractBtn').style.display = 'block';
         extractVitalsInfo();
-      } else {
-        transEl.textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…';
-        transEl.classList.remove('has-content');
-      }
+      } else { transEl.textContent = 'Tap mic to dictate activities — vitals, what was done, interventions…'; transEl.classList.remove('has-content'); }
     }
-    function loop() {
-      if (!vitalsRecording) return;
-      sessionCommitted = ''; interim = '';
-      const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => { if (e.error !== 'no-speech' && e.error !== 'aborted') showMicBanner('⚠ ' + e.error); };
-      rec.onend = onEnd;
-      vitalsRecognition = rec; try { rec.start(); } catch(e) { if (vitalsRecording) setTimeout(loop, 200); }
-    }
-    loop();
-  }
+  });
 }
+
+async function startVitalsVoiceWhisper() {
+  vitalsTranscript = '';
+  const transEl = document.getElementById('vitalsDictateTranscript');
+  transEl.textContent = '🎙 Listening…';
+  transEl.classList.remove('has-content');
+  document.getElementById('vitalsExtractStatus').textContent = '';
+  const ok = await whisperStart('vitals');
+  if (!ok) { transEl.textContent = 'Tap mic to dictate activities…'; return; }
+  vitalsRecording = true;
+  document.getElementById('vitalsVoiceBtn').classList.add('recording');
+  document.getElementById('vitalsVoiceBtn').textContent = '⏹';
+  startVisualizer('vitalsWaveform');
+  document.getElementById('vitalsWaveform').classList.add('active');
+}
+
+async function startVitalsVoice() { if (useWhisper()) await startVitalsVoiceWhisper(); else startVitalsVoiceWS(); }
 
 async function stopVitalsVoice() {
   vitalsRecording = false;
+  if (vitalsRecognition) { const h = vitalsRecognition; vitalsRecognition = null; if (h && typeof h.stop === 'function') h.stop(); }
   stopVisualizer();
   const wv = document.getElementById('vitalsWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
@@ -7740,10 +8353,11 @@ let transportTranscript = '';
 let transportRecognition = null;
 
 function toggleTransportVoice() {
-  transportRecording ? stopTransportVoice() : startTransportVoice();
+  if (transportRecording) { stopTransportVoice(); return; }
+  if (useWhisper()) { startTransportVoiceWhisper(); } else { startTransportVoiceWS(); }
 }
 
-async function startTransportVoice() {
+function startTransportVoiceWS() {
   transportTranscript = '';
   const transEl = document.getElementById('transportDictateTranscript');
   if (!transEl) return;
@@ -7752,37 +8366,20 @@ async function startTransportVoice() {
   const extStatus = document.getElementById('transportExtractStatus');
   if (extStatus) extStatus.textContent = '';
 
-  if (useWhisper()) {
-    const ok = await whisperStart('transport');
-    if (!ok) { transEl.textContent = 'Tap mic to dictate transport info…'; return; }
-    transportRecording = true;
-    document.getElementById('transportVoiceBtn').classList.add('recording');
-    document.getElementById('transportVoiceBtn').textContent = '⏹';
-    startVisualizer('transportWaveform');
-    const wv = document.getElementById('transportWaveform');
-    if (wv) wv.classList.add('active');
-  } else {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available.'); return; }
-    transportRecording = true;
-    let sessionCommitted = '';
-    let interim = '';
-    document.getElementById('transportVoiceBtn').classList.add('recording');
-    document.getElementById('transportVoiceBtn').textContent = '⏹';
-    function onResult(e) {
-      interim = '';
-      sessionCommitted = '';
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) sessionCommitted += e.results[i][0].transcript + ' ';
-        else interim += e.results[i][0].transcript;
-      }
-      const display = (transportTranscript + sessionCommitted + interim).trim();
-      if (display) { transEl.textContent = display; transEl.classList.add('has-content'); }
-    }
-    function onEnd() {
-      if (sessionCommitted.trim()) { transportTranscript += sessionCommitted; sessionCommitted = ''; }
-      if (interim.trim()) { transportTranscript += interim.trim() + ' '; interim = ''; }
-      if (transportRecording) { setTimeout(loop, 80); return; }
+  transportRecording = true;
+  document.getElementById('transportVoiceBtn').classList.add('recording');
+  document.getElementById('transportVoiceBtn').textContent = '⏹';
+  transportRecognition = makeWsLoop({
+    isActive:  () => transportRecording,
+    onFinal:   (text) => {
+      transportTranscript += text + ' ';
+      transEl.textContent = transportTranscript.trim(); transEl.classList.add('has-content');
+    },
+    onInterim: (text) => {
+      const d = (transportTranscript + text).trim();
+      if (d) { transEl.textContent = d; transEl.classList.add('has-content'); }
+    },
+    onDone: () => {
       transportRecognition = null;
       const t = transportTranscript.trim();
       if (t.length > 2) {
@@ -7791,25 +8388,34 @@ async function startTransportVoice() {
         const extBtn = document.getElementById('transportExtractBtn');
         if (extBtn) extBtn.style.display = 'block';
         extractTransportInfo();
-      } else {
-        transEl.textContent = 'Tap mic to dictate transport info…';
-        transEl.classList.remove('has-content');
-      }
+      } else { transEl.textContent = 'Tap mic to dictate transport info…'; transEl.classList.remove('has-content'); }
     }
-    function loop() {
-      if (!transportRecording) return;
-      sessionCommitted = ''; interim = '';
-      const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => {};
-      rec.onend = onEnd;
-      transportRecognition = rec; try { rec.start(); } catch(e) { if (transportRecording) setTimeout(loop, 200); }
-    }
-    loop();
-  }
+  });
 }
+
+async function startTransportVoiceWhisper() {
+  transportTranscript = '';
+  const transEl = document.getElementById('transportDictateTranscript');
+  if (!transEl) return;
+  transEl.textContent = '🎙 Listening…';
+  transEl.classList.remove('has-content');
+  const extStatus = document.getElementById('transportExtractStatus');
+  if (extStatus) extStatus.textContent = '';
+  const ok = await whisperStart('transport');
+  if (!ok) { transEl.textContent = 'Tap mic to dictate transport info…'; return; }
+  transportRecording = true;
+  document.getElementById('transportVoiceBtn').classList.add('recording');
+  document.getElementById('transportVoiceBtn').textContent = '⏹';
+  startVisualizer('transportWaveform');
+  const wv = document.getElementById('transportWaveform');
+  if (wv) wv.classList.add('active');
+}
+
+async function startTransportVoice() { if (useWhisper()) await startTransportVoiceWhisper(); else startTransportVoiceWS(); }
 
 async function stopTransportVoice() {
   transportRecording = false;
+  if (transportRecognition) { const h = transportRecognition; transportRecognition = null; if (h && typeof h.stop === 'function') h.stop(); }
   stopVisualizer();
   const wv = document.getElementById('transportWaveform');
   if (wv) { wv.classList.remove('active'); wv.getContext('2d').clearRect(0,0,wv.width,wv.height); }
@@ -7888,90 +8494,144 @@ async function extractTransportInfo() {
 
 function buildEmailText() {
   const d = collectChartData();
-  const lines = [];
-  const sep = '─'.repeat(40);
+  // Use \r\n — renders correctly when pasted into Zoll, Notes, Word, email, etc.
+  const NL  = '\r\n';
+  const SEP  = '========================================';
+  const THIN = '----------------------------------------';
 
-  // Header
   const callTypeLabels = {
     lift_assist: 'Lift Assist / Fall', chest_pain: 'Chest Pain / Cardiac',
     respiratory: 'Respiratory Distress', trauma: 'Trauma / Injury',
     diabetic: 'Diabetic Emergency', mva: 'Motor Vehicle Accident'
   };
-  const callLabel = callTypeLabels[d.callType] || d.callType || 'Unknown Call Type';
+  const callLabel  = callTypeLabels[d.callType] || d.callType || 'Unknown Call Type';
   const exportTime = new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
 
-  lines.push('NCEMS CHART EXPORT');
-  lines.push(exportTime);
-  lines.push(sep);
+  const lines = [];
+  const L  = (s='') => lines.push(s);       // push one line
+  const LL = ()      => { L(); L(); };       // push double blank line (section gap)
 
-  // Patient
-  lines.push('PATIENT');
-  if (d.patientName)    lines.push(`  Name:    ${d.patientName}`);
-  if (d.patientDOB)     lines.push(`  DOB:     ${d.patientDOB}${d.patientAge ? '  (Age ' + d.patientAge + ')' : ''}`);
-  if (d.patientSex)     lines.push(`  Sex:     ${d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1)}`);
-  if (d.patientAddress) lines.push(`  Address: ${d.patientAddress}, ${d.patientCity}, ${d.patientState} ${d.patientZip}`.replace(/, ,|,\s*,/g, ',').trim());
-  if (d.patientPhone)   lines.push(`  Phone:   ${d.patientPhone}`);
-  lines.push('');
+  const sec = title => {
+    LL();
+    L(SEP);
+    L('  ' + title);
+    L(THIN);
+    L();
+  };
 
-  // Dispatch
-  lines.push('DISPATCH');
-  lines.push(`  Call Type: ${callLabel}`);
-  if (d.whoCalled911)   lines.push(`  Caller:    ${d.whoCalled911}`);
-  lines.push('');
+  const row = (label, value) => {
+    if (!value) return;
+    const pad = 12;
+    const labelPadded = (label + ':').padEnd(pad);
+    L(`  ${labelPadded} ${value}`);
+  };
 
-  // Scene
-  lines.push('SCENE');
-  if (d.patientLOC)    lines.push(`  LOC:         ${d.patientLOC}`);
-  if (d.sceneNotes)    lines.push(`  Scene Notes: ${d.sceneNotes}`);
-  lines.push('');
+  const block = (label, value) => {
+    if (!value) return;
+    L(`  ${label}:`);
+    // Strip bullet prefixes, ensure each sentence ends with a period, join as prose
+    const cleaned = value
+      .split(/\r?\n/)
+      .map(line => line.startsWith('• ') ? line.slice(2).trim() : line.trim())
+      .filter(Boolean)
+      .map(sentence => {
+        // Add period if sentence doesn't already end with punctuation
+        return /[.!?]$/.test(sentence) ? sentence : sentence + '.';
+      })
+      .join(' ');
+    // Wrap at ~80 chars per line for readability
+    const words = cleaned.split(' ');
+    let line = '   ';
+    words.forEach(w => {
+      if ((line + ' ' + w).length > 82) { L(line); line = '    ' + w; }
+      else line += (line.trim() ? ' ' : '') + w;
+    });
+    if (line.trim()) L(line);
+  };
 
-  // Incident
-  lines.push('INCIDENT');
-  if (d.chiefComplaint)   lines.push(`  CC:   ${d.chiefComplaint}`);
-  if (d.hpiNarrative)     lines.push(`  HPI:  ${d.hpiNarrative}`);
-  if (d.sampleNarrative)  lines.push(`  PMH:  ${d.sampleNarrative}`);
-  lines.push('');
+  // ── Header ──
+  L(SEP);
+  L('  NCEMS PATIENT CARE REPORT');
+  L(`  Generated: ${exportTime}`);
+  L(SEP);
 
-  // Activities / Vitals
+  // ── Patient ──
+  sec('PATIENT INFORMATION');
+  row('Name',    d.patientName);
+  if (d.patientDOB) row('DOB', d.patientDOB + (d.patientAge ? `   (Age ${d.patientAge})` : ''));
+  if (d.patientSex) row('Sex', d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1));
+  if (d.patientAddress) row('Address', [d.patientAddress, d.patientCity, d.patientState, d.patientZip].filter(Boolean).join(', '));
+  row('Phone',   d.patientPhone);
+
+  // ── Dispatch ──
+  sec('DISPATCH');
+  row('Call Type', callLabel);
+  row('Caller',    d.whoCalled911);
+
+  // ── Scene ──
+  sec('SCENE');
+  row('LOC', d.patientLOC);
+  L();
+  block('Scene Notes', d.sceneNotes);
+
+  // ── Incident ──
+  sec('INCIDENT');
+  row('Chief Complaint', d.chiefComplaint);
+  L();
+  block('HPI / OPQRST', d.hpiNarrative);
+  L();
+  block('PMH / SAMPLE',  d.sampleNarrative);
+  if (d.medications) { L(); block('Medications', d.medications); }
+  if (d.allergies)   { L(); row('Allergies',  d.allergies); }
+
+  // ── Activities & Vitals ──
   if (d.vitalsCards && d.vitalsCards.length > 0) {
-    lines.push('ACTIVITIES & VITALS');
+    sec('ACTIVITIES & VITALS');
     d.vitalsCards.forEach(card => {
       if (!card.label) return;
-      lines.push('');
-      lines.push(`  [ ${card.label}${card.time ? ' — ' + card.time : ''} ]`);
+      L();
+      L(`  [ ${card.label.toUpperCase()}${card.time ? '  @' + card.time : ''} ]`);
+      L('  ' + THIN);
 
-      // Vitals row
       const vitals = [];
       if (card.bp)      vitals.push(`BP ${card.bp}`);
-      if (card.hr)      vitals.push(`Pulse ${card.hr}`);
+      if (card.hr)      vitals.push(`HR ${card.hr}`);
       if (card.rr)      vitals.push(`RR ${card.rr}`);
       if (card.spo2)    vitals.push(`SpO2 ${card.spo2}%`);
       if (card.pain)    vitals.push(`Pain ${card.pain}/10`);
-      if (card.skin)    vitals.push(`Skin ${card.skin}`);
-      if (card.temp)    vitals.push(`Temp ${card.temp}°F`);
+      if (card.skin)    vitals.push(`Skin: ${card.skin}`);
+      if (card.temp)    vitals.push(`Temp ${card.temp}F`);
       if (card.glucose) vitals.push(`Glucose ${card.glucose} mg/dL`);
-      if (vitals.length > 0) lines.push(`  Vitals: ${vitals.join(' | ')}`);
+      if (vitals.length) row('Vitals', vitals.join('   '));
 
-      // GCS
       if (card.gcsEye || card.gcsVerbal || card.gcsMotor) {
-        const e = card.gcsEye || '—', v = card.gcsVerbal || '—', m = card.gcsMotor || '—';
-        const total = (parseInt(e)||0) + (parseInt(v)||0) + (parseInt(m)||0);
-        lines.push(`  GCS: Eye ${e} / Verbal ${v} / Motor ${m} = ${total || '—'}`);
+        const e = card.gcsEye||'-', v = card.gcsVerbal||'-', m = card.gcsMotor||'-';
+        const tot = (parseInt(e)||0)+(parseInt(v)||0)+(parseInt(m)||0);
+        row('GCS', `E${e} V${v} M${m} = ${tot||'-'}`);
       }
-
-      // ED Room
-      if (card.edRoom) lines.push(`  ED Room: ${card.edRoom}`);
-
-      // Activity notes
-      if (card.activity) lines.push(`  Notes: ${card.activity}`);
+      if (card.edRoom)                                   row('ED Room', card.edRoom);
+      if (card.activity) { L(); block('Notes', card.activity); }
     });
-    lines.push('');
   }
 
-  lines.push(sep);
-  lines.push('Generated by NCEMS Chart Helper');
+  // ── Reference Photos ──
+  if (d.refPhotos && d.refPhotos.length > 0) {
+    sec('REFERENCE PHOTOS');
+    L(`  ${d.refPhotos.length} photo${d.refPhotos.length > 1 ? 's' : ''} attached to this chart.`);
+    d.refPhotos.forEach((p, i) => {
+      const label = p.caption ? `Photo ${i + 1}: ${p.caption}` : `Photo ${i + 1}`;
+      row('Photo', label);
+    });
+    L(`  (Images are embedded in the saved chart file and visible in the Reference tab.)`);
+  }
 
-  return lines.join('\n');
+  // ── Footer ──
+  LL();
+  L(SEP);
+  L('  Generated by NCEMS Chart Helper ' + APP_VERSION);
+  L(SEP);
+
+  return lines.join(NL);
 }
 
 function sendChartEmail() {
@@ -7986,6 +8646,57 @@ function sendChartEmail() {
 
   // Open mail — works on iOS to open Mail app with draft pre-filled
   window.location.href = mailto;
+}
+
+function copyChartToClipboard() {
+  const text = buildEmailText();
+  const statusEl = document.getElementById('copyChartStatus');
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      if (statusEl) { statusEl.textContent = '✓ Chart copied to clipboard — paste anywhere'; clearTimeout(statusEl._t); statusEl._t = setTimeout(() => statusEl.textContent = '', 3000); }
+    }).catch(() => _fallbackCopy(text, statusEl));
+  } else {
+    _fallbackCopy(text, statusEl);
+  }
+}
+
+function _fallbackCopy(text, statusEl) {
+  // iOS < 13.4 fallback — create temp textarea, select, copy
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    if (statusEl) { statusEl.textContent = '✓ Chart copied — paste into Zoll EMS Charts or Notes'; clearTimeout(statusEl._t); statusEl._t = setTimeout(() => statusEl.textContent = '', 3000); }
+  } catch(e) {
+    if (statusEl) { statusEl.textContent = '⚠ Could not copy — try Email instead'; }
+  }
+  document.body.removeChild(ta);
+}
+
+async function shareChart() {
+  const text = buildEmailText();
+  const d = collectChartData();
+  const address = [d.patientAddress, d.patientCity].filter(Boolean).join(', ') || 'Unknown Address';
+  const dateStr = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const title = `NCEMS Chart — ${address} — ${dateStr}`;
+  const statusEl = document.getElementById('copyChartStatus');
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text });
+    } catch(e) {
+      // User cancelled or share failed — fall back to copy
+      if (e.name !== 'AbortError') copyChartToClipboard();
+    }
+  } else {
+    // No share API — fall back to clipboard
+    copyChartToClipboard();
+    if (statusEl) { statusEl.textContent = '✓ Copied (Share not available on this device)'; clearTimeout(statusEl._t); statusEl._t = setTimeout(() => statusEl.textContent = '', 3000); }
+  }
 }
 
 async function generateSOAP() {
@@ -8325,31 +9036,117 @@ function saveAppSettings() {
 
 // ======== AGE CALCULATOR ========
 function calcAge() {
-  const dob = document.getElementById('patientDOB').value;
-  if (!dob) return;
+  const raw = document.getElementById('patientDOB').value;
+  if (!raw) return;
+  // Accept YYYY-MM-DD (from picker) or MM/DD/YYYY (typed)
+  let birth;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    birth = new Date(raw + 'T00:00:00');
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw)) {
+    const [m, d, y] = raw.split('/');
+    birth = new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  } else { return; }
   const today = new Date();
-  const birth = new Date(dob);
   let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  const mo = today.getMonth() - birth.getMonth();
+  if (mo < 0 || (mo === 0 && today.getDate() < birth.getDate())) age--;
   document.getElementById('patientAge').value = age >= 0 ? age : '';
+}
+
+function formatDOBInput(input) {
+  // Strip non-digits
+  let digits = input.value.replace(/\D/g, '').slice(0, 8);
+  let formatted = digits;
+  if (digits.length > 4) {
+    formatted = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+  } else if (digits.length > 2) {
+    formatted = digits.slice(0,2) + '/' + digits.slice(2);
+  }
+  input.value = formatted;
+  if (digits.length === 8) calcAge();
+}
+
+function syncDOBFromPicker() {
+  const picker = document.getElementById('patientDOBPicker');
+  const textField = document.getElementById('patientDOB');
+  if (!picker.value) return;
+  // picker value is YYYY-MM-DD — convert to MM/DD/YYYY
+  const [y, m, d] = picker.value.split('-');
+  textField.value = `${m}/${d}/${y}`;
+  calcAge();
+}
+
+// ======== PHONE FORMATTER ========
+function formatPhone(input) {
+  // Extract all digits from current value
+  const digits = input.value.replace(/\D/g, '');
+
+  if (digits.length < 10) {
+    // Still building — show raw digits only
+    input.value = digits;
+  } else if (digits.length === 10) {
+    // Exactly 10 — format as US domestic
+    input.value = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+  } else {
+    // 11+ digits — international, show raw digits with no formatting
+    input.value = digits;
+  }
 }
 
 // ======== NEW CHART ========
 function newChart() {
   showConfirm('New Chart', 'Clear current chart and start a new one? All unsaved data will be lost.', 'Clear & Start New', true, () => {
     // Clear all form fields
-    ['patientName','patientDOB','patientAge','patientAddress','patientCity','patientState',
-     'patientZip','patientPhone','patientWeight','chiefComplaint',
+    ['patientName','patientDOB','patientAge','patientAddress',
+     'patientPhone','patientWeight','chiefComplaint',
      'hpiNarrative','sampleNarrative',
      'sampleSigns','sampleLastIntake','sampleEvents',
      'medHistory','medications','allergies','patientSkin','patientTemp','patientGlucose',
      'transportHospital','edRoom',
      'sceneNotes','refusalReason',
+     'callType',
      'whoCalled911','whoCalled911Other','patientSex','patientLOC'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
+
+    // Restore location defaults
+    const cityEl  = document.getElementById('patientCity');
+    const stateEl = document.getElementById('patientState');
+    const zipEl   = document.getElementById('patientZip');
+    if (cityEl)  cityEl.value  = 'New Canaan';
+    if (stateEl) stateEl.value = 'CT';
+    if (zipEl)   zipEl.value   = '06840';
+
+    // Clear all signature canvases and reset undo/redo stacks
+    ['sigPatient','sigWitness','sigRMA'].forEach(id => {
+      sigHistory[id] = [];
+      sigFuture[id]  = [];
+      _updateUndoRedoBtns(id);
+      const pad = sigPads[id];
+      if (pad) {
+        const { canvas, ctx } = pad;
+        const dpr = window.devicePixelRatio || 1;
+        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      }
+      // Remove pad entry so initSignaturePads re-initializes cleanly on next Refusal visit
+      delete sigPads[id];
+    });
+
+    // Clear SOAP output panel
+    ['s-text','o-text','a-text','p-text'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
+    });
+    const outputSection = document.getElementById('outputSection');
+    if (outputSection) outputSection.classList.remove('visible');
+    const outputEmpty = document.getElementById('outputEmpty');
+    if (outputEmpty) { outputEmpty.style.display = 'none'; outputEmpty.style.color = ''; }
+    const outputBadge = document.getElementById('outputCallTypeBadge');
+    if (outputBadge) outputBadge.textContent = '';
+
+    // Reset call type quick reference card
+    try { updateCallType(); } catch(e) {}
 
     // Reset all tap pills
     document.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
@@ -8406,7 +9203,34 @@ function newChart() {
 
     outputGenerated = false;
     autoSaveChartId = null;
-    switchTab('input', document.querySelectorAll('.tab')[1]);
+
+    // Clear reference photos
+    refPhotos = [];
+    renderRefGrid();
+
+    // ── Refusal tab: reset all checkboxes and radios to unchecked ──
+    [
+      'rf_sameAsHome',
+      'rf_informed1', 'rf_informed2', 'rf_informed3', 'rf_informed4',
+      'rf_disp1', 'rf_disp2',
+      'rf_refusedSign'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+    // Show incident location fields (sameAsHome is now unchecked)
+    try { toggleIncidentLocation(); } catch(e) {}
+    // Clear refusal text fields
+    [
+      'rf_incidentAddress','rf_incidentCity','rf_incidentState','rf_incidentZip',
+      'rf_custodyName','rf_mdName','rf_advice','rf_explanation',
+      'rf_printedPatient','rf_printedWitness','rf_printedRMA','rf_unitRMA'
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+
+    switchTab('dispatch', document.querySelectorAll('.tab')[0]);
   });
 }
 
@@ -8415,55 +9239,45 @@ let hpiRecording = false;
 let hpiRecognition = null;
 
 function toggleHPIVoice() {
-  hpiRecording ? stopHPIRecording() : startHPIRecording();
+  if (hpiRecording) { stopHPIRecording(); return; }
+  if (useWhisper()) { startHPIRecordingWhisper(); } else { startHPIRecordingWS(); }
 }
 
-async function startHPIRecording() {
-  if (useWhisper()) {
-    const ok = await whisperStart('hpi');
-    if (!ok) return;
-    hpiRecording = true;
-    startVisualizer('hpiWaveform');
-    document.getElementById('hpiWaveform').classList.add('active');
-  } else {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
-    const ta = document.getElementById('hpiNarrative');
-    hpiRecording = true;
-    function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { ta.value += e.results[i][0].transcript + ' '; }
-        else interim += e.results[i][0].transcript;
-      }
-      const statusEl = document.getElementById('hpiVoiceStatus');
-      if (statusEl) statusEl.textContent = interim ? '🎙 ' + interim : '🎙 Recording…';
-    }
-    function onEnd() {
-      if (hpiRecording) { setTimeout(loop, 80); return; }
-      hpiRecognition = null;
-      setTimeout(() => {
-        document.getElementById('hpiVoiceStatus').textContent = 'Tap to dictate';
-        document.getElementById('hpiVoiceStatus').classList.remove('active');
-      }, 500);
-    }
-    function loop() {
-      if (!hpiRecording) return;
-      const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => {}; rec.onend = onEnd;
-      hpiRecognition = rec; try { rec.start(); } catch(e) { if (hpiRecording) setTimeout(loop, 200); }
-    }
-    loop();
-  }
+// Synchronous WS start — gesture context preserved
+function startHPIRecordingWS() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+  hpiRecording = true;
+  hpiRecognition = makeWsLoop({
+    isActive:  () => hpiRecording,
+    onFinal:   (text) => { if (text.trim()) appendBullets(document.getElementById('hpiNarrative'), text.trim()); },
+    onInterim: (text) => { const s = document.getElementById('hpiVoiceStatus'); if (s) s.textContent = text ? '🎙 ' + text : '🎙 Recording…'; },
+    onDone:    () => {}
+  });
   document.getElementById('hpiVoiceBtn').classList.add('recording');
   document.getElementById('hpiVoiceBtn').textContent = '⏹';
   document.getElementById('hpiVoiceStatus').textContent = '🎙 Recording…';
   document.getElementById('hpiVoiceStatus').classList.add('active');
 }
 
+async function startHPIRecordingWhisper() {
+  const ok = await whisperStart('hpi');
+  if (!ok) return;
+  hpiRecording = true;
+  startVisualizer('hpiWaveform');
+  document.getElementById('hpiWaveform').classList.add('active');
+  document.getElementById('hpiVoiceBtn').classList.add('recording');
+  document.getElementById('hpiVoiceBtn').textContent = '⏹';
+  document.getElementById('hpiVoiceStatus').textContent = '🎙 Recording…';
+  document.getElementById('hpiVoiceStatus').classList.add('active');
+}
+
+// Keep async alias for any other callers
+async function startHPIRecording() { if (useWhisper()) await startHPIRecordingWhisper(); else startHPIRecordingWS(); }
+
 async function stopHPIRecording() {
   hpiRecording = false;
-  if (hpiRecognition) { try { hpiRecognition.abort(); } catch(e) {} hpiRecognition = null; }
+  if (hpiRecognition) { const h = hpiRecognition; hpiRecognition = null; if (h && typeof h.stop === 'function') h.stop(); }
   stopVisualizer();
   const wv = document.getElementById('hpiWaveform');
   if (wv) { wv.getContext('2d').clearRect(0,0,wv.width,wv.height); wv.classList.remove('active'); }
@@ -8474,21 +9288,13 @@ async function stopHPIRecording() {
     document.getElementById('hpiVoiceStatus').textContent = 'Transcribing…';
     const transcript = await whisperStop();
     if (transcript && !transcript.startsWith('ERROR:')) {
-      const ta = document.getElementById('hpiNarrative');
-      ta.value = (ta.value ? ta.value + ' ' : '') + transcript;
+      appendBullets(document.getElementById('hpiNarrative'), transcript);
       document.getElementById('hpiVoiceStatus').textContent = '✓ Done';
     } else {
       document.getElementById('hpiVoiceStatus').textContent = '✗ Failed — try again';
     }
-  } else {
-    // Commit any interim text shown in status label to the textarea
-    const statusEl = document.getElementById('hpiVoiceStatus');
-    const statusTxt = statusEl ? statusEl.textContent : '';
-    if (statusTxt.startsWith('🎙 ') && statusTxt.length > 3) {
-      const ta = document.getElementById('hpiNarrative');
-      if (ta) ta.value = (ta.value ? ta.value + ' ' : '') + statusTxt.slice(3).trim();
-    }
   }
+  // Web Speech: finals were written to textarea live via onresult — nothing extra needed on stop
   setTimeout(() => {
     document.getElementById('hpiVoiceStatus').textContent = 'Tap to dictate';
     document.getElementById('hpiVoiceStatus').classList.remove('active');
@@ -8500,55 +9306,43 @@ let sampleRecording = false;
 let sampleRecognition = null;
 
 function toggleSAMPLEVoice() {
-  sampleRecording ? stopSAMPLERecording() : startSAMPLERecording();
+  if (sampleRecording) { stopSAMPLERecording(); return; }
+  if (useWhisper()) { startSAMPLERecordingWhisper(); } else { startSAMPLERecordingWS(); }
 }
 
-async function startSAMPLERecording() {
-  if (useWhisper()) {
-    const ok = await whisperStart('sample');
-    if (!ok) return;
-    sampleRecording = true;
-    startVisualizer('sampleWaveform');
-    document.getElementById('sampleWaveform').classList.add('active');
-  } else {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
-    const ta = document.getElementById('sampleNarrative');
-    sampleRecording = true;
-    function onResult(e) {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) { ta.value += e.results[i][0].transcript + ' '; }
-        else interim += e.results[i][0].transcript;
-      }
-      const statusEl = document.getElementById('sampleVoiceStatus');
-      if (statusEl) statusEl.textContent = interim ? '🎙 ' + interim : '🎙 Recording…';
-    }
-    function onEnd() {
-      if (sampleRecording) { setTimeout(loop, 80); return; }
-      sampleRecognition = null;
-      setTimeout(() => {
-        document.getElementById('sampleVoiceStatus').textContent = 'Tap to dictate';
-        document.getElementById('sampleVoiceStatus').classList.remove('active');
-      }, 500);
-    }
-    function loop() {
-      if (!sampleRecording) return;
-      const rec = new SR(); rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
-      rec.onresult = onResult; rec.onerror = e => {}; rec.onend = onEnd;
-      sampleRecognition = rec; try { rec.start(); } catch(e) { if (sampleRecording) setTimeout(loop, 200); }
-    }
-    loop();
-  }
+function startSAMPLERecordingWS() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showMicBanner('⚠ Web Speech not available. Use Whisper in ⚙ Crew settings.'); return; }
+  sampleRecording = true;
+  sampleRecognition = makeWsLoop({
+    isActive:  () => sampleRecording,
+    onFinal:   (text) => { if (text.trim()) appendBullets(document.getElementById('sampleNarrative'), text.trim()); },
+    onInterim: (text) => { const s = document.getElementById('sampleVoiceStatus'); if (s) s.textContent = text ? '🎙 ' + text : '🎙 Recording…'; },
+    onDone:    () => {}
+  });
   document.getElementById('sampleVoiceBtn').classList.add('recording');
   document.getElementById('sampleVoiceBtn').textContent = '⏹';
   document.getElementById('sampleVoiceStatus').textContent = '🎙 Recording…';
   document.getElementById('sampleVoiceStatus').classList.add('active');
 }
 
+async function startSAMPLERecordingWhisper() {
+  const ok = await whisperStart('sample');
+  if (!ok) return;
+  sampleRecording = true;
+  startVisualizer('sampleWaveform');
+  document.getElementById('sampleWaveform').classList.add('active');
+  document.getElementById('sampleVoiceBtn').classList.add('recording');
+  document.getElementById('sampleVoiceBtn').textContent = '⏹';
+  document.getElementById('sampleVoiceStatus').textContent = '🎙 Recording…';
+  document.getElementById('sampleVoiceStatus').classList.add('active');
+}
+
+async function startSAMPLERecording() { if (useWhisper()) await startSAMPLERecordingWhisper(); else startSAMPLERecordingWS(); }
+
 async function stopSAMPLERecording() {
   sampleRecording = false;
-  if (sampleRecognition) { try { sampleRecognition.abort(); } catch(e) {} sampleRecognition = null; }
+  if (sampleRecognition) { const h = sampleRecognition; sampleRecognition = null; if (h && typeof h.stop === 'function') h.stop(); }
   stopVisualizer();
   const wv = document.getElementById('sampleWaveform');
   if (wv) { wv.getContext('2d').clearRect(0,0,wv.width,wv.height); wv.classList.remove('active'); }
@@ -8559,20 +9353,13 @@ async function stopSAMPLERecording() {
     document.getElementById('sampleVoiceStatus').textContent = 'Transcribing…';
     const transcript = await whisperStop();
     if (transcript && !transcript.startsWith('ERROR:')) {
-      const ta = document.getElementById('sampleNarrative');
-      ta.value = (ta.value ? ta.value + ' ' : '') + transcript;
+      appendBullets(document.getElementById('sampleNarrative'), transcript);
       document.getElementById('sampleVoiceStatus').textContent = '✓ Done';
     } else {
       document.getElementById('sampleVoiceStatus').textContent = '✗ Failed — try again';
     }
-  } else {
-    const statusEl = document.getElementById('sampleVoiceStatus');
-    const statusTxt = statusEl ? statusEl.textContent : '';
-    if (statusTxt.startsWith('🎙 ') && statusTxt.length > 3) {
-      const ta = document.getElementById('sampleNarrative');
-      if (ta) ta.value = (ta.value ? ta.value + ' ' : '') + statusTxt.slice(3).trim();
-    }
   }
+  // Web Speech: finals were written to textarea live via onresult — nothing extra needed on stop
   setTimeout(() => {
     document.getElementById('sampleVoiceStatus').textContent = 'Tap to dictate';
     document.getElementById('sampleVoiceStatus').classList.remove('active');
@@ -8651,6 +9438,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// ── Transport Hospital Selector ──────────────────────────────
+function selectTransportHospital(el, cardId) {
+  const wrap = document.getElementById('vhosp-pills-' + cardId);
+  if (wrap) wrap.querySelectorAll('.transport-hosp-pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  const otherInput = document.getElementById('vhosp-other-' + cardId);
+  if (otherInput) {
+    if (el.dataset.val === 'Other') {
+      otherInput.style.display = 'block';
+      otherInput.focus();
+    } else {
+      otherInput.style.display = 'none';
+      otherInput.value = '';
+    }
+  }
+  triggerAutoSave();
+  checkTransportRefusalExclusivity();
+}
+
+function getTransportHospital(cardId) {
+  const wrap = document.getElementById('vhosp-pills-' + cardId);
+  if (!wrap) return '[HOSPITAL]';
+  const selected = wrap.querySelector('.transport-hosp-pill.selected');
+  if (!selected) return '[HOSPITAL]';
+  if (selected.dataset.val === 'Other') {
+    return document.getElementById('vhosp-other-' + cardId)?.value.trim() || '[HOSPITAL]';
+  }
+  return selected.dataset.val;
+}
+
+function getTransportCardId() {
+  let transportId = null;
+  document.getElementById('vitals-container')?.querySelectorAll('.vitals-card-label').forEach(lbl => {
+    const span = lbl.querySelector('span:first-child');
+    if (span?.textContent.trim() === 'Transport') {
+      const badge = lbl.querySelector('.activity-badge');
+      if (badge) transportId = badge.id.replace('activity-badge-', '');
+    }
+  });
+  return transportId;
+}
+
 // ---- Pill selectors (single-select) ----
 function selectRelationship(el) {
   document.querySelectorAll('.rf-rel-pill').forEach(p => p.classList.remove('selected'));
@@ -8717,97 +9546,527 @@ function toggleIncidentLocation() {
 
 // ---- Signature Pads ----
 const sigPads = {};
+const sigHistory = { sigPatient: [], sigWitness: [], sigRMA: [] };  // undo stacks
+const sigFuture  = { sigPatient: [], sigWitness: [], sigRMA: [] };  // redo stacks
+
+// ── Config for the three signature fields ──
+const SIG_CONFIGS = [
+  { id: 'sigPatient', title: 'Patient / Guardian Signature', nameField: 'rf_printedPatient', nameLabel: 'Patient / Guardian Printed Name' },
+  { id: 'sigWitness', title: 'Witness Signature',            nameField: 'rf_printedWitness', nameLabel: 'Witness Printed Name' },
+  { id: 'sigRMA',     title: 'RMA Administered By',          nameField: 'rf_printedRMA',     nameLabel: 'RMA Printed Name' },
+];
 
 function initSignaturePads() {
-  ['sigPatient', 'sigWitness', 'sigRMA'].forEach(id => {
-    const canvas = document.getElementById(id);
-    if (!canvas || sigPads[id]) return;
-    // Set actual pixel dimensions
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    ctx.strokeStyle = '#1a1a2e';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    let drawing = false;
-    let lastX = 0, lastY = 0;
-
-    function getPos(e) {
-      const r = canvas.getBoundingClientRect();
-      const src = e.touches ? e.touches[0] : e;
-      return { x: src.clientX - r.left, y: src.clientY - r.top };
-    }
-
-    function start(e) {
-      e.preventDefault();
-      drawing = true;
-      const pos = getPos(e);
-      lastX = pos.x; lastY = pos.y;
-      ctx.beginPath();
-      ctx.moveTo(lastX, lastY);
-    }
-
-    function draw(e) {
-      if (!drawing) return;
-      e.preventDefault();
-      const pos = getPos(e);
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-      lastX = pos.x; lastY = pos.y;
-    }
-
-    function stop(e) { drawing = false; }
-
-    canvas.addEventListener('mousedown', start);
-    canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stop);
-    canvas.addEventListener('mouseleave', stop);
-    canvas.addEventListener('touchstart', start, { passive: false });
-    canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stop);
-
-    sigPads[id] = { canvas, ctx };
+  SIG_CONFIGS.forEach(cfg => {
+    const canvas = document.getElementById(cfg.id);
+    if (!canvas || sigPads[cfg.id]) return;
+    _initOnePad(cfg.id, canvas);
   });
 }
 
-function clearSig(id) {
+function _initOnePad(id, canvas) {
+  // Size canvas to its CSS display size
+  const rect = canvas.getBoundingClientRect();
+  const dpr  = window.devicePixelRatio || 1;
+  canvas.width  = rect.width  * dpr;
+  canvas.height = rect.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  _setCtxStyle(ctx);
+
+  let drawing = false, lastX = 0, lastY = 0;
+
+  function getPos(e) {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+  function start(e) {
+    e.preventDefault();
+    // Save snapshot for undo before starting a new stroke
+    _pushHistory(id, canvas);
+    drawing = true;
+    const pos = getPos(e);
+    lastX = pos.x; lastY = pos.y;
+    ctx.beginPath(); ctx.moveTo(lastX, lastY);
+  }
+  function draw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y); ctx.stroke();
+    lastX = pos.x; lastY = pos.y;
+  }
+  function stop() { drawing = false; _updateUndoRedoBtns(id); }
+
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  draw);
+  canvas.addEventListener('mouseup',    stop);
+  canvas.addEventListener('mouseleave', stop);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove',  draw,  { passive: false });
+  canvas.addEventListener('touchend',   stop);
+
+  sigPads[id] = { canvas, ctx };
+}
+
+function _setCtxStyle(ctx) {
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth   = 2;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+}
+
+function _pushHistory(id, canvas) {
+  sigHistory[id].push(canvas.toDataURL());
+  sigFuture[id] = [];  // clear redo on new stroke
+}
+
+function _updateUndoRedoBtns(id) {
+  const undoBtn = document.getElementById('undo-' + id);
+  const redoBtn = document.getElementById('redo-' + id);
+  if (undoBtn) undoBtn.disabled = sigHistory[id].length === 0;
+  if (redoBtn) redoBtn.disabled = sigFuture[id].length === 0;
+}
+
+function _restoreFromDataURL(id, dataURL) {
   const pad = sigPads[id];
   if (!pad) return;
   const { canvas, ctx } = pad;
-  ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width  / dpr;
+  const h = canvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+  if (!dataURL) return;
+  const img = new Image();
+  img.onload = () => ctx.drawImage(img, 0, 0, w, h);
+  img.src = dataURL;
 }
 
+function undoSig(id) {
+  if (!sigHistory[id].length) return;
+  const pad = sigPads[id];
+  if (!pad) return;
+  sigFuture[id].push(pad.canvas.toDataURL());
+  const prev = sigHistory[id].pop();
+  _restoreFromDataURL(id, prev);
+  _updateUndoRedoBtns(id);
+}
+
+function redoSig(id) {
+  if (!sigFuture[id].length) return;
+  const pad = sigPads[id];
+  if (!pad) return;
+  sigHistory[id].push(pad.canvas.toDataURL());
+  const next = sigFuture[id].pop();
+  _restoreFromDataURL(id, next);
+  _updateUndoRedoBtns(id);
+}
+
+// ======== REFERENCE PHOTOS ========
+
+let refPhotos  = [];   // [{ id, dataURL, caption }]
+let refNextId  = 1;
+let refLbIndex = null; // index into refPhotos for lightbox
+
+// ── File intake ──────────────────────────────────────────
+function handleRefPhotoFiles(files) {
+  if (!files || !files.length) return;
+  const pending = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!pending.length) return;
+  let loaded = 0;
+
+  pending.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      // Compress to JPEG ≤1400px wide to keep save-file size manageable
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1400;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataURL = cv.toDataURL('image/jpeg', 0.72);
+        refPhotos.push({ id: refNextId++, dataURL, caption: '' });
+        loaded++;
+        if (loaded === pending.length) {
+          renderRefGrid();
+          triggerAutoSave();
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Reset file inputs so the same file can be re-selected
+  document.getElementById('refPhotoCamera').value = '';
+  document.getElementById('refPhotoUpload').value = '';
+}
+
+// ── Grid rendering ───────────────────────────────────────
+function renderRefGrid() {
+  const grid  = document.getElementById('refGrid');
+  const empty = document.getElementById('refEmpty');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  if (refPhotos.length === 0) {
+    if (empty) empty.style.display = 'flex';
+    grid.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  grid.style.display = 'grid';
+
+  refPhotos.forEach((photo, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ref-card';
+    card.dataset.refId = photo.id;
+
+    card.innerHTML = `
+      <div class="ref-thumb-wrap" onclick="openRefLightbox(${idx})">
+        <img src="${photo.dataURL}" alt="Photo ${idx + 1}" loading="lazy">
+        <div class="ref-thumb-overlay">🔍</div>
+      </div>
+      <div class="ref-card-body">
+        <textarea class="ref-caption-input" rows="2"
+          placeholder="Add caption…"
+          oninput="updateRefCaption(${photo.id}, this.value)"
+        >${escapeHtml(photo.caption)}</textarea>
+        <div class="ref-card-actions">
+          <button class="ref-save-btn"   onclick="saveRefPhotoById(${photo.id})">⬇ Save</button>
+          <button class="ref-delete-btn" onclick="deleteRefPhoto(${photo.id})">🗑 Delete</button>
+        </div>
+      </div>`;
+
+    grid.appendChild(card);
+  });
+}
+
+// ── Caption update ───────────────────────────────────────
+function updateRefCaption(id, value) {
+  const p = refPhotos.find(x => x.id === id);
+  if (p) { p.caption = value; triggerAutoSave(); }
+}
+
+// ── Delete ───────────────────────────────────────────────
+function deleteRefPhoto(id) {
+  refPhotos = refPhotos.filter(x => x.id !== id);
+  renderRefGrid();
+  triggerAutoSave();
+}
+
+// ── Save to device (triggers browser download → Photos on iOS) ───
+function saveRefPhotoById(id) {
+  const p = refPhotos.find(x => x.id === id);
+  if (p) _downloadRefPhoto(p);
+}
+
+function _downloadRefPhoto(photo) {
+  const a = document.createElement('a');
+  const caption = (photo.caption || '').trim()
+    .replace(/[^a-z0-9 _-]/gi, '').replace(/\s+/g, '_').slice(0, 40);
+  a.download = caption ? `ref_${caption}.jpg` : `ref_photo_${photo.id}.jpg`;
+  a.href = photo.dataURL;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ── Lightbox ─────────────────────────────────────────────
+function openRefLightbox(idx) {
+  if (idx < 0 || idx >= refPhotos.length) return;
+  refLbIndex = idx;
+  const photo = refPhotos[idx];
+  document.getElementById('refLbImg').src = photo.dataURL;
+  document.getElementById('refLbCaption').textContent = photo.caption
+    ? `${idx + 1} / ${refPhotos.length}  —  ${photo.caption}`
+    : `${idx + 1} / ${refPhotos.length}`;
+  document.getElementById('refLightbox').style.display = 'flex';
+}
+
+function closeRefLightbox() {
+  document.getElementById('refLightbox').style.display = 'none';
+  refLbIndex = null;
+}
+
+function saveRefPhotoToDevice() {
+  if (refLbIndex !== null && refPhotos[refLbIndex]) _downloadRefPhoto(refPhotos[refLbIndex]);
+}
+
+// Keyboard nav: Escape closes, ←/→ navigates between photos
+document.addEventListener('keydown', e => {
+  const lb = document.getElementById('refLightbox');
+  if (!lb || lb.style.display !== 'flex') return;
+  if (e.key === 'Escape') { closeRefLightbox(); return; }
+  if (e.key === 'ArrowRight' && refLbIndex !== null)
+    openRefLightbox(Math.min(refLbIndex + 1, refPhotos.length - 1));
+  if (e.key === 'ArrowLeft' && refLbIndex !== null)
+    openRefLightbox(Math.max(refLbIndex - 1, 0));
+});
+
+// ── Signature Modal ──────────────────────────────────────
+let sigModalIdx = 0;
+let sigModalPad = null;
+let sigModalHistory = [];
+let sigModalFuture  = [];
+
+function openSigModal(idx) {
+  sigModalIdx = idx;
+  document.getElementById('sigModal').classList.add('active');
+  document.getElementById('sigModalBackdrop').style.display = 'block';
+  // Use a short delay so the browser completes layout before we measure
+  setTimeout(() => _buildSigModal(), 80);
+  // Rebuild canvas if device rotates while modal is open
+  window.addEventListener('resize', _onSigModalResize);
+}
+
+let _sigResizeTimer = null;
+function _onSigModalResize() {
+  // Debounce: wait until resize settles (orientation change fires multiple events)
+  clearTimeout(_sigResizeTimer);
+  _sigResizeTimer = setTimeout(() => {
+    if (document.getElementById('sigModal').classList.contains('active')) {
+      _buildSigModal();
+    }
+  }, 120);
+}
+
+function closeSigModal() {
+  _commitSigModal();
+  document.getElementById('sigModal').classList.remove('active');
+  document.getElementById('sigModalBackdrop').style.display = 'none';
+  sigModalPad = null;
+  window.removeEventListener('resize', _onSigModalResize);
+  clearTimeout(_sigResizeTimer);
+}
+
+function sigModalNav(dir) {
+  _commitSigModal();
+  sigModalIdx = (sigModalIdx + dir + SIG_CONFIGS.length) % SIG_CONFIGS.length;
+  setTimeout(() => _buildSigModal(), 30);
+}
+
+function _buildSigModal() {
+  const cfg = SIG_CONFIGS[sigModalIdx];
+  sigModalHistory = [];
+  sigModalFuture  = [];
+
+  // Update header text
+  document.getElementById('sigModalTitle').textContent = cfg.title;
+  document.getElementById('sigModalStep').textContent  = `${sigModalIdx + 1} of ${SIG_CONFIGS.length}`;
+
+  // Populate name field from inline form
+  document.getElementById('sigModalNameLabel').textContent = cfg.nameLabel;
+  document.getElementById('sigModalNameInput').value = document.getElementById(cfg.nameField)?.value || '';
+
+  // ── Canvas setup ──────────────────────────────
+  // Only carry forward what's currently drawn if we are rebuilding the SAME
+  // signature id (e.g. orientation resize). On ◀/▶ navigation the canvas
+  // belongs to the PREVIOUS sig — do NOT bleed it onto the next signer.
+  const currentCanvas = document.getElementById('sigModalCanvas');
+  const isSameSig = currentCanvas?.dataset.sigId === cfg.id;
+
+  const existingDataURL = (() => {
+    if (!isSameSig) return null;          // navigating → blank canvas
+    if (!currentCanvas || currentCanvas.width === 0 || currentCanvas.height === 0) return null;
+    try { return currentCanvas.toDataURL(); } catch(e) { return null; }
+  })();
+
+  const canvas = document.getElementById('sigModalCanvas');
+  const dpr = window.devicePixelRatio || 1;
+
+  // Clear any previously pinned inline dimensions so CSS max-height can apply
+  canvas.style.width  = '';
+  canvas.style.height = '';
+
+  // Let the browser lay out first, then measure
+  const cssW = canvas.offsetWidth  || (canvas.parentElement.clientWidth - 24);
+  const cssH = canvas.offsetHeight || 200;
+
+  // Set backing store dimensions
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+  _setCtxStyle(ctx);
+  ctx.lineWidth = 2.5;
+
+  // ── Event handlers ────────────────────────────
+  // Replace with a fresh clone to drop stale listeners
+  const fresh = canvas.cloneNode(false);
+  fresh.width  = canvas.width;
+  fresh.height = canvas.height;
+  fresh.dataset.sigId = cfg.id;   // ← tag so next call knows which sig owns this canvas
+  canvas.parentElement.replaceChild(fresh, canvas);
+
+  const ctx2 = fresh.getContext('2d');
+  ctx2.setTransform(1, 0, 0, 1, 0, 0);
+  ctx2.scale(dpr, dpr);
+  _setCtxStyle(ctx2);
+  ctx2.lineWidth = 2.5;
+
+  // Draw: prefer the in-progress modal drawing (resize case), else the committed inline sig
+  const drawSrc = existingDataURL || getSigDataURL(cfg.id);
+  if (drawSrc) {
+    const img = new Image();
+    img.onload = () => ctx2.drawImage(img, 0, 0, cssW, cssH);
+    img.src = drawSrc;
+  }
+
+  let drawing = false, lastX = 0, lastY = 0;
+
+  function pos(e) {
+    const r = fresh.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+
+  fresh.addEventListener('mousedown', e => {
+    sigModalHistory.push(fresh.toDataURL()); sigModalFuture = [];
+    drawing = true; const p = pos(e); lastX = p.x; lastY = p.y;
+    ctx2.beginPath(); ctx2.moveTo(lastX, lastY);
+  });
+  fresh.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    const p = pos(e); ctx2.lineTo(p.x, p.y); ctx2.stroke(); lastX = p.x; lastY = p.y;
+  });
+  fresh.addEventListener('mouseup',    () => { drawing = false; _updateModalBtns(); });
+  fresh.addEventListener('mouseleave', () => { drawing = false; });
+
+  fresh.addEventListener('touchstart', e => {
+    e.preventDefault();
+    sigModalHistory.push(fresh.toDataURL()); sigModalFuture = [];
+    drawing = true; const p = pos(e); lastX = p.x; lastY = p.y;
+    ctx2.beginPath(); ctx2.moveTo(lastX, lastY);
+  }, { passive: false });
+  fresh.addEventListener('touchmove', e => {
+    if (!drawing) return; e.preventDefault();
+    const p = pos(e); ctx2.lineTo(p.x, p.y); ctx2.stroke(); lastX = p.x; lastY = p.y;
+  }, { passive: false });
+  fresh.addEventListener('touchend', () => { drawing = false; _updateModalBtns(); });
+
+  sigModalPad = { canvas: fresh, ctx: ctx2, cssW, cssH };
+
+  // Reset undo/redo buttons
+  document.getElementById('sigModalUndo').disabled = true;
+  document.getElementById('sigModalRedo').disabled = true;
+}
+
+function getPos2(e, canvas) {
+  const r = canvas.getBoundingClientRect();
+  const src = e.touches ? e.touches[0] : e;
+  return { x: src.clientX - r.left, y: src.clientY - r.top };
+}
+
+function _updateModalBtns() {
+  document.getElementById('sigModalUndo').disabled = sigModalHistory.length === 0;
+  document.getElementById('sigModalRedo').disabled = sigModalFuture.length  === 0;
+}
+
+function sigModalUndo() {
+  if (!sigModalHistory.length || !sigModalPad) return;
+  const { canvas, ctx } = sigModalPad;
+  const dpr = window.devicePixelRatio || 1;
+  sigModalFuture.push(canvas.toDataURL());
+  const prev = sigModalHistory.pop();
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  if (prev) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, canvas.width/dpr, canvas.height/dpr); img.src = prev; }
+  _updateModalBtns();
+}
+
+function sigModalRedo() {
+  if (!sigModalFuture.length || !sigModalPad) return;
+  const { canvas, ctx } = sigModalPad;
+  const dpr = window.devicePixelRatio || 1;
+  sigModalHistory.push(canvas.toDataURL());
+  const next = sigModalFuture.pop();
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  if (next) { const img = new Image(); img.onload = () => ctx.drawImage(img, 0, 0, canvas.width/dpr, canvas.height/dpr); img.src = next; }
+  _updateModalBtns();
+}
+
+function _commitSigModal() {
+  if (!sigModalPad) return;
+  const cfg = SIG_CONFIGS[sigModalIdx];
+
+  // Save name
+  const nameVal = document.getElementById('sigModalNameInput').value;
+  const nameField = document.getElementById(cfg.nameField);
+  if (nameField) nameField.value = nameVal;
+
+  // Copy modal canvas → inline canvas
+  const modalCanvas = sigModalPad.canvas;
+  const inlineCanvas = document.getElementById(cfg.id);
+  if (!inlineCanvas || !sigPads[cfg.id]) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const modalData = modalCanvas.toDataURL();
+  const isEmpty = modalData.length < 1000;
+
+  // Save undo snapshot for the inline pad
+  _pushHistory(cfg.id, inlineCanvas);
+
+  // Resize inline canvas if needed and redraw
+  const { ctx } = sigPads[cfg.id];
+  const w = inlineCanvas.width  / dpr;
+  const h = inlineCanvas.height / dpr;
+  ctx.clearRect(0, 0, w, h);
+
+  if (!isEmpty) {
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, 0, 0, w, h); _updateUndoRedoBtns(cfg.id); };
+    img.src = modalData;
+  } else {
+    _updateUndoRedoBtns(cfg.id);
+  }
+}
+
+// ── Fixed restore: waits for canvas to be sized before drawing ──
 function restoreSignature(canvasId, dataURL) {
   if (!dataURL) return;
-  
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
-  
-  const ctx = canvas.getContext('2d');
-  const img = new Image();
-  
-  img.onload = function() {
-    // Clear the canvas first
-    ctx.clearRect(0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
-    
-    // Draw the image onto the canvas
-    ctx.drawImage(img, 0, 0, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
-  };
-  
-  img.src = dataURL;
+
+  function doRestore() {
+    const dpr = window.devicePixelRatio || 1;
+    // If the canvas hasn't been sized yet (width=0), re-init the pad first
+    if (canvas.width === 0 || canvas.height === 0) {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0) {
+        // Still not laid out — defer
+        setTimeout(() => doRestore(), 50);
+        return;
+      }
+      canvas.width  = rect.width  * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      _setCtxStyle(ctx);
+      if (!sigPads[canvasId]) sigPads[canvasId] = { canvas, ctx };
+    }
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width  / dpr;
+    const h = canvas.height / dpr;
+    ctx.clearRect(0, 0, w, h);
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, w, h);
+    img.src = dataURL;
+  }
+  doRestore();
 }
 
 function getSigDataURL(id) {
   const canvas = document.getElementById(id);
   if (!canvas) return null;
-  
   const dataURL = canvas.toDataURL('image/png');
-  const isEmpty = dataURL.length < 1000;
-  return isEmpty ? null : dataURL;
+  return dataURL.length < 1000 ? null : dataURL;
 }
 
 // ---- PDF Generation ----
@@ -9506,15 +10765,23 @@ async function encryptData(data, password) {
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(encryptedBuffer), salt.length + iv.length);
   
-  // Convert to base64 for storage
-  return btoa(String.fromCharCode(...combined));
+  // Convert to base64 for storage — use chunked loop, NOT spread (...combined)
+  // because spread on a large Uint8Array exhausts the call stack
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < combined.length; i += chunk) {
+    binary += String.fromCharCode(...combined.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
 
 // Decrypt data with password
 async function decryptData(encryptedBase64, password) {
   try {
-    // Convert from base64
-    const combined = new Uint8Array(atob(encryptedBase64).split('').map(c => c.charCodeAt(0)));
+    // Convert from base64 — use index loop, not split+map which can be slow on large strings
+    const binaryStr = atob(encryptedBase64);
+    const combined = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) combined[i] = binaryStr.charCodeAt(i);
     
     // Extract salt, iv, and encrypted data
     const salt = combined.slice(0, 16);
@@ -9593,13 +10860,8 @@ function collectChartData() {
     
     // Incident Info
     chiefComplaint: document.getElementById('chiefComplaint')?.value || '',
-    hpiOnset: document.getElementById('hpiOnset')?.value || '',
-    hpiProvokes: document.getElementById('hpiProvokes')?.value || '',
-    hpiQuality: document.getElementById('hpiQuality')?.value || '',
-    hpiRadiates: document.getElementById('hpiRadiates')?.value || '',
-    hpiSeverity: document.getElementById('hpiSeverity')?.value || '',
-    hpiTime: document.getElementById('hpiTime')?.value || '',
-    pmh: document.getElementById('pmh')?.value || '',
+    hpiNarrative: document.getElementById('hpiNarrative')?.value || '',
+    sampleNarrative: document.getElementById('sampleNarrative')?.value || '',
     medications: document.getElementById('medications')?.value || '',
     allergies: document.getElementById('allergies')?.value || '',
     
@@ -9645,11 +10907,14 @@ function collectChartData() {
   
   allCards.forEach(card => {
     const id = card.id.replace('vrow-', '');
-    const label = card.querySelector('.vitals-card-label')?.textContent.trim() || '';
-    
+    const labelEl = card.querySelector('.vitals-card-label');
+    const labelText = labelEl
+      ? (labelEl.querySelector('span:first-child')?.textContent?.trim() || '')
+      : '';
+
     const cardData = {
       id: id,
-      label: label.split('[')[0].split('▾')[0].split('▸')[0].trim(), // Remove badges and disabled messages
+      label: labelText,
       time: document.getElementById('vt-' + id)?.value || '',
       bp: document.getElementById('vbp-' + id)?.value || '',
       hr: document.getElementById('vhr-' + id)?.value || '',
@@ -9664,7 +10929,10 @@ function collectChartData() {
       gcsMotor: document.getElementById('vgcs-motor-' + id)?.value || '',
       activity: document.getElementById('vactivity-' + id)?.value || '',
       edRoom: document.getElementById('ved-room-' + id)?.value || '',
-      
+      // Hospital selector (Transport card)
+      hospSelected: document.querySelector(`#vhosp-pills-${id} .transport-hosp-pill.selected`)?.dataset.val || '',
+      hospOther: document.getElementById('vhosp-other-' + id)?.value || '',
+
       // Collect selected pills
       selectedPills: Array.from(card.querySelectorAll('.activity-pill.selected')).map(p => p.textContent.trim())
     };
@@ -9685,6 +10953,9 @@ function collectChartData() {
     }
   });
   
+  // Collect reference photos (base64 + caption)
+  data.refPhotos = refPhotos.map(p => ({ dataURL: p.dataURL, caption: p.caption }));
+
   return data;
 }
 
@@ -9701,7 +10972,7 @@ function restoreChartData(data) {
   }
   // Restore Who Called 911 pills
   if (data.whoCalled911) {
-    const knownValues = ['Patient','Wife','Relative','Bystander','Other'];
+    const knownValues = ['Patient','Spouse','Relative','Bystander','Other'];
     const v = data.whoCalled911;
     const isKnown = knownValues.includes(v);
     document.querySelectorAll('#whoCalled911Pills .tap-pill').forEach(p => {
@@ -9754,13 +11025,8 @@ function restoreChartData(data) {
   
   // Restore Incident Info
   if (document.getElementById('chiefComplaint')) document.getElementById('chiefComplaint').value = data.chiefComplaint || '';
-  if (document.getElementById('hpiOnset')) document.getElementById('hpiOnset').value = data.hpiOnset || '';
-  if (document.getElementById('hpiProvokes')) document.getElementById('hpiProvokes').value = data.hpiProvokes || '';
-  if (document.getElementById('hpiQuality')) document.getElementById('hpiQuality').value = data.hpiQuality || '';
-  if (document.getElementById('hpiRadiates')) document.getElementById('hpiRadiates').value = data.hpiRadiates || '';
-  if (document.getElementById('hpiSeverity')) document.getElementById('hpiSeverity').value = data.hpiSeverity || '';
-  if (document.getElementById('hpiTime')) document.getElementById('hpiTime').value = data.hpiTime || '';
-  if (document.getElementById('pmh')) document.getElementById('pmh').value = data.pmh || '';
+  if (document.getElementById('hpiNarrative')) document.getElementById('hpiNarrative').value = data.hpiNarrative || '';
+  if (document.getElementById('sampleNarrative')) document.getElementById('sampleNarrative').value = data.sampleNarrative || '';
   if (document.getElementById('medications')) document.getElementById('medications').value = data.medications || '';
   if (document.getElementById('allergies')) document.getElementById('allergies').value = data.allergies || '';
   
@@ -9842,10 +11108,26 @@ function restoreChartData(data) {
       if (document.getElementById('vgcs-verbal-' + id)) document.getElementById('vgcs-verbal-' + id).value = cardData.gcsVerbal || '';
       if (document.getElementById('vgcs-motor-' + id)) document.getElementById('vgcs-motor-' + id).value = cardData.gcsMotor || '';
       if (document.getElementById('vactivity-' + id)) {
-        document.getElementById('vactivity-' + id).value = cardData.activity || '';
-        autoResizeTextarea(document.getElementById('vactivity-' + id));
+        const ta = document.getElementById('vactivity-' + id);
+        ta.value = cardData.activity || '';
+        // Attempt immediate resize; the delayed block below handles the collapsed-card case
+        autoResizeTextarea(ta);
       }
       if (document.getElementById('ved-room-' + id)) document.getElementById('ved-room-' + id).value = cardData.edRoom || '';
+
+      // Restore hospital selector (Transport card)
+      if (cardData.hospSelected) {
+        const wrap = document.getElementById('vhosp-pills-' + id);
+        if (wrap) {
+          wrap.querySelectorAll('.transport-hosp-pill').forEach(p => {
+            p.classList.toggle('selected', p.dataset.val === cardData.hospSelected);
+          });
+          if (cardData.hospSelected === 'Other') {
+            const otherInput = document.getElementById('vhosp-other-' + id);
+            if (otherInput) { otherInput.style.display = 'block'; otherInput.value = cardData.hospOther || ''; }
+          }
+        }
+      }
       
       // Update GCS total
       updateGCS(id);
@@ -9888,11 +11170,43 @@ function restoreChartData(data) {
   
   // Check Transport/Refusal exclusivity after restoring data
   checkTransportRefusalExclusivity();
-  
-  return true;
-}
 
-function showSaveDialog() {
+  // Resize all textareas — elements inside hidden tab panels return scrollHeight=0
+  // because a hidden ancestor blocks layout for all descendants. We must temporarily
+  // make EVERY hidden ancestor visible (but invisible to the user) before measuring.
+  setTimeout(() => {
+    const hidden = [];
+
+    // Step 1: un-hide any tab panel or section that is display:none
+    document.querySelectorAll(
+      '#tab-input, #tab-dispatch, #tab-reference, #tab-output, #tab-refusal, ' +
+      '.section-body, .vitals-body, .vitals-card-content'
+    ).forEach(el => {
+      const style = el.style.display || getComputedStyle(el).display;
+      if (style === 'none') {
+        hidden.push({ el, prevDisplay: el.style.display, prevVisibility: el.style.visibility });
+        el.style.display    = 'block';
+        el.style.visibility = 'hidden'; // layout-visible, user-invisible
+      }
+    });
+
+    // Step 2: now every textarea has a measurable scrollHeight — resize them all
+    document.querySelectorAll('textarea').forEach(ta => autoResizeTextarea(ta));
+
+    // Step 3: restore original hidden state exactly
+    hidden.forEach(({ el, prevDisplay, prevVisibility }) => {
+      el.style.display    = prevDisplay;
+      el.style.visibility = prevVisibility;
+    });
+  }, 100);
+
+  // Restore reference photos
+  if (Array.isArray(data.refPhotos) && data.refPhotos.length) {
+    refPhotos = data.refPhotos.map(p => ({ id: refNextId++, dataURL: p.dataURL, caption: p.caption || '' }));
+    renderRefGrid();
+  }
+
+  return true;
   const patientAddress = document.getElementById('patientAddress')?.value || '';
   
   // Generate timestamp in format YYYY-MM-DD HH:MM:SS
@@ -9932,10 +11246,15 @@ async function saveChart() {
   
   const chartData = collectChartData();
   chartData.name = chartName;
+
+  // Photos are stripped from localStorage saves — base64 images exceed the 5MB
+  // localStorage quota. Photos travel with the chart via Export (→ .json file).
+  const hasPhotos = chartData.refPhotos && chartData.refPhotos.length > 0;
+  const saveData = { ...chartData, refPhotos: [] };
   
   try {
-    // Encrypt the chart data
-    const encryptedData = await encryptData(chartData, password);
+    // Encrypt the chart data (photos excluded from localStorage)
+    const encryptedData = await encryptData(saveData, password);
     
     // Get existing saved charts
     const savedCharts = JSON.parse(localStorage.getItem('emsCharts') || '[]');
@@ -9953,7 +11272,8 @@ async function saveChart() {
     localStorage.setItem('emsCharts', JSON.stringify(savedCharts));
     
     closeSaveDialog();
-    showToast('success', 'Chart Saved', `"${chartName}" encrypted and saved successfully.`);
+    const photoNote = hasPhotos ? ' Reference photos are not included — use Export to save a file with photos.' : '';
+    showToast('success', 'Chart Saved', `"${chartName}" saved successfully.${photoNote}`);
   } catch (err) {
     showToast('error', 'Save Failed', err.message);
   }
@@ -9973,6 +11293,11 @@ async function autoSaveChart() {
   if (!currentUser) return;
   
   const chartData = collectChartData();
+
+  // Strip photos from the autosave payload — they're large (base64 JPEG) and
+  // would quickly exceed localStorage's ~5MB quota. Photos are kept in memory
+  // and are included only when the user explicitly saves/exports the chart file.
+  const autoSaveData = { ...chartData, refPhotos: [] };
   
   // Generate auto-save chart name from patient address and timestamp
   const patientAddress = document.getElementById('patientAddress')?.value || '';
@@ -9987,11 +11312,11 @@ async function autoSaveChart() {
   const address = patientAddress.trim();
   const chartName = address ? `${timestamp} ${address}` : timestamp;
   
-  chartData.name = chartName;
+  autoSaveData.name = chartName;
   
   try {
-    // Encrypt the chart data
-    const encryptedData = await encryptData(chartData, password);
+    // Encrypt the chart data (photos excluded)
+    const encryptedData = await encryptData(autoSaveData, password);
     
     // Get existing saved charts
     const savedCharts = JSON.parse(localStorage.getItem('emsCharts') || '[]');
@@ -10265,6 +11590,27 @@ async function handleJSONImport(event) {
         
         if (restoreChartData(chartData)) {
           showToast('success', 'Chart Imported', 'Chart imported and decrypted successfully.');
+          // Force-resize all textareas after import — do this from here (not inside
+          // restoreChartData) so we can use a longer delay and know the DOM is settled.
+          // We un-hide every hidden ancestor so scrollHeight is measurable.
+          setTimeout(() => {
+            const hidden = [];
+            document.querySelectorAll(
+              '#tab-input, #tab-dispatch, #tab-reference, #tab-output, #tab-refusal, ' +
+              '.section-body, .vitals-body, .vitals-card-content'
+            ).forEach(el => {
+              if (getComputedStyle(el).display === 'none') {
+                hidden.push({ el, prev: el.style.display });
+                el.style.display    = 'block';
+                el.style.visibility = 'hidden';
+              }
+            });
+            document.querySelectorAll('textarea').forEach(ta => autoResizeTextarea(ta));
+            hidden.forEach(({ el, prev }) => {
+              el.style.display    = prev;
+              el.style.visibility = '';
+            });
+          }, 250);
         }
         event.target.value = '';
       });
@@ -10296,7 +11642,9 @@ function loadScript(src) {
     <div style="text-align: center; margin-bottom: 30px;">
       <div style="font-size: 48px; margin-bottom: 10px;">🚑</div>
       <h2 style="font-family: var(--mono); font-size: 20px; color: var(--accent); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">NCEMS Chart Helper</h2>
-      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-muted); margin: 8px 0 0 0;">Secure Patient Documentation</p>
+      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-muted); margin: 8px 0 4px 0;">Secure Patient Documentation</p>
+      <p id="loginVersionBadge" style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin: 0; letter-spacing: 0.08em; text-transform: uppercase;"></p>
+      <script>document.getElementById('loginVersionBadge').textContent = APP_VERSION;</script>
     </div>
     
     <!-- Login Form -->
@@ -10419,6 +11767,48 @@ function loadScript(src) {
       <!-- Protocol details will be populated by JavaScript -->
     </div>
   </div>
+</div>
+
+<!-- SIGNATURE MODAL -->
+<!-- ====== PHOTO LIGHTBOX ====== -->
+<div id="refLightbox" style="display:none" onclick="closeRefLightbox()">
+  <div class="ref-lb-inner" onclick="event.stopPropagation()">
+    <div class="ref-lb-toolbar">
+      <span class="ref-lb-caption-display" id="refLbCaption"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-icon" onclick="saveRefPhotoToDevice()" title="Save to device">⬇ Save</button>
+        <button class="btn-icon" onclick="closeRefLightbox()">✕</button>
+      </div>
+    </div>
+    <img id="refLbImg" src="" alt="Reference photo">
+  </div>
+</div>
+
+
+<div id="sigModal">
+  <div class="sig-modal-header">
+    <span class="sig-modal-title" id="sigModalTitle">Signature</span>
+    <!-- Undo/Redo/Done in header (top) -->
+    <div class="sig-modal-actions">
+      <button class="sig-action-btn" onclick="sigModalUndo()" id="sigModalUndo" title="Undo" style="font-size:18px;" disabled>↩</button>
+      <button class="sig-action-btn" onclick="sigModalRedo()" id="sigModalRedo" title="Redo" style="font-size:18px;" disabled>↪</button>
+      <button class="btn-secondary" onclick="closeSigModal()">Done</button>
+    </div>
+    <div class="sig-modal-nav">
+      <span class="sig-modal-step" id="sigModalStep"></span>
+      <button class="btn-icon" onclick="sigModalNav(-1)" id="sigModalPrev">◀</button>
+      <button class="btn-icon" onclick="sigModalNav(1)"  id="sigModalNext">▶</button>
+    </div>
+  </div>
+  <div class="sig-modal-canvas-wrap">
+    <canvas id="sigModalCanvas"></canvas>
+    <div class="sig-modal-name">
+      <label id="sigModalNameLabel">Printed Name</label>
+      <input type="text" id="sigModalNameInput" placeholder="Printed name">
+    </div>
+    <div class="sig-rotate-hint">↻ &nbsp;Rotate to landscape for a wider signing area</div>
+  </div>
+  <div class="sig-modal-footer"></div>
 </div>
 
 </body>
