@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.19 -->
-<script>const APP_VERSION = 'v5.19';</script>
+<!-- Version: v6.1 -->
+<script>const APP_VERSION = 'v6.1';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -7115,23 +7115,26 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
     stop: () => {
       if (stopped) return;
       stopped = true;
-      // Flush any pending interim as a final result — on iOS, abort() discards interim
-      // without firing a final result, so we rescue it here manually.
+      // Rescue any pending interim as a final — iOS abort() discards it without firing onresult.
+      // We commit it here BEFORE killing the recognizer.
+      // IMPORTANT: after manually committing interim, we MUST use abort() (not stop()).
+      // stop() would ask iOS to also finalize the same audio, producing a duplicate onFinal.
       if (lastInterim.trim()) {
         onFinal(lastInterim.trim());
         lastInterim = '';
-      }
-      if (current) {
-        // Use stop() (graceful) so iOS can finalize current audio before ending.
-        // Fall back to abort() if stop() throws.
+        if (current) { try { current.abort(); } catch(e) {} current = null; }
+        // onend fires after abort → stopped=true → onceDone ✓
+        // Safety net in case onend doesn't fire
+        setTimeout(onceDone, 600);
+      } else if (current) {
+        // No pending interim — use stop() so iOS can finalize any buffered audio cleanly.
         try { current.stop(); } catch(e) { try { current.abort(); } catch(e2) {} }
         current = null;
+        setTimeout(onceDone, 600);
       } else {
         // No active recognizer (between restarts) — fire done directly
         onceDone();
       }
-      // Safety net: if onend never fires (occasional iOS bug), fire done after timeout
-      setTimeout(onceDone, 600);
     }
   };
 }
@@ -7541,7 +7544,7 @@ async function extractUniversalInfo(transcript, sourceSection) {
 RULES:
 - patient.dob: YYYY-MM-DD format if a date of birth is given, else ""
 - patient.age: number only if mentioned explicitly (e.g. "45 year old" → "45"), else ""
-- patient.sex: "male" or "female" lowercase only, else ""
+- patient.sex: "male" or "female" lowercase ONLY if the sex or gender is EXPLICITLY stated (e.g. "male patient", "she is", "56 year old female"). Do NOT infer from pronouns like "his", "her", "he", "she", or from relationship words like "wife", "husband". If not explicitly stated, use ""
 - patient.state: two-letter abbreviation (CT, NY, etc.), else ""
 - dispatch.callType: match to one of: "lift_assist", "chest_pain", "respiratory", "trauma", "diabetic", "mva" — closest match, else ""
 - dispatch.whoCalled911: one of "Patient", "Spouse", "Relative", "Bystander", "Other", or specific text if unclear
