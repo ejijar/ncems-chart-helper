@@ -7064,10 +7064,13 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
   let current = null;
   let stopped = false;
   let doneFired = false;
+  let lastInterim = '';  // track last interim so we can rescue it on stop
+
   const onceDone = () => { if (!doneFired) { doneFired = true; onDone(); } };
 
   function loop() {
     if (stopped || !isActive()) { onceDone(); return; }
+    lastInterim = '';
     const rec = new SR();
     rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
     current = rec;
@@ -7075,9 +7078,14 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
     rec.onresult = (e) => {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) onFinal(e.results[i][0].transcript);
-        else interim += e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          lastInterim = '';  // final supersedes interim
+          onFinal(e.results[i][0].transcript);
+        } else {
+          interim += e.results[i][0].transcript;
+        }
       }
+      if (interim) lastInterim = interim;  // save for rescue on stop
       onInterim(interim);
     };
     rec.onerror = (e) => {
@@ -7089,6 +7097,7 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
       if (stopped) { onceDone(); return; }
       if (isActive()) {
         // iOS ended naturally (silence/timeout) — restart immediately
+        lastInterim = '';
         setTimeout(loop, 80);
       } else {
         onceDone();
@@ -7106,10 +7115,23 @@ function makeWsLoop({ isActive, onFinal, onInterim, onDone }) {
     stop: () => {
       if (stopped) return;
       stopped = true;
-      if (current) { try { current.abort(); } catch(e) {} current = null; }
-      // Belt-and-suspenders: if onend doesn't fire after abort (can happen on some iOS versions),
-      // call onceDone after a short delay. The onceDone guard ensures it only fires once.
-      setTimeout(onceDone, 300);
+      // Flush any pending interim as a final result — on iOS, abort() discards interim
+      // without firing a final result, so we rescue it here manually.
+      if (lastInterim.trim()) {
+        onFinal(lastInterim.trim());
+        lastInterim = '';
+      }
+      if (current) {
+        // Use stop() (graceful) so iOS can finalize current audio before ending.
+        // Fall back to abort() if stop() throws.
+        try { current.stop(); } catch(e) { try { current.abort(); } catch(e2) {} }
+        current = null;
+      } else {
+        // No active recognizer (between restarts) — fire done directly
+        onceDone();
+      }
+      // Safety net: if onend never fires (occasional iOS bug), fire done after timeout
+      setTimeout(onceDone, 600);
     }
   };
 }
