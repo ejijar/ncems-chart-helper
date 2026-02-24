@@ -109,6 +109,24 @@
   }
 
   /* TAB NAV */
+  .tabs-wrapper {
+    position: sticky;
+    top: 61px;
+    z-index: 90;
+    background: var(--bg);
+    padding: 10px 16px;
+    margin: 0 -16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  @media (max-width: 500px) {
+    .tabs-wrapper {
+      top: 55px; /* slightly shorter header on mobile */
+      padding: 8px 12px;
+      margin: 0 -12px;
+    }
+  }
+
   .tabs {
     display: flex;
     gap: 4px;
@@ -116,8 +134,13 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 4px;
-    margin-bottom: 20px;
+    margin-bottom: 0;
+    max-width: 868px;
+    margin-left: auto;
+    margin-right: auto;
   }
+
+  .tabs-spacer { height: 20px; }
 
   .tab {
     flex: 1;
@@ -1181,10 +1204,11 @@
     color: var(--accent);
   }
 
+  /* TIME FIELD CONTROLS */
   .vitals-time-header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     padding-bottom: 10px;
     margin-bottom: 10px;
     border-bottom: 1px solid var(--border);
@@ -1197,14 +1221,84 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-dim);
+    flex-shrink: 0;
   }
 
   .vitals-time-header input {
-    flex: 1;
-    max-width: 140px;
+    width: 80px;
+    flex-shrink: 0;
     padding: 6px 10px;
     font-size: 14px;
+    font-family: var(--mono);
+    text-align: center;
   }
+
+  .time-now-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 5px 8px;
+    line-height: 1;
+    transition: all 0.12s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(249,115,22,0.2);
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+  }
+
+  .time-now-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .time-now-btn:active { background: rgba(249,115,22,0.15); }
+
+  .time-adj-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 10px;
+    line-height: 1;
+    transition: all 0.12s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(249,115,22,0.2);
+    min-height: 34px;
+    min-width: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .time-adj-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .time-adj-btn:active { background: rgba(249,115,22,0.15); }
+
+  /* GCS NORMAL BUTTON */
+  .gcs-normal-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 5px 10px;
+    white-space: nowrap;
+    transition: all 0.12s;
+    touch-action: manipulation;
+    align-self: flex-end;
+    min-height: 34px;
+  }
+
+  .gcs-normal-btn:hover { border-color: var(--success); color: var(--success); }
+  .gcs-normal-btn:active { background: rgba(63,185,80,0.1); }
 
   .vitals-line-1,
   .vitals-line-2,
@@ -1223,7 +1317,7 @@
   
   .vitals-line-3 {
     margin-top: 10px;
-    grid-template-columns: auto repeat(3, 1fr) auto;
+    grid-template-columns: auto repeat(3, 1fr) auto auto;
   }
   
   .vitals-line-4 {
@@ -1617,6 +1711,44 @@
     background: rgba(249,115,22,0.15);
     border-color: var(--accent);
     color: var(--accent);
+  }
+
+  /* TAP PILLS — fast single/multi select */
+  .pill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .tap-pill {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    user-select: none;
+    -webkit-tap-highlight-color: rgba(249,115,22,0.2);
+    touch-action: manipulation;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .tap-pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .tap-pill.selected {
+    background: rgba(249,115,22,0.18);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
   }
 
   /* CALL TYPE BADGE */
@@ -2573,6 +2705,13 @@
         </div>
       </button>
       <div class="menu-divider"></div>
+      <button class="menu-item" onclick="openAccount(); toggleMenu();">
+        <span class="menu-icon">👤</span>
+        <div>
+          <div class="menu-title">Account</div>
+          <div class="menu-desc">Email address &amp; preferences</div>
+        </div>
+      </button>
       <button class="menu-item" onclick="openSettings(); toggleMenu();">
         <span class="menu-icon">⚙</span>
         <div>
@@ -2580,12 +2719,11 @@
           <div class="menu-desc">Configure crew information</div>
         </div>
       </button>
-      <div class="menu-divider"></div>
-      <button class="menu-item menu-item-danger" onclick="logoutUser(); toggleMenu();">
-        <span class="menu-icon">👤</span>
+      <button class="menu-item" onclick="openAppSettings(); toggleMenu();">
+        <span class="menu-icon">🔧</span>
         <div>
-          <div class="menu-title">Logout</div>
-          <div class="menu-desc">Sign out of your account</div>
+          <div class="menu-title">App Settings</div>
+          <div class="menu-desc">API keys &amp; voice engine</div>
         </div>
       </button>
     </div>
@@ -2600,12 +2738,15 @@
 <div class="app">
 
   <!-- TABS -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('dispatch', this)">Dispatch</button>
-    <button class="tab" onclick="switchTab('input', this)">Input</button>
-    <button class="tab" onclick="switchTab('output', this)">SOAP Output</button>
-    <button class="tab" onclick="switchTab('refusal', this)">Refusal Form</button>
+  <div class="tabs-wrapper">
+    <div class="tabs" id="tabBar">
+      <button class="tab active" onclick="switchTab('dispatch', this)">Dispatch</button>
+      <button class="tab" onclick="switchTab('input', this)">On-Scene</button>
+      <button class="tab" onclick="switchTab('output', this)">Chart</button>
+      <button class="tab" onclick="switchTab('refusal', this)">Refusal</button>
+    </div>
   </div>
+  <div class="tabs-spacer"></div>
 
   <!-- ====== DISPATCH TAB ====== -->
   <div id="tab-dispatch">
@@ -2629,32 +2770,32 @@
           </div>
         </div>
         <div class="sec-extract-status" id="sec-status-calltype"></div>
-        <div class="form-row">
+        <div class="form-row full">
           <div class="field">
             <label>Call Type</label>
             <select id="callType" onchange="updateCallType()">
               <option value="">[Select]</option>
-              <option value="lift_assist">Lift Assist / Fall</option>
               <option value="chest_pain">Chest Pain / Cardiac</option>
+              <option value="diabetic">Diabetic Emergency</option>
+              <option value="lift_assist">Lift Assist / Fall</option>
+              <option value="mva">Motor Vehicle Accident</option>
               <option value="respiratory">Respiratory Distress</option>
               <option value="trauma">Trauma / Injury</option>
-              <option value="diabetic">Diabetic Emergency</option>
-              <option value="mva">Motor Vehicle Accident</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Dispatch Priority</label>
-            <select id="dispatchPriority">
-              <option>[Select]</option>
-              <option>Non-Emergency</option>
-              <option>Emergency</option>
             </select>
           </div>
         </div>
         <div class="form-row full">
           <div class="field">
             <label>Who Called 911</label>
-            <input type="text" id="whoCalled911" placeholder="e.g. patient, wife, bystander, neighbor">
+            <div class="pill-group" id="whoCalled911Pills" style="margin-top:4px">
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Patient')">Patient</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Wife')">Wife</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Relative')">Relative</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Bystander')">Bystander</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Other')">Other</button>
+            </div>
+            <input type="text" id="whoCalled911Other" placeholder="Specify…" style="display:none;margin-top:8px">
+            <input type="hidden" id="whoCalled911">
           </div>
         </div>
       </div>
@@ -2729,7 +2870,7 @@
         <div class="form-row full">
           <div class="field">
             <label>Phone</label>
-            <input type="tel" id="patientPhone" placeholder="(203) 555-0100">
+            <input type="tel" id="patientPhone" placeholder="(XXX) XXX-XXXX">
           </div>
         </div>
 
@@ -2745,21 +2886,17 @@
           </div>
         </div>
 
-        <!-- Sex / LOC -->
-        <div class="form-row">
+        <!-- Sex -->
+        <div class="form-row full">
           <div class="field">
             <label>Sex</label>
-            <select id="patientSex">
-              <option value="">[Select]</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
+            <div class="pill-group" style="margin-top:4px">
+              <button type="button" class="tap-pill" onclick="selectSexPill(this,'male')">Male</button>
+              <button type="button" class="tap-pill" onclick="selectSexPill(this,'female')">Female</button>
+            </div>
+            <input type="hidden" id="patientSex">
           </div>
-        </div>
-
-
-
-      </div>
+        </div>      </div>
     </div>
 
     <!-- SCENE INFORMATION -->
@@ -2789,16 +2926,25 @@
 
         <div class="form-row full">
           <div class="field">
-            <label>LOC on Arrival</label>
-            <select id="patientLOC">
-              <option>[Select]</option>
-              <option>Alert and Oriented x4</option>
-              <option>Alert and Oriented x3</option>
-              <option>Alert and Oriented x2</option>
-              <option>Alert and Oriented x1</option>
-              <option>Altered Mental Status</option>
-              <option>Unconscious</option>
-            </select>
+            <label>Level of Consciousness</label>
+            <div style="margin-top:6px">
+              <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Alert Status</div>
+              <div class="pill-group" id="locAlertPills">
+                <button type="button" class="tap-pill" onclick="selectLocAlert(this,'Alert')">Alert</button>
+                <button type="button" class="tap-pill" onclick="selectLocAlert(this,'Altered Mental Status')">Altered</button>
+                <button type="button" class="tap-pill" onclick="selectLocAlert(this,'Unconscious')">Unconscious</button>
+              </div>
+            </div>
+            <div id="locOrientedGroup" style="margin-top:10px;display:none">
+              <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Oriented To</div>
+              <div class="pill-group" id="locOrientedPills">
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Person')">Person</button>
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Place')">Place</button>
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Time')">Time</button>
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Event')">Event</button>
+              </div>
+            </div>
+            <input type="hidden" id="patientLOC">
           </div>
         </div>
 
@@ -2914,6 +3060,10 @@
 
     <button class="generate-btn" onclick="generateSOAP()">
       <span>✦</span> Generate SOAP Narrative
+    </button>
+
+    <button class="generate-btn" onclick="sendChartEmail()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin-top:8px;">
+      <span>📧</span> Email Chart to Desktop
     </button>
 
   </div>
@@ -3299,24 +3449,67 @@
         </select>
       </div>
     </div>
+    <button class="save-btn" onclick="saveSettings()">Save Defaults</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="accountModal" onclick="closeAccountOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Account</div>
+      <button class="modal-close" onclick="closeAccount()">✕</button>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Email Export</div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Your Email Address</label>
+        <input type="email" id="a_email" placeholder="you@example.com" inputmode="email" autocomplete="email">
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Used as the "To:" address when you tap Email Chart to Desktop. Stored locally on this device only.</div>
+      </div>
+    </div>
+
+    <div class="menu-divider" style="margin:16px 0"></div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Session</div>
+    <button class="menu-item menu-item-danger" style="width:100%;margin-bottom:0" onclick="closeAccount(); logoutUser();">
+      <span class="menu-icon">🚪</span>
+      <div>
+        <div class="menu-title">Sign Out</div>
+        <div class="menu-desc">End your current session</div>
+      </div>
+    </button>
+
+    <button class="save-btn" onclick="saveAccount()" style="margin-top:16px">Save</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="appSettingsModal" onclick="closeAppSettingsOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">App Settings</div>
+      <button class="modal-close" onclick="closeAppSettings()">✕</button>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">AI &amp; Voice</div>
     <div class="form-row full">
       <div class="field">
         <label>Anthropic API Key</label>
-        <input type="password" id="s_apikey" placeholder="sk-ant-…" autocomplete="off">
+        <input type="password" id="as_apikey" placeholder="sk-ant-…" autocomplete="off">
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for AI field extraction. Stored locally only.</div>
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>OpenAI API Key <span style="color:var(--text-dim);font-weight:400">(for Whisper voice)</span></label>
-        <input type="password" id="s_openaikey" placeholder="sk-…" autocomplete="off">
+        <input type="password" id="as_openaikey" placeholder="sk-…" autocomplete="off">
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for Whisper dictation (~$0.006/min). Stored locally only.</div>
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>Voice Engine</label>
-        <select id="s_voiceengine">
+        <select id="as_voiceengine">
           <option value="auto">Auto (Web Speech on iPhone, Whisper on Mac)</option>
           <option value="whisper">Whisper (OpenAI) — best accuracy, works everywhere</option>
           <option value="webspeech">Web Speech API — free, instant, iPhone/Chrome only</option>
@@ -3324,7 +3517,8 @@
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Auto recommended. Whisper requires OpenAI key (~$0.006/min).</div>
       </div>
     </div>
-    <button class="save-btn" onclick="saveSettings()">Save Defaults</button>
+
+    <button class="save-btn" onclick="saveAppSettings()" style="margin-top:16px">Save</button>
   </div>
 </div>
 
@@ -4232,6 +4426,7 @@ window.onload = function() {
   checkLogin();
   
   loadSettings();
+  loadAccount();
   updateCallType();  // This will call initializeActivityCards
   setCurrentTimes();
   checkMicPermission();
@@ -4321,9 +4516,17 @@ function setCurrentTimes() {
 }
 
 // ======== TABS ========
+const TAB_ORDER = ['dispatch', 'input', 'output', 'refusal'];
+
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
+  if (el) {
+    el.classList.add('active');
+  } else {
+    // Find and activate the matching tab button
+    const idx = TAB_ORDER.indexOf(tab);
+    document.querySelectorAll('.tab')[idx]?.classList.add('active');
+  }
   document.getElementById('tab-dispatch').style.display = tab === 'dispatch' ? 'block' : 'none';
   document.getElementById('tab-input').style.display = tab === 'input' ? 'block' : 'none';
   document.getElementById('tab-output').style.display = tab === 'output' ? 'block' : 'none';
@@ -4336,6 +4539,118 @@ function switchTab(tab, el) {
     prefillRefusalForm();
     setTimeout(initSignaturePads, 100);
   }
+}
+
+// ======== SWIPE GESTURE — TAB NAVIGATION ========
+(function initSwipeGesture() {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  const SWIPE_THRESHOLD = 60;   // min px horizontal travel
+  const SWIPE_MAX_Y = 80;       // max vertical drift allowed
+  const SWIPE_MAX_MS = 400;     // max gesture duration
+
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const dt = Date.now() - touchStartTime;
+
+    if (Math.abs(dx) < SWIPE_THRESHOLD) return;
+    if (Math.abs(dy) > SWIPE_MAX_Y) return;
+    if (dt > SWIPE_MAX_MS) return;
+    // Ignore swipes that start on interactive controls (inputs, selects, buttons, canvases)
+    const tag = (e.target || document.elementFromPoint(touchStartX, touchStartY))?.tagName?.toLowerCase();
+    if (['input','select','textarea','button','canvas'].includes(tag)) return;
+
+    const activeTab = document.querySelector('.tab.active');
+    const tabs = Array.from(document.querySelectorAll('.tab'));
+    const currentIdx = tabs.indexOf(activeTab);
+
+    let nextIdx;
+    if (dx < 0) {
+      // Swipe left → go forward
+      nextIdx = Math.min(currentIdx + 1, tabs.length - 1);
+    } else {
+      // Swipe right → go back
+      nextIdx = Math.max(currentIdx - 1, 0);
+    }
+
+    if (nextIdx !== currentIdx) {
+      switchTab(TAB_ORDER[nextIdx], tabs[nextIdx]);
+      // Scroll to top of content area smoothly
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, { passive: true });
+})();
+
+// ======== TAP PILL HELPERS ========
+
+function selectWhoCalledPill(btn, value) {
+  document.querySelectorAll('#whoCalled911Pills .tap-pill').forEach(p => p.classList.remove('selected'));
+  btn.classList.add('selected');
+  const otherInput = document.getElementById('whoCalled911Other');
+  const hidden = document.getElementById('whoCalled911');
+  if (value === 'Other') {
+    otherInput.style.display = 'block';
+    otherInput.focus();
+    otherInput.oninput = () => { hidden.value = otherInput.value; };
+    hidden.value = otherInput.value || '';
+  } else {
+    otherInput.style.display = 'none';
+    hidden.value = value;
+  }
+}
+
+function selectSexPill(btn, value) {
+  btn.closest('.pill-group').querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('patientSex').value = value;
+}
+
+let locAlertValue = '';
+let locOrientedValues = new Set();
+
+function selectLocAlert(btn, value) {
+  document.querySelectorAll('#locAlertPills .tap-pill').forEach(p => p.classList.remove('selected'));
+  btn.classList.add('selected');
+  locAlertValue = value;
+  const orientedGroup = document.getElementById('locOrientedGroup');
+  if (value === 'Alert') {
+    orientedGroup.style.display = 'block';
+  } else {
+    orientedGroup.style.display = 'none';
+    locOrientedValues.clear();
+    document.querySelectorAll('#locOrientedPills .tap-pill').forEach(p => p.classList.remove('selected'));
+  }
+  updateLocHidden();
+}
+
+function toggleLocOriented(btn, value) {
+  if (locOrientedValues.has(value)) {
+    locOrientedValues.delete(value);
+    btn.classList.remove('selected');
+  } else {
+    locOrientedValues.add(value);
+    btn.classList.add('selected');
+  }
+  updateLocHidden();
+}
+
+function updateLocHidden() {
+  let display = locAlertValue;
+  if (locAlertValue === 'Alert' && locOrientedValues.size > 0) {
+    // Build "Alert and Oriented to Person, Place, Time, and Event" style string
+    const order = ['Person','Place','Time','Event'];
+    const selected = order.filter(v => locOrientedValues.has(v));
+    display = 'Alert and Oriented x' + selected.length;
+  }
+  document.getElementById('patientLOC').value = display;
 }
 
 // ======== SECTIONS ========
@@ -4417,6 +4732,110 @@ function updateCallType() {
   
   // Initialize activity cards (same structure for all call types now)
   initializeActivityCards();
+}
+
+// ======== BP SMART FORMAT ========
+// Rules:
+//   - Digits only → auto-inserts "/" after systolic when safe to do so
+//   - Space bar acts as "/" (keydown handler below)
+//   - Auto-slash fires after 3 digits only if systolic ≥ 100 (i.e. starts with 1 or 2)
+//   - For systolics < 100 (e.g. 80, 90), user types space or "/" to split
+//   - Backspace past slash removes it cleanly
+
+function formatBPInput(el) {
+  let raw = el.value;
+
+  // Strip everything except digits and slash
+  let clean = raw.replace(/[^\d\/]/g, '');
+
+  // If a slash is already present, normalize both sides
+  if (clean.includes('/')) {
+    const parts = clean.split('/');
+    const sys = parts[0].slice(0, 3);
+    const dia = (parts[1] || '').slice(0, 3);
+    el.value = `${sys}/${dia}`;
+    return;
+  }
+
+  // Digits only — decide whether to auto-insert slash
+  const digits = clean.slice(0, 6);
+  const firstDigit = parseInt(digits[0], 10);
+
+  if (digits.length >= 3 && firstDigit >= 1) {
+    // Only auto-slash after 3 digits if systolic is plausibly ≥ 100
+    // (first digit 1 or 2 covers 100–299 range)
+    if (firstDigit >= 1 && parseInt(digits.slice(0, 3), 10) >= 100) {
+      const sys = digits.slice(0, 3);
+      const dia = digits.slice(3, 6);
+      el.value = `${sys}/${dia}`;
+      if (dia.length === 0) {
+        // Place cursor right after slash
+        const pos = sys.length + 1;
+        el.setSelectionRange(pos, pos);
+      }
+      return;
+    }
+  }
+
+  // Otherwise just show the raw digits (waiting for manual slash/space)
+  el.value = digits;
+}
+
+function handleBPKeydown(el, e) {
+  // Space bar → insert slash as separator
+  if (e.key === ' ' || e.code === 'Space') {
+    e.preventDefault();
+    const raw = el.value.replace(/[^\d\/]/g, '');
+    if (!raw.includes('/') && raw.length > 0) {
+      el.value = raw + '/';
+      const pos = el.value.length;
+      el.setSelectionRange(pos, pos);
+    }
+  }
+}
+
+// ======== TIME FIELD HELPERS ========
+
+function setTimeNow(fieldId) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  el.value = hh + ':' + mm;
+  el.classList.add('field-overwritten');
+  setTimeout(() => el.classList.remove('field-overwritten'), 2000);
+}
+
+function adjustTime(fieldId, deltaMins) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  let val = el.value.trim();
+  let totalMins;
+  if (/^\d{1,2}:\d{2}$/.test(val)) {
+    const [h, m] = val.split(':').map(Number);
+    totalMins = h * 60 + m;
+  } else {
+    // No time set yet — start from now
+    const now = new Date();
+    totalMins = now.getHours() * 60 + now.getMinutes();
+  }
+  totalMins = ((totalMins + deltaMins) % 1440 + 1440) % 1440; // wrap 24h
+  const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
+  const mm = String(totalMins % 60).padStart(2, '0');
+  el.value = hh + ':' + mm;
+}
+
+// ======== GCS QUICK-FILL ========
+
+function setGCSNormal(cardId) {
+  const eye   = document.getElementById('vgcs-eye-'   + cardId);
+  const verbal = document.getElementById('vgcs-verbal-' + cardId);
+  const motor  = document.getElementById('vgcs-motor-'  + cardId);
+  if (eye)   eye.value   = '4';
+  if (verbal) verbal.value = '5';
+  if (motor)  motor.value  = '6';
+  updateGCS(cardId);
 }
 
 // ======== VITALS ========
@@ -4650,9 +5069,9 @@ function toggleActivityPill(el, cardId) {
     return;
   }
   
-  // Handle "Patient Room" pill - uses ED Room field from Hospital Arrival card
+  // Handle "Patient Room" pill - uses ED Room field from Hospital Transfer card
   if (pillText === 'Patient Room') {
-    // Get the ED Room value from the Hospital Arrival card
+    // Get the ED Room value from the Hospital Transfer card
     const edRoomField = document.getElementById('ved-room-' + cardId);
     const edRoom = edRoomField?.value.trim() || '[ED ROOM]';
     
@@ -4678,7 +5097,7 @@ function toggleActivityPill(el, cardId) {
     return;
   }
   
-  // Handle "Patient Room" pill - uses ED Room field from Hospital Arrival card
+  // Handle "Patient Room" pill - uses ED Room field from Hospital Transfer card
   if (pillText === 'Patient Room') {
     // Get the ED Room value from this card
     const edRoomField = document.getElementById('ved-room-' + cardId);
@@ -4774,6 +5193,46 @@ function toggleActivityPill(el, cardId) {
     return;
   }
   
+  // Handle "Patient Refused Care" pill — trigger refusal workflow
+  if (pillText === 'Patient Refused Care') {
+    if (el.classList.contains('selected')) {
+      // Disable Transport + Hospital Transfer, open Refusal
+      const container = document.getElementById('vitals-container');
+      container.querySelectorAll('.vitals-card-label').forEach(lbl => {
+        const span = lbl.querySelector('span:first-child');
+        const text = span ? span.textContent.trim() : '';
+        const badge = lbl.querySelector('.activity-badge');
+        if (!badge) return;
+        const cid = badge.id.replace('activity-badge-', '');
+        const content = document.getElementById('vitals-content-' + cid);
+        if (text === 'Transport' || text === 'Hospital Transfer') {
+          disableCard(cid, '[Transport Refused]');
+          if (content) content.style.display = 'none';
+          badge.textContent = '▸';
+        } else if (text === 'Refusal') {
+          enableCard(cid);
+          if (content) content.style.display = '';
+          badge.textContent = '▾';
+        }
+      });
+    } else {
+      // Pill deselected — re-enable Transport + Hospital Transfer, close Refusal
+      const container = document.getElementById('vitals-container');
+      container.querySelectorAll('.vitals-card-label').forEach(lbl => {
+        const span = lbl.querySelector('span:first-child');
+        const text = span ? span.textContent.trim() : '';
+        const badge = lbl.querySelector('.activity-badge');
+        if (!badge) return;
+        const cid = badge.id.replace('activity-badge-', '');
+        const content = document.getElementById('vitals-content-' + cid);
+        if (text === 'Transport' || text === 'Hospital Transfer') {
+          enableCard(cid);
+        }
+      });
+      setTimeout(checkTransportRefusalExclusivity, 50);
+    }
+  }
+
   // Map pill text to output text (for custom phrases)
   const pillToOutput = {
     'Rapid Trauma Assessment/Findings': 'Rapid Trauma Assessment conducted and found [ENTER FINDINGS]',
@@ -4790,7 +5249,7 @@ function toggleActivityPill(el, cardId) {
     'Care Transfer to RN': 'Transfer of care and report given to staff RN',
     'Patient Refused Care': 'Patient refused further care',
     'RMA Prepared': 'RMA Prepared and explained to patient',
-    'RMA Administered': 'RMA obtained, signed, and witnessed by NCPD'
+    'RMA Administered': 'RMA prepared, signed by patient, and witnessed by NCPD'
   };
   
   const outputText = pillToOutput[pillText] || pillText;
@@ -4894,6 +5353,7 @@ function initializeActivityCards() {
     'Denied Dizziness',
     'Denied Nausea',
     'Patient Secured/Loaded',
+    'Patient Refused Care',
     'Collar',
     'EMS Assisted Medic 350',
     'See Medic 350 Chart',
@@ -4924,11 +5384,9 @@ function initializeActivityCards() {
   
   // Define refusal pills
   const refusalPills = [
-    'Patient Refused Care',
-    'RMA Prepared',
+    'RMA Administered',
     'Medical Evaluation Needed',
     'Call Back',
-    'RMA Administered',
     'Patient Left In Care of'
   ];
   
@@ -4936,7 +5394,7 @@ function initializeActivityCards() {
   addVitalsRow('First Contact', true, arrivalPills);  // First card open with arrival pills
   addVitalsRow('On-Scene Activity #1', true, activityPills);  // Second card open with activity pills (no assessments, has Patient Secured/Loaded)
   addVitalsRow('Transport', true, transportPills);  // Transport card open with transport pills
-  addVitalsRow('Hospital Arrival', true, hospitalArrivalPills);  // Hospital Arrival card open with hospital arrival pills
+  addVitalsRow('Hospital Transfer', true, hospitalArrivalPills);  // Hospital Transfer card open with hospital arrival pills
   addVitalsRow('Refusal', false, refusalPills);  // Refusal card closed with refusal pills
   
   // Position the Add Activity button
@@ -4979,7 +5437,7 @@ function clearCardFields(id) {
     document.getElementById('vglucose-' + id).value = '';
     document.getElementById('vactivity-' + id).value = '';
     
-    // Clear ED Room if it exists (Hospital Arrival card)
+    // Clear ED Room if it exists (Hospital Transfer card)
     const edRoomField = document.getElementById('ved-room-' + id);
     if (edRoomField) edRoomField.value = '';
     
@@ -5015,7 +5473,7 @@ function checkTransportRefusalExclusivity() {
   let hospitalArrivalCardId = null;
   let refusalCardId = null;
   
-  // Find Transport, Hospital Arrival, and Refusal card IDs
+  // Find Transport, Hospital Transfer, and Refusal card IDs
   allLabels.forEach(label => {
     // Get the label text from the first span (not including buttons/badges/disabled messages)
     const labelSpan = label.querySelector('span:first-child');
@@ -5025,7 +5483,7 @@ function checkTransportRefusalExclusivity() {
       const cardId = badge.id.replace('activity-badge-', '');
       if (text === 'Transport') {
         transportCardId = cardId;
-      } else if (text === 'Hospital Arrival') {
+      } else if (text === 'Hospital Transfer') {
         hospitalArrivalCardId = cardId;
       } else if (text === 'Refusal') {
         refusalCardId = cardId;
@@ -5035,13 +5493,13 @@ function checkTransportRefusalExclusivity() {
   
   if (!refusalCardId) return;
   
-  // Check if Transport or Hospital Arrival cards have any data
+  // Check if Transport or Hospital Transfer cards have any data
   const transportHasData = transportCardId ? cardHasData(transportCardId) : false;
   const hospitalArrivalHasData = hospitalArrivalCardId ? cardHasData(hospitalArrivalCardId) : false;
   const refusalHasData = cardHasData(refusalCardId);
   
   // Disable/enable cards based on mutual exclusivity
-  // If either Transport OR Hospital Arrival has data, disable Refusal AND close it
+  // If either Transport OR Hospital Transfer has data, disable Refusal AND close it
   if (transportHasData || hospitalArrivalHasData) {
     disableCard(refusalCardId, '[Patient Transported]');
     // Close the Refusal card
@@ -5055,7 +5513,7 @@ function checkTransportRefusalExclusivity() {
     enableCard(refusalCardId);
   }
   
-  // If Refusal has data, disable both Transport and Hospital Arrival AND close them
+  // If Refusal has data, disable both Transport and Hospital Transfer AND close them
   if (refusalHasData) {
     if (transportCardId) {
       disableCard(transportCardId, '[Transport Refused]');
@@ -5069,7 +5527,7 @@ function checkTransportRefusalExclusivity() {
     }
     if (hospitalArrivalCardId) {
       disableCard(hospitalArrivalCardId, '[Transport Refused]');
-      // Close the Hospital Arrival card
+      // Close the Hospital Transfer card
       const hospitalContent = document.getElementById('vitals-content-' + hospitalArrivalCardId);
       const hospitalBadge = document.getElementById('activity-badge-' + hospitalArrivalCardId);
       if (hospitalContent && hospitalContent.style.display !== 'none') {
@@ -5190,7 +5648,7 @@ function addNumberedActivity() {
     if (text.startsWith('Transport')) {
       transportCard = label.closest('.vitals-row');
     }
-    if (text.startsWith('Hospital Arrival')) {
+    if (text.startsWith('Hospital Transfer')) {
       hospitalArrivalCard = label.closest('.vitals-row');
     }
     if (text.startsWith('Refusal')) {
@@ -5211,6 +5669,7 @@ function addNumberedActivity() {
     'Denied Dizziness',
     'Denied Nausea',
     'Patient Secured/Loaded',
+    'Patient Refused Care',
     'Collar',
     'EMS Assisted Medic 350',
     'See Medic 350 Chart',
@@ -5224,9 +5683,9 @@ function addNumberedActivity() {
   const row = document.createElement('div');
   row.className = 'vitals-row';
   row.id = 'vrow-' + id;
-  row.innerHTML = generateCardHTML(id, `On-Scene Activity #${nextNumber}`, false, activityPills);
+  row.innerHTML = generateCardHTML(id, `On-Scene Activity #${nextNumber}`, true, activityPills);
   
-  // Insert before Transport if it exists, otherwise before Hospital Arrival if it exists, otherwise before Refusal if it exists, otherwise append to end
+  // Insert before Transport if it exists, otherwise before Hospital Transfer if it exists, otherwise before Refusal if it exists, otherwise append to end
   if (transportCard) {
     container.insertBefore(row, transportCard);
   } else if (hospitalArrivalCard) {
@@ -5259,7 +5718,7 @@ function positionAddActivityButton() {
   addButton.onclick = addNumberedActivity;
   addButton.textContent = '+ Add Activity';
   
-  // Find Transport, Hospital Arrival, or Refusal card to insert before
+  // Find Transport, Hospital Transfer, or Refusal card to insert before
   const allCards = container.querySelectorAll('.vitals-card-label');
   let transportCard = null;
   let hospitalArrivalCard = null;
@@ -5270,7 +5729,7 @@ function positionAddActivityButton() {
     if (text.startsWith('Transport')) {
       transportCard = label.closest('.vitals-row');
     }
-    if (text.startsWith('Hospital Arrival')) {
+    if (text.startsWith('Hospital Transfer')) {
       hospitalArrivalCard = label.closest('.vitals-row');
     }
     if (text.startsWith('Refusal')) {
@@ -5278,7 +5737,7 @@ function positionAddActivityButton() {
     }
   });
   
-  // Insert button before Transport if it exists, otherwise before Hospital Arrival, otherwise before Refusal, otherwise at end
+  // Insert button before Transport if it exists, otherwise before Hospital Transfer, otherwise before Refusal, otherwise at end
   if (transportCard) {
     container.insertBefore(addButton, transportCard);
   } else if (hospitalArrivalCard) {
@@ -5298,14 +5757,14 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
     </div>
   ` : '';
   
-  // Determine if this is a permanent card (First Contact, Transport, Hospital Arrival, or Refusal)
-  const isPermanent = label === 'First Contact' || label === 'Transport' || label === 'Hospital Arrival' || label === 'Refusal';
+  // Determine if this is a permanent card (First Contact, Transport, Hospital Transfer, or Refusal)
+  const isPermanent = label === 'First Contact' || label === 'Transport' || label === 'Hospital Transfer' || label === 'Refusal';
   const actionButton = isPermanent 
     ? `<button class="vrow-clear-btn-header" onclick="clearCardFields(${id}); event.stopPropagation();" type="button" title="Clear all fields">Clear</button>`
     : `<button class="vrow-delete-btn-header" onclick="deleteVitalsRow(${id}); event.stopPropagation();" type="button" title="Delete">✕</button>`;
   
-  // Add exclusivity check for Transport, Hospital Arrival, and Refusal cards
-  const isExclusiveCard = label === 'Transport' || label === 'Hospital Arrival' || label === 'Refusal';
+  // Add exclusivity check for Transport, Hospital Transfer, and Refusal cards
+  const isExclusiveCard = label === 'Transport' || label === 'Hospital Transfer' || label === 'Refusal';
   const exclusivityCheck = isExclusiveCard ? ' onchange="checkTransportRefusalExclusivity()" oninput="checkTransportRefusalExclusivity()"' : '';
   
   return `
@@ -5319,30 +5778,33 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
       <div class="vitals-card-content" id="vitals-content-${id}" style="${!isOpen ? 'display:none' : ''}">
       <div class="vitals-time-header">
         <label>Time</label>
-        <input type="text" id="vt-${id}" placeholder="HH:MM" pattern="^([01]\d|2[0-3]):([0-5]\d)$" title="24-hour format (00:00 to 23:59)" maxlength="5" oninput="formatTimeInput(this)"${exclusivityCheck}>
+        <input type="text" id="vt-${id}" placeholder="HH:MM" pattern="^([01]\\d|2[0-3]):([0-5]\\d)$" title="24-hour format (00:00 to 23:59)" maxlength="5" oninput="formatTimeInput(this)"${exclusivityCheck}>
+        <button type="button" class="time-now-btn" onclick="setTimeNow('vt-${id}')" title="Insert current time">🕐</button>
+        <button type="button" class="time-adj-btn" onclick="adjustTime('vt-${id}', -1)" title="−1 minute">−</button>
+        <button type="button" class="time-adj-btn" onclick="adjustTime('vt-${id}', +1)" title="+1 minute">+</button>
       </div>
       
       <div class="vitals-line-1">
         <div class="vitals-field">
           <label>BP</label>
-          <input type="text" id="vbp-${id}" placeholder="-- / --"${exclusivityCheck}>
+          <input type="text" id="vbp-${id}" placeholder="--/--" inputmode="numeric" oninput="formatBPInput(this)" onkeydown="handleBPKeydown(this,event)"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>Pulse</label>
-          <input type="number" id="vhr-${id}" placeholder="—" min="20" max="300"${exclusivityCheck}>
+          <input type="number" id="vhr-${id}" placeholder="—" min="20" max="300" inputmode="numeric"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>RR</label>
-          <input type="number" id="vrr-${id}" placeholder="—" min="4" max="60"${exclusivityCheck}>
+          <input type="number" id="vrr-${id}" placeholder="—" min="4" max="60" inputmode="numeric"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>SpO2 %</label>
-          <input type="number" id="vspo2-${id}" placeholder="—" min="0" max="100" step="1"
+          <input type="number" id="vspo2-${id}" placeholder="—" min="0" max="100" step="1" inputmode="numeric"
             oninput="this.value=Math.min(100,Math.max(0,Math.round(this.value)))${isExclusiveCard ? ';checkTransportRefusalExclusivity()' : ''}"${isExclusiveCard ? '' : ''}>
         </div>
         <div class="vitals-field">
           <label>Pain (0-10)</label>
-          <input type="text" id="vpain-${id}" placeholder="—"${exclusivityCheck}>
+          <input type="text" id="vpain-${id}" placeholder="—" inputmode="numeric"${exclusivityCheck}>
         </div>
       </div>
       
@@ -5352,12 +5814,12 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
           <input type="text" id="vskin-${id}" placeholder="—"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
-          <label>Temp</label>
-          <input type="text" id="vtemp-${id}" placeholder="—"${exclusivityCheck}>
+          <label>Temp (F°)</label>
+          <input type="text" id="vtemp-${id}" placeholder="—" inputmode="decimal"${exclusivityCheck}>
         </div>
         <div class="vitals-field">
           <label>Glucose (mg/dL)</label>
-          <input type="number" id="vglucose-${id}" placeholder="—"${exclusivityCheck}>
+          <input type="number" id="vglucose-${id}" placeholder="—" inputmode="numeric"${exclusivityCheck}>
         </div>
       </div>
       
@@ -5397,10 +5859,11 @@ function generateCardHTML(id, label = '', isOpen = true, pills = []) {
           </select>
         </div>
         <div class="gcs-total" id="vgcs-total-${id}">Total: —</div>
+        <button type="button" class="gcs-normal-btn" onclick="setGCSNormal(${id})" title="Set GCS to 15 (Eye 4, Verbal 5, Motor 6)">15 ✓</button>
         <input type="hidden" id="vgcs-${id}" value="">
       </div>
       
-      ${label === 'Hospital Arrival' ? `
+      ${label === 'Hospital Transfer' ? `
       <div class="vitals-line-4">
         <div class="vitals-field-full">
           <label>ED Room</label>
@@ -6378,7 +6841,6 @@ async function extractUniversalInfo(transcript, sourceSection) {
   },
   "dispatch": {
     "callType": "",
-    "dispatchPriority": "",
     "whoCalled911": ""
   },
   "scene": {
@@ -6398,7 +6860,7 @@ RULES:
 - patient.sex: "male" or "female" lowercase only, else ""
 - patient.state: two-letter abbreviation (CT, NY, etc.), else ""
 - dispatch.callType: match to one of: "lift_assist", "chest_pain", "respiratory", "trauma", "diabetic", "mva" — closest match, else ""
-- dispatch.dispatchPriority: "Emergency" or "Non-Emergency" only, else ""
+- dispatch.whoCalled911: one of "Patient", "Wife", "Relative", "Bystander", "Other", or specific text if unclear
 - scene.loc: EXACTLY one of: "Alert and Oriented x4", "Alert and Oriented x3", "Alert and Oriented x2", "Alert and Oriented x1", "Altered Mental Status", "Unconscious" — or "" if not mentioned
 - scene.sceneNotes: scene description, environment, positioning, who was present
 - incident.chiefComplaint: the patient's main complaint, quoted if possible
@@ -6477,18 +6939,65 @@ Dictated text: "${transcript}"`;
     if (parsed.patient?.state)   setField('patientState',   parsed.patient.state.toUpperCase(),   'State');
     if (parsed.patient?.zip)     setField('patientZip',     parsed.patient.zip,                   'Zip');
     if (parsed.patient?.phone)   setField('patientPhone',   parsed.patient.phone,                 'Phone');
-    if (parsed.patient?.sex)     setField('patientSex',     parsed.patient.sex,                   'Sex');
+    if (parsed.patient?.sex) {
+      const sexVal = parsed.patient.sex.toLowerCase();
+      document.getElementById('patientSex').value = sexVal;
+      document.querySelectorAll('.pill-group .tap-pill').forEach(p => {
+        if (p.getAttribute('onclick')?.includes('selectSexPill')) {
+          p.classList.toggle('selected', p.getAttribute('onclick')?.includes(`'${sexVal}'`));
+        }
+      });
+      fieldsPopulated.push('Sex');
+    }
 
     // DISPATCH
     if (parsed.dispatch?.callType) {
       setField('callType', parsed.dispatch.callType, 'Call Type');
       try { updateCallType(); } catch(e) {}
     }
-    if (parsed.dispatch?.dispatchPriority) setField('dispatchPriority', parsed.dispatch.dispatchPriority, 'Priority');
-    if (parsed.dispatch?.whoCalled911)     setField('whoCalled911',     parsed.dispatch.whoCalled911,     'Who Called 911');
+    if (parsed.dispatch?.whoCalled911) {
+      const wVal = parsed.dispatch.whoCalled911;
+      const knownW = ['Patient','Wife','Relative','Bystander','Other'];
+      const matchW = knownW.find(k => k.toLowerCase() === wVal.toLowerCase()) || 'Other';
+      document.querySelectorAll('#whoCalled911Pills .tap-pill').forEach(p => {
+        p.classList.toggle('selected', p.textContent.trim() === matchW);
+      });
+      document.getElementById('whoCalled911').value = matchW === 'Other' ? wVal : matchW;
+      if (matchW === 'Other') {
+        document.getElementById('whoCalled911Other').style.display = 'block';
+        document.getElementById('whoCalled911Other').value = wVal;
+      }
+      fieldsPopulated.push('Who Called 911');
+    }
 
     // SCENE
-    if (parsed.scene?.loc)        setField('patientLOC',  parsed.scene.loc,        'LOC');
+    if (parsed.scene?.loc) {
+      const locVal = parsed.scene.loc;
+      document.getElementById('patientLOC').value = locVal;
+      // Map to pills
+      if (locVal === 'Altered Mental Status' || locVal === 'Unconscious') {
+        locAlertValue = locVal;
+        locOrientedValues.clear();
+        document.querySelectorAll('#locAlertPills .tap-pill').forEach(p => {
+          p.classList.toggle('selected', p.textContent.trim() === locVal);
+        });
+        document.getElementById('locOrientedGroup').style.display = 'none';
+      } else if (locVal.startsWith('Alert')) {
+        locAlertValue = 'Alert';
+        document.querySelectorAll('#locAlertPills .tap-pill').forEach(p => {
+          p.classList.toggle('selected', p.textContent.trim() === 'Alert');
+        });
+        document.getElementById('locOrientedGroup').style.display = 'block';
+        const xMatch = locVal.match(/x(\d)/);
+        const xNum = xMatch ? parseInt(xMatch[1]) : 0;
+        const orientOrder = ['Person','Place','Time','Event'];
+        locOrientedValues = new Set(orientOrder.slice(0, xNum));
+        document.querySelectorAll('#locOrientedPills .tap-pill').forEach(p => {
+          p.classList.toggle('selected', locOrientedValues.has(p.textContent.trim()));
+        });
+      }
+      fieldsPopulated.push('LOC');
+    }
     if (parsed.scene?.sceneNotes) appendField('sceneNotes', parsed.scene.sceneNotes, 'Scene Notes');
 
     // INCIDENT
@@ -7375,6 +7884,110 @@ async function extractTransportInfo() {
   if (btn) { btn.textContent = 'Extract →'; btn.disabled = false; }
 }
 
+// ======== EMAIL EXPORT ========
+
+function buildEmailText() {
+  const d = collectChartData();
+  const lines = [];
+  const sep = '─'.repeat(40);
+
+  // Header
+  const callTypeLabels = {
+    lift_assist: 'Lift Assist / Fall', chest_pain: 'Chest Pain / Cardiac',
+    respiratory: 'Respiratory Distress', trauma: 'Trauma / Injury',
+    diabetic: 'Diabetic Emergency', mva: 'Motor Vehicle Accident'
+  };
+  const callLabel = callTypeLabels[d.callType] || d.callType || 'Unknown Call Type';
+  const exportTime = new Date().toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+
+  lines.push('NCEMS CHART EXPORT');
+  lines.push(exportTime);
+  lines.push(sep);
+
+  // Patient
+  lines.push('PATIENT');
+  if (d.patientName)    lines.push(`  Name:    ${d.patientName}`);
+  if (d.patientDOB)     lines.push(`  DOB:     ${d.patientDOB}${d.patientAge ? '  (Age ' + d.patientAge + ')' : ''}`);
+  if (d.patientSex)     lines.push(`  Sex:     ${d.patientSex.charAt(0).toUpperCase() + d.patientSex.slice(1)}`);
+  if (d.patientAddress) lines.push(`  Address: ${d.patientAddress}, ${d.patientCity}, ${d.patientState} ${d.patientZip}`.replace(/, ,|,\s*,/g, ',').trim());
+  if (d.patientPhone)   lines.push(`  Phone:   ${d.patientPhone}`);
+  lines.push('');
+
+  // Dispatch
+  lines.push('DISPATCH');
+  lines.push(`  Call Type: ${callLabel}`);
+  if (d.whoCalled911)   lines.push(`  Caller:    ${d.whoCalled911}`);
+  lines.push('');
+
+  // Scene
+  lines.push('SCENE');
+  if (d.patientLOC)    lines.push(`  LOC:         ${d.patientLOC}`);
+  if (d.sceneNotes)    lines.push(`  Scene Notes: ${d.sceneNotes}`);
+  lines.push('');
+
+  // Incident
+  lines.push('INCIDENT');
+  if (d.chiefComplaint)   lines.push(`  CC:   ${d.chiefComplaint}`);
+  if (d.hpiNarrative)     lines.push(`  HPI:  ${d.hpiNarrative}`);
+  if (d.sampleNarrative)  lines.push(`  PMH:  ${d.sampleNarrative}`);
+  lines.push('');
+
+  // Activities / Vitals
+  if (d.vitalsCards && d.vitalsCards.length > 0) {
+    lines.push('ACTIVITIES & VITALS');
+    d.vitalsCards.forEach(card => {
+      if (!card.label) return;
+      lines.push('');
+      lines.push(`  [ ${card.label}${card.time ? ' — ' + card.time : ''} ]`);
+
+      // Vitals row
+      const vitals = [];
+      if (card.bp)      vitals.push(`BP ${card.bp}`);
+      if (card.hr)      vitals.push(`Pulse ${card.hr}`);
+      if (card.rr)      vitals.push(`RR ${card.rr}`);
+      if (card.spo2)    vitals.push(`SpO2 ${card.spo2}%`);
+      if (card.pain)    vitals.push(`Pain ${card.pain}/10`);
+      if (card.skin)    vitals.push(`Skin ${card.skin}`);
+      if (card.temp)    vitals.push(`Temp ${card.temp}°F`);
+      if (card.glucose) vitals.push(`Glucose ${card.glucose} mg/dL`);
+      if (vitals.length > 0) lines.push(`  Vitals: ${vitals.join(' | ')}`);
+
+      // GCS
+      if (card.gcsEye || card.gcsVerbal || card.gcsMotor) {
+        const e = card.gcsEye || '—', v = card.gcsVerbal || '—', m = card.gcsMotor || '—';
+        const total = (parseInt(e)||0) + (parseInt(v)||0) + (parseInt(m)||0);
+        lines.push(`  GCS: Eye ${e} / Verbal ${v} / Motor ${m} = ${total || '—'}`);
+      }
+
+      // ED Room
+      if (card.edRoom) lines.push(`  ED Room: ${card.edRoom}`);
+
+      // Activity notes
+      if (card.activity) lines.push(`  Notes: ${card.activity}`);
+    });
+    lines.push('');
+  }
+
+  lines.push(sep);
+  lines.push('Generated by NCEMS Chart Helper');
+
+  return lines.join('\n');
+}
+
+function sendChartEmail() {
+  const body = buildEmailText();
+  const d = collectChartData();
+  const address = [d.patientAddress, d.patientCity].filter(Boolean).join(', ') || 'Unknown Address';
+  const dateStr = new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const subject = `NCEMS Chart — ${address} — ${dateStr}`;
+
+  const toAddress = accountSettings.email || '';
+  const mailto = `mailto:${encodeURIComponent(toAddress)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+  // Open mail — works on iOS to open Mail app with draft pre-filled
+  window.location.href = mailto;
+}
+
 async function generateSOAP() {
   const chiefComplaint = document.getElementById('chiefComplaint').value.trim();
   const sceneNotes = document.getElementById('sceneNotes').value.trim();
@@ -7394,11 +8007,8 @@ async function generateSOAP() {
     return;
   }
 
-  // Switch to output tab
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab')[1].classList.add('active');
-  document.getElementById('tab-input').style.display = 'none';
-  document.getElementById('tab-output').style.display = 'block';
+  // Switch to Chart (output) tab
+  switchTab('output', document.querySelectorAll('.tab')[2]);
 
   // Show spinner
   document.getElementById('loadingSpinner').classList.add('visible');
@@ -7625,9 +8235,6 @@ function openSettings() {
   document.getElementById('s_driver').value = settings.driver || '';
   document.getElementById('s_other').value = settings.other || '';
   document.getElementById('s_team').value = settings.team || 'BLS';
-  document.getElementById('s_apikey').value = settings.apikey || '';
-  document.getElementById('s_openaikey').value = settings.openaikey || '';
-  document.getElementById('s_voiceengine').value = settings.voiceengine || 'auto';
   document.getElementById('settingsModal').classList.add('visible');
 }
 
@@ -7641,15 +8248,13 @@ function closeSettingsOutside(e) {
 
 function saveSettings() {
   settings = {
+    ...settings,
     service: document.getElementById('s_service').value,
     unit: document.getElementById('s_unit').value,
     primary: document.getElementById('s_primary').value,
     driver: document.getElementById('s_driver').value,
     other: document.getElementById('s_other').value,
     team: document.getElementById('s_team').value,
-    apikey: document.getElementById('s_apikey').value.trim(),
-    openaikey: document.getElementById('s_openaikey').value.trim(),
-    voiceengine: document.getElementById('s_voiceengine').value,
   };
   try { localStorage.setItem('ems_crew_settings', JSON.stringify(settings)); } catch(e) {}
   closeSettings();
@@ -7660,6 +8265,62 @@ function loadSettings() {
     const saved = localStorage.getItem('ems_crew_settings');
     if (saved) settings = JSON.parse(saved);
   } catch(e) {}
+}
+
+// ======== ACCOUNT ========
+let accountSettings = { email: '' };
+
+function loadAccount() {
+  try {
+    const saved = localStorage.getItem('ems_account');
+    if (saved) accountSettings = { ...accountSettings, ...JSON.parse(saved) };
+  } catch(e) {}
+}
+
+function openAccount() {
+  document.getElementById('a_email').value = accountSettings.email || '';
+  document.getElementById('accountModal').classList.add('visible');
+}
+
+function closeAccount() {
+  document.getElementById('accountModal').classList.remove('visible');
+}
+
+function closeAccountOutside(e) {
+  if (e.target === document.getElementById('accountModal')) closeAccount();
+}
+
+function saveAccount() {
+  accountSettings.email = document.getElementById('a_email').value.trim();
+  try { localStorage.setItem('ems_account', JSON.stringify(accountSettings)); } catch(e) {}
+  closeAccount();
+  showToast('success', 'Account Saved', accountSettings.email ? `Email set to ${accountSettings.email}` : 'Email address cleared.');
+}
+
+// ======== APP SETTINGS ========
+
+function openAppSettings() {
+  document.getElementById('as_apikey').value = settings.apikey || '';
+  document.getElementById('as_openaikey').value = settings.openaikey || '';
+  document.getElementById('as_voiceengine').value = settings.voiceengine || 'auto';
+  document.getElementById('appSettingsModal').classList.add('visible');
+}
+
+function closeAppSettings() {
+  document.getElementById('appSettingsModal').classList.remove('visible');
+}
+
+function closeAppSettingsOutside(e) {
+  if (e.target === document.getElementById('appSettingsModal')) closeAppSettings();
+}
+
+function saveAppSettings() {
+  settings.apikey      = document.getElementById('as_apikey').value.trim();
+  settings.openaikey   = document.getElementById('as_openaikey').value.trim();
+  settings.voiceengine = document.getElementById('as_voiceengine').value;
+  try { localStorage.setItem('ems_crew_settings', JSON.stringify(settings)); } catch(e) {}
+  closeAppSettings();
+  showToast('success', 'App Settings Saved', 'API keys and voice engine updated.');
 }
 
 // ======== AGE CALCULATOR ========
@@ -7685,15 +8346,22 @@ function newChart() {
      'medHistory','medications','allergies','patientSkin','patientTemp','patientGlucose',
      'transportHospital','edRoom',
      'sceneNotes','refusalReason',
-     'whoCalled911'].forEach(id => {
+     'whoCalled911','whoCalled911Other','patientSex','patientLOC'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
 
-    // Reset selects
-    const dp = document.getElementById('dispatchPriority');
-    if (dp) dp.selectedIndex = 0;
+    // Reset all tap pills
+    document.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
     document.querySelectorAll('.check-pill').forEach(p => p.classList.remove('selected'));
+    // Reset who-called Other input visibility
+    const wco = document.getElementById('whoCalled911Other');
+    if (wco) wco.style.display = 'none';
+    // Reset LOC state
+    locAlertValue = '';
+    locOrientedValues.clear();
+    const locOG = document.getElementById('locOrientedGroup');
+    if (locOG) locOG.style.display = 'none';
 
     // Reset vitals
     document.getElementById('vitals-container').innerHTML = '';
@@ -7738,7 +8406,7 @@ function newChart() {
 
     outputGenerated = false;
     autoSaveChartId = null;
-    switchTab('input', document.querySelectorAll('.tab')[0]);
+    switchTab('input', document.querySelectorAll('.tab')[1]);
   });
 }
 
@@ -8135,20 +8803,10 @@ function restoreSignature(canvasId, dataURL) {
 
 function getSigDataURL(id) {
   const canvas = document.getElementById(id);
-  if (!canvas) {
-    console.log('getSigDataURL: Canvas not found for', id);
-    return null;
-  }
+  if (!canvas) return null;
   
-  // Get canvas data URL
   const dataURL = canvas.toDataURL('image/png');
-  
-  // Check if it's just an empty canvas (empty PNG is a specific size)
-  // An empty canvas will have a very small data URL
-  const isEmpty = dataURL.length < 1000; // Empty canvas is typically < 200 bytes
-  
-  console.log('getSigDataURL:', id, 'isEmpty:', isEmpty, 'dataURL length:', dataURL.length);
-  
+  const isEmpty = dataURL.length < 1000;
   return isEmpty ? null : dataURL;
 }
 
@@ -8912,8 +9570,8 @@ function collectChartData() {
     
     // Call Type
     callType: document.getElementById('callType')?.value || '',
-    dispatchPriority: document.getElementById('dispatchPriority')?.value || '',
     whoCalled911: document.getElementById('whoCalled911')?.value || '',
+    whoCalled911Other: document.getElementById('whoCalled911Other')?.value || '',
     
     // Patient Info
     patientName: document.getElementById('patientName')?.value || '',
@@ -8928,6 +9586,8 @@ function collectChartData() {
     
     // Scene Info
     patientLOC: document.getElementById('patientLOC')?.value || '',
+    locAlertValue: locAlertValue || '',
+    locOrientedValues: Array.from(locOrientedValues),
     sceneNotes: document.getElementById('sceneNotes')?.value || '',
     caller911: document.getElementById('caller911')?.value || '',
     
@@ -9039,24 +9699,58 @@ function restoreChartData(data) {
     document.getElementById('callType').value = data.callType || '';
     updateCallType(); // Re-initialize activity cards for this call type
   }
-  if (document.getElementById('dispatchPriority')) document.getElementById('dispatchPriority').value = data.dispatchPriority || '';
-  if (document.getElementById('whoCalled911')) document.getElementById('whoCalled911').value = data.whoCalled911 || '';
+  // Restore Who Called 911 pills
+  if (data.whoCalled911) {
+    const knownValues = ['Patient','Wife','Relative','Bystander','Other'];
+    const v = data.whoCalled911;
+    const isKnown = knownValues.includes(v);
+    document.querySelectorAll('#whoCalled911Pills .tap-pill').forEach(p => {
+      if (p.textContent.trim() === (isKnown ? v : 'Other')) p.classList.add('selected');
+      else p.classList.remove('selected');
+    });
+    document.getElementById('whoCalled911').value = v;
+    if (!isKnown || v === 'Other') {
+      document.getElementById('whoCalled911Other').style.display = 'block';
+      document.getElementById('whoCalled911Other').value = data.whoCalled911Other || v;
+    }
+  }
   
   // Restore Patient Info
   if (document.getElementById('patientName')) document.getElementById('patientName').value = data.patientName || '';
   if (document.getElementById('patientDOB')) document.getElementById('patientDOB').value = data.patientDOB || '';
   if (document.getElementById('patientAge')) document.getElementById('patientAge').value = data.patientAge || '';
-  if (document.getElementById('patientSex')) document.getElementById('patientSex').value = data.patientSex || '';
+  // Restore Sex pill
+  if (data.patientSex) {
+    document.getElementById('patientSex').value = data.patientSex;
+    document.querySelectorAll('.pill-group .tap-pill').forEach(p => {
+      if (p.getAttribute('onclick')?.includes(`selectSexPill`) && p.getAttribute('onclick')?.includes(`'${data.patientSex}'`)) {
+        p.classList.add('selected');
+      }
+    });
+  }
   if (document.getElementById('patientAddress')) document.getElementById('patientAddress').value = data.patientAddress || '';
   if (document.getElementById('patientCity')) document.getElementById('patientCity').value = data.patientCity || '';
   if (document.getElementById('patientState')) document.getElementById('patientState').value = data.patientState || '';
   if (document.getElementById('patientZip')) document.getElementById('patientZip').value = data.patientZip || '';
   if (document.getElementById('patientPhone')) document.getElementById('patientPhone').value = data.patientPhone || '';
   
-  // Restore Scene Info
-  if (document.getElementById('patientLOC')) document.getElementById('patientLOC').value = data.patientLOC || '';
+  // Restore Scene Info + LOC pills
   if (document.getElementById('sceneNotes')) document.getElementById('sceneNotes').value = data.sceneNotes || '';
   if (document.getElementById('caller911')) document.getElementById('caller911').value = data.caller911 || '';
+  if (data.locAlertValue) {
+    locAlertValue = data.locAlertValue;
+    locOrientedValues = new Set(data.locOrientedValues || []);
+    document.querySelectorAll('#locAlertPills .tap-pill').forEach(p => {
+      p.classList.toggle('selected', p.textContent.trim() === data.locAlertValue);
+    });
+    if (data.locAlertValue === 'Alert') {
+      document.getElementById('locOrientedGroup').style.display = 'block';
+      document.querySelectorAll('#locOrientedPills .tap-pill').forEach(p => {
+        p.classList.toggle('selected', locOrientedValues.has(p.textContent.trim()));
+      });
+    }
+    document.getElementById('patientLOC').value = data.patientLOC || '';
+  }
   
   // Restore Incident Info
   if (document.getElementById('chiefComplaint')) document.getElementById('chiefComplaint').value = data.chiefComplaint || '';
