@@ -8281,11 +8281,24 @@ async function extractVitalsInfo() {
   status.textContent = '';
   status.classList.remove('error', 'success');
 
+  // Build list of current card labels so the AI can pick the right one
+  const cardOptions = [];
+  document.querySelectorAll('#vitals-container .vitals-card-label').forEach(lbl => {
+    const span = lbl.querySelector('span:first-child');
+    const badge = lbl.querySelector('.activity-badge');
+    if (span && badge) {
+      const cardId = badge.id.replace('activity-badge-', '');
+      cardOptions.push({ id: cardId, label: span.textContent.trim() });
+    }
+  });
+  const cardLabels = cardOptions.map(c => c.label);
+
   try {
     // Run both extractions in parallel: vitals-specific + universal cross-section
     const [vitalsText, universalResult] = await Promise.all([
       claudeAPI([{ role: 'user', content: `Extract vital signs and activity information from this dictated EMS text. Return ONLY valid JSON with these exact keys (use "" if not mentioned):
 {
+  "cardName": "",
   "time": "",
   "bp": "",
   "pulse": "",
@@ -8301,6 +8314,7 @@ async function extractVitalsInfo() {
   "gcsMotor": ""
 }
 Rules:
+- cardName: pick the BEST match from this list based on context clues in the text (e.g. "first contact", "on scene", "transport", "hospital"): ${JSON.stringify(cardLabels)}. If unclear, use "".
 - time: HH:MM 24-hour format
 - bp: "120/80" format
 - spo2: number 0-100 only, no % sign
@@ -8310,14 +8324,29 @@ Rules:
 - gcsEye: 1-4, gcsVerbal: 1-5, gcsMotor: 1-6
 - activity: interventions, procedures, or actions performed
 
-Dictated text: "${transcript}"` }], 400),
+Dictated text: "${transcript}"` }], 500),
       extractUniversalInfo(transcript, 'vitals')
     ]);
 
     const fenceMatchV = vitalsText.match(/```(?:json)?\s*([\s\S]*?)```/);
     const clean = fenceMatchV ? fenceMatchV[1].trim() : vitalsText.trim();
     const parsed = JSON.parse(clean);
-    const id = vitalsCount;
+
+    // Resolve target card: AI-identified cardName → match by label → fallback to first open non-Refusal card
+    let id = null;
+    if (parsed.cardName) {
+      const match = cardOptions.find(c => c.label.toLowerCase() === parsed.cardName.toLowerCase());
+      if (match) id = match.id;
+    }
+    if (!id) {
+      // Fallback: first open (visible) card that isn't Refusal
+      const fallback = cardOptions.find(c => {
+        if (c.label === 'Refusal') return false;
+        const content = document.getElementById('vitals-content-' + c.id);
+        return content && content.style.display !== 'none';
+      });
+      id = fallback ? fallback.id : cardOptions[0]?.id;
+    }
     const vitalsFilled = [];
 
     if (parsed.time)     { document.getElementById(`vt-${id}`).value       = parsed.time;     vitalsFilled.push('Time'); }
@@ -8340,8 +8369,9 @@ Dictated text: "${transcript}"` }], 400),
       allFields.push(...universalResult.fieldsPopulated.map(f => f + ' (other section)'));
     }
 
+    const targetLabel = cardOptions.find(c => c.id === id)?.label || 'card';
     if (allFields.length > 0) {
-      status.textContent = `✓ Filled: ${allFields.join(', ')}`;
+      status.textContent = `✓ [${targetLabel}] Filled: ${allFields.join(', ')}`;
       status.classList.add('success');
     } else {
       status.textContent = '⚠ No fields extracted — try again or fill manually';
