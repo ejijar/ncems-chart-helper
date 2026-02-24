@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.13 -->
-<script>const APP_VERSION = 'v5.13';</script>
+<!-- Version: v5.14 -->
+<script>const APP_VERSION = 'v5.14';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -10863,15 +10863,23 @@ async function encryptData(data, password) {
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(encryptedBuffer), salt.length + iv.length);
   
-  // Convert to base64 for storage
-  return btoa(String.fromCharCode(...combined));
+  // Convert to base64 for storage — use chunked loop, NOT spread (...combined)
+  // because spread on a large Uint8Array exhausts the call stack
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < combined.length; i += chunk) {
+    binary += String.fromCharCode(...combined.subarray(i, i + chunk));
+  }
+  return btoa(binary);
 }
 
 // Decrypt data with password
 async function decryptData(encryptedBase64, password) {
   try {
-    // Convert from base64
-    const combined = new Uint8Array(atob(encryptedBase64).split('').map(c => c.charCodeAt(0)));
+    // Convert from base64 — use index loop, not split+map which can be slow on large strings
+    const binaryStr = atob(encryptedBase64);
+    const combined = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) combined[i] = binaryStr.charCodeAt(i);
     
     // Extract salt, iv, and encrypted data
     const salt = combined.slice(0, 16);
@@ -11326,10 +11334,15 @@ async function saveChart() {
   
   const chartData = collectChartData();
   chartData.name = chartName;
+
+  // Photos are stripped from localStorage saves — base64 images exceed the 5MB
+  // localStorage quota. Photos travel with the chart via Export (→ .json file).
+  const hasPhotos = chartData.refPhotos && chartData.refPhotos.length > 0;
+  const saveData = { ...chartData, refPhotos: [] };
   
   try {
-    // Encrypt the chart data
-    const encryptedData = await encryptData(chartData, password);
+    // Encrypt the chart data (photos excluded from localStorage)
+    const encryptedData = await encryptData(saveData, password);
     
     // Get existing saved charts
     const savedCharts = JSON.parse(localStorage.getItem('emsCharts') || '[]');
@@ -11347,7 +11360,8 @@ async function saveChart() {
     localStorage.setItem('emsCharts', JSON.stringify(savedCharts));
     
     closeSaveDialog();
-    showToast('success', 'Chart Saved', `"${chartName}" encrypted and saved successfully.`);
+    const photoNote = hasPhotos ? ' Reference photos are not included — use Export to save a file with photos.' : '';
+    showToast('success', 'Chart Saved', `"${chartName}" saved successfully.${photoNote}`);
   } catch (err) {
     showToast('error', 'Save Failed', err.message);
   }
@@ -11367,6 +11381,11 @@ async function autoSaveChart() {
   if (!currentUser) return;
   
   const chartData = collectChartData();
+
+  // Strip photos from the autosave payload — they're large (base64 JPEG) and
+  // would quickly exceed localStorage's ~5MB quota. Photos are kept in memory
+  // and are included only when the user explicitly saves/exports the chart file.
+  const autoSaveData = { ...chartData, refPhotos: [] };
   
   // Generate auto-save chart name from patient address and timestamp
   const patientAddress = document.getElementById('patientAddress')?.value || '';
@@ -11381,11 +11400,11 @@ async function autoSaveChart() {
   const address = patientAddress.trim();
   const chartName = address ? `${timestamp} ${address}` : timestamp;
   
-  chartData.name = chartName;
+  autoSaveData.name = chartName;
   
   try {
-    // Encrypt the chart data
-    const encryptedData = await encryptData(chartData, password);
+    // Encrypt the chart data (photos excluded)
+    const encryptedData = await encryptData(autoSaveData, password);
     
     // Get existing saved charts
     const savedCharts = JSON.parse(localStorage.getItem('emsCharts') || '[]');
