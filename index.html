@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.11 -->
-<script>const APP_VERSION = 'v5.11';</script>
+<!-- Version: v5.12 -->
+<script>const APP_VERSION = 'v5.12';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -9590,14 +9590,16 @@ function _buildSigModal() {
   document.getElementById('sigModalNameInput').value = document.getElementById(cfg.nameField)?.value || '';
 
   // ── Canvas setup ──────────────────────────────
-  // Capture any existing signature BEFORE we resize/replace the canvas
-  // (so rotate-to-landscape can redraw it at the new dimensions)
+  // Only carry forward what's currently drawn if we are rebuilding the SAME
+  // signature id (e.g. orientation resize). On ◀/▶ navigation the canvas
+  // belongs to the PREVIOUS sig — do NOT bleed it onto the next signer.
+  const currentCanvas = document.getElementById('sigModalCanvas');
+  const isSameSig = currentCanvas?.dataset.sigId === cfg.id;
+
   const existingDataURL = (() => {
-    const existing = document.getElementById('sigModalCanvas');
-    if (existing && existing.width > 0 && existing.height > 0) {
-      try { return existing.toDataURL(); } catch(e) {}
-    }
-    return null;
+    if (!isSameSig) return null;          // navigating → blank canvas
+    if (!currentCanvas || currentCanvas.width === 0 || currentCanvas.height === 0) return null;
+    try { return currentCanvas.toDataURL(); } catch(e) { return null; }
   })();
 
   const canvas = document.getElementById('sigModalCanvas');
@@ -9626,7 +9628,7 @@ function _buildSigModal() {
   const fresh = canvas.cloneNode(false);
   fresh.width  = canvas.width;
   fresh.height = canvas.height;
-  // Do NOT pin inline style.width/height — let CSS control layout size
+  fresh.dataset.sigId = cfg.id;   // ← tag so next call knows which sig owns this canvas
   canvas.parentElement.replaceChild(fresh, canvas);
 
   const ctx2 = fresh.getContext('2d');
