@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.10 -->
-<script>const APP_VERSION = 'v5.10';</script>
+<!-- Version: v5.11 -->
+<script>const APP_VERSION = 'v5.11';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2032,7 +2032,6 @@
     letter-spacing: 0.05em;
     flex: 1;
   }
-  /* Undo/Redo/Done now live in the header */
   .sig-modal-actions {
     display: flex;
     gap: 8px;
@@ -2060,7 +2059,9 @@
   #sigModalCanvas {
     flex: 1;
     width: 100%;
-    min-height: 200px;
+    /* Cap height so it never stretches vertically on tall screens */
+    min-height: 140px;
+    max-height: 260px;
     background: #fff;
     border: 2px solid #aaa;
     border-radius: 8px;
@@ -2091,42 +2092,75 @@
     padding: 8px 12px;
     width: 100%;
   }
-  /* Footer removed — actions moved to header. Keep an empty footer for name field on portrait */
-  .sig-modal-footer {
-    display: none;
-  }
-  /* Portrait: compact signature bar — don't stretch full screen */
-  @media (orientation: portrait) {
+  .sig-modal-footer { display: none; }
+
+  /* ── Desktop / tablet: constrained centred dialog, not full-screen ── */
+  @media (min-width: 700px) {
     #sigModal {
-      /* Don't cover the full viewport height — sit as a bottom sheet */
-      top: auto;
-      bottom: 0;
+      /* Centred card, not a full-screen takeover */
+      inset: unset;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(680px, 90vw);
       height: auto;
-      max-height: 75vh;
-      border-radius: 16px 16px 0 0;
-      box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.28);
     }
-    .sig-modal-canvas-wrap {
-      padding: 10px 12px;
+    /* Dim backdrop via a pseudo-overlay — we inject it in JS */
+    #sigModalBackdrop {
+      display: block;
     }
     #sigModalCanvas {
-      min-height: 160px;
-      max-height: 35vh;
+      min-height: 180px;
+      max-height: 220px;
     }
-    /* Rotate hint shown only in portrait */
-    .sig-rotate-hint {
-      display: flex !important;
-    }
+    .sig-rotate-hint { display: none !important; }
   }
-  /* Landscape: full-screen */
-  @media (orientation: landscape) {
+
+  /* ── Mobile portrait: bottom sheet ── */
+  @media (max-width: 699px) and (orientation: portrait) {
+    #sigModal {
+      top: auto;
+      bottom: 0;
+      left: 0; right: 0;
+      height: auto;
+      max-height: 70vh;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+      transform: none;
+    }
+    #sigModalCanvas {
+      min-height: 140px;
+      max-height: 32vh;
+    }
+    .sig-rotate-hint { display: flex !important; }
+  }
+
+  /* ── Mobile landscape: full-screen (max drawing space) ── */
+  @media (max-width: 699px) and (orientation: landscape) {
     #sigModal {
       top: 0; bottom: 0; left: 0; right: 0;
       height: 100%;
       border-radius: 0;
+      transform: none;
+    }
+    #sigModalCanvas {
+      min-height: 100px;
+      max-height: none;  /* fill whatever space is available */
     }
     .sig-rotate-hint { display: none !important; }
   }
+
+  /* Backdrop for desktop dialog mode */
+  #sigModalBackdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9998;
+  }
+
   .sig-rotate-hint {
     display: none;
     align-items: center;
@@ -9508,17 +9542,32 @@ let sigModalFuture  = [];
 
 function openSigModal(idx) {
   sigModalIdx = idx;
-  const modal = document.getElementById('sigModal');
-  modal.classList.add('active');
+  document.getElementById('sigModal').classList.add('active');
+  document.getElementById('sigModalBackdrop').style.display = 'block';
   // Use a short delay so the browser completes layout before we measure
   setTimeout(() => _buildSigModal(), 80);
+  // Rebuild canvas if device rotates while modal is open
+  window.addEventListener('resize', _onSigModalResize);
+}
+
+let _sigResizeTimer = null;
+function _onSigModalResize() {
+  // Debounce: wait until resize settles (orientation change fires multiple events)
+  clearTimeout(_sigResizeTimer);
+  _sigResizeTimer = setTimeout(() => {
+    if (document.getElementById('sigModal').classList.contains('active')) {
+      _buildSigModal();
+    }
+  }, 120);
 }
 
 function closeSigModal() {
   _commitSigModal();
-  const modal = document.getElementById('sigModal');
-  modal.classList.remove('active');
+  document.getElementById('sigModal').classList.remove('active');
+  document.getElementById('sigModalBackdrop').style.display = 'none';
   sigModalPad = null;
+  window.removeEventListener('resize', _onSigModalResize);
+  clearTimeout(_sigResizeTimer);
 }
 
 function sigModalNav(dir) {
@@ -9541,40 +9590,43 @@ function _buildSigModal() {
   document.getElementById('sigModalNameInput').value = document.getElementById(cfg.nameField)?.value || '';
 
   // ── Canvas setup ──────────────────────────────
-  // Always work with the original #sigModalCanvas (no cloning)
+  // Capture any existing signature BEFORE we resize/replace the canvas
+  // (so rotate-to-landscape can redraw it at the new dimensions)
+  const existingDataURL = (() => {
+    const existing = document.getElementById('sigModalCanvas');
+    if (existing && existing.width > 0 && existing.height > 0) {
+      try { return existing.toDataURL(); } catch(e) {}
+    }
+    return null;
+  })();
+
   const canvas = document.getElementById('sigModalCanvas');
   const dpr = window.devicePixelRatio || 1;
 
-  // Measure real CSS size
-  const cssW = canvas.offsetWidth  || canvas.parentElement.clientWidth - 24;
-  const cssH = canvas.offsetHeight || 240;
+  // Clear any previously pinned inline dimensions so CSS max-height can apply
+  canvas.style.width  = '';
+  canvas.style.height = '';
+
+  // Let the browser lay out first, then measure
+  const cssW = canvas.offsetWidth  || (canvas.parentElement.clientWidth - 24);
+  const cssH = canvas.offsetHeight || 200;
 
   // Set backing store dimensions
-  canvas.width  = cssW * dpr;
-  canvas.height = cssH * dpr;
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
 
   const ctx = canvas.getContext('2d');
-  ctx.setTransform(1, 0, 0, 1, 0, 0);  // reset any previous transform
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
   _setCtxStyle(ctx);
   ctx.lineWidth = 2.5;
 
-  // Pre-fill from inline canvas if it already has a signature
-  const srcData = getSigDataURL(cfg.id);
-  if (srcData) {
-    const img = new Image();
-    img.onload = () => ctx.drawImage(img, 0, 0, cssW, cssH);
-    img.src = srcData;
-  }
-
   // ── Event handlers ────────────────────────────
-  // Remove previous listeners by replacing with a fresh clone
+  // Replace with a fresh clone to drop stale listeners
   const fresh = canvas.cloneNode(false);
-  // Copy over the sizing we just set
   fresh.width  = canvas.width;
   fresh.height = canvas.height;
-  fresh.style.width  = cssW + 'px';
-  fresh.style.height = cssH + 'px';
+  // Do NOT pin inline style.width/height — let CSS control layout size
   canvas.parentElement.replaceChild(fresh, canvas);
 
   const ctx2 = fresh.getContext('2d');
@@ -9583,11 +9635,12 @@ function _buildSigModal() {
   _setCtxStyle(ctx2);
   ctx2.lineWidth = 2.5;
 
-  // Re-draw existing signature onto fresh canvas
-  if (srcData) {
-    const img2 = new Image();
-    img2.onload = () => ctx2.drawImage(img2, 0, 0, cssW, cssH);
-    img2.src = srcData;
+  // Draw: prefer the in-progress modal drawing (resize case), else the committed inline sig
+  const drawSrc = existingDataURL || getSigDataURL(cfg.id);
+  if (drawSrc) {
+    const img = new Image();
+    img.onload = () => ctx2.drawImage(img, 0, 0, cssW, cssH);
+    img.src = drawSrc;
   }
 
   let drawing = false, lastX = 0, lastY = 0;
@@ -11384,6 +11437,7 @@ function loadScript(src) {
 </div>
 
 <!-- SIGNATURE MODAL -->
+<div id="sigModalBackdrop" onclick="closeSigModal()"></div>
 <div id="sigModal">
   <div class="sig-modal-header">
     <span class="sig-modal-title" id="sigModalTitle">Signature</span>
