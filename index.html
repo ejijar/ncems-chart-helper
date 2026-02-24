@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.15 -->
-<script>const APP_VERSION = 'v5.15';</script>
+<!-- Version: v5.16 -->
+<script>const APP_VERSION = 'v5.16';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -11269,24 +11269,32 @@ function restoreChartData(data) {
   // Check Transport/Refusal exclusivity after restoring data
   checkTransportRefusalExclusivity();
 
-  // Resize all textareas — must temporarily un-hide sections whose display:none
-  // prevents offsetHeight measurement, otherwise textarea stays at min-height.
+  // Resize all textareas — elements inside hidden tab panels return scrollHeight=0
+  // because a hidden ancestor blocks layout for all descendants. We must temporarily
+  // make EVERY hidden ancestor visible (but invisible to the user) before measuring.
   setTimeout(() => {
-    // Collect hidden section bodies and make them momentarily visible (no layout flash)
     const hidden = [];
-    document.querySelectorAll('.section-body, .vitals-body, .vitals-card-content').forEach(el => {
-      if (el.style.display === 'none' || getComputedStyle(el).display === 'none') {
-        hidden.push({ el, prev: el.style.display });
-        el.style.display = 'block';
-        el.style.visibility = 'hidden'; // visible to layout engine, invisible to user
+
+    // Step 1: un-hide any tab panel or section that is display:none
+    document.querySelectorAll(
+      '#tab-input, #tab-dispatch, #tab-reference, #tab-output, #tab-refusal, ' +
+      '.section-body, .vitals-body, .vitals-card-content'
+    ).forEach(el => {
+      const style = el.style.display || getComputedStyle(el).display;
+      if (style === 'none') {
+        hidden.push({ el, prevDisplay: el.style.display, prevVisibility: el.style.visibility });
+        el.style.display    = 'block';
+        el.style.visibility = 'hidden'; // layout-visible, user-invisible
       }
     });
-    // Resize every textarea now that they're measurable
+
+    // Step 2: now every textarea has a measurable scrollHeight — resize them all
     document.querySelectorAll('textarea').forEach(ta => autoResizeTextarea(ta));
-    // Restore hidden state
-    hidden.forEach(({ el, prev }) => {
-      el.style.display = prev;
-      el.style.visibility = '';
+
+    // Step 3: restore original hidden state exactly
+    hidden.forEach(({ el, prevDisplay, prevVisibility }) => {
+      el.style.display    = prevDisplay;
+      el.style.visibility = prevVisibility;
     });
   }, 100);
 
@@ -11680,6 +11688,27 @@ async function handleJSONImport(event) {
         
         if (restoreChartData(chartData)) {
           showToast('success', 'Chart Imported', 'Chart imported and decrypted successfully.');
+          // Force-resize all textareas after import — do this from here (not inside
+          // restoreChartData) so we can use a longer delay and know the DOM is settled.
+          // We un-hide every hidden ancestor so scrollHeight is measurable.
+          setTimeout(() => {
+            const hidden = [];
+            document.querySelectorAll(
+              '#tab-input, #tab-dispatch, #tab-reference, #tab-output, #tab-refusal, ' +
+              '.section-body, .vitals-body, .vitals-card-content'
+            ).forEach(el => {
+              if (getComputedStyle(el).display === 'none') {
+                hidden.push({ el, prev: el.style.display });
+                el.style.display    = 'block';
+                el.style.visibility = 'hidden';
+              }
+            });
+            document.querySelectorAll('textarea').forEach(ta => autoResizeTextarea(ta));
+            hidden.forEach(({ el, prev }) => {
+              el.style.display    = prev;
+              el.style.visibility = '';
+            });
+          }, 250);
         }
         event.target.value = '';
       });
