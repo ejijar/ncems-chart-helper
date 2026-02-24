@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.14 -->
-<script>const APP_VERSION = 'v5.14';</script>
+<!-- Version: v5.15 -->
+<script>const APP_VERSION = 'v5.15';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -11206,8 +11206,10 @@ function restoreChartData(data) {
       if (document.getElementById('vgcs-verbal-' + id)) document.getElementById('vgcs-verbal-' + id).value = cardData.gcsVerbal || '';
       if (document.getElementById('vgcs-motor-' + id)) document.getElementById('vgcs-motor-' + id).value = cardData.gcsMotor || '';
       if (document.getElementById('vactivity-' + id)) {
-        document.getElementById('vactivity-' + id).value = cardData.activity || '';
-        autoResizeTextarea(document.getElementById('vactivity-' + id));
+        const ta = document.getElementById('vactivity-' + id);
+        ta.value = cardData.activity || '';
+        // Attempt immediate resize; the delayed block below handles the collapsed-card case
+        autoResizeTextarea(ta);
       }
       if (document.getElementById('ved-room-' + id)) document.getElementById('ved-room-' + id).value = cardData.edRoom || '';
 
@@ -11272,7 +11274,7 @@ function restoreChartData(data) {
   setTimeout(() => {
     // Collect hidden section bodies and make them momentarily visible (no layout flash)
     const hidden = [];
-    document.querySelectorAll('.section-body, .vitals-body').forEach(el => {
+    document.querySelectorAll('.section-body, .vitals-body, .vitals-card-content').forEach(el => {
       if (el.style.display === 'none' || getComputedStyle(el).display === 'none') {
         hidden.push({ el, prev: el.style.display });
         el.style.display = 'block';
