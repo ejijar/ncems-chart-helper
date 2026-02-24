@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.8 -->
-<script>const APP_VERSION = 'v5.8';</script>
+<!-- Version: v5.10 -->
+<script>const APP_VERSION = 'v5.10';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2021,6 +2021,7 @@
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
+    gap: 8px;
   }
   .sig-modal-title {
     font-family: var(--mono);
@@ -2029,11 +2030,19 @@
     color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    flex: 1;
+  }
+  /* Undo/Redo/Done now live in the header */
+  .sig-modal-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
   }
   .sig-modal-nav {
     display: flex;
     gap: 8px;
     align-items: center;
+    margin-left: 4px;
   }
   .sig-modal-step {
     font-family: var(--mono);
@@ -2082,15 +2091,53 @@
     padding: 8px 12px;
     width: 100%;
   }
+  /* Footer removed — actions moved to header. Keep an empty footer for name field on portrait */
   .sig-modal-footer {
-    flex-shrink: 0;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    padding: 10px 16px;
-    display: flex;
-    gap: 10px;
-    justify-content: space-between;
+    display: none;
+  }
+  /* Portrait: compact signature bar — don't stretch full screen */
+  @media (orientation: portrait) {
+    #sigModal {
+      /* Don't cover the full viewport height — sit as a bottom sheet */
+      top: auto;
+      bottom: 0;
+      height: auto;
+      max-height: 75vh;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+    }
+    .sig-modal-canvas-wrap {
+      padding: 10px 12px;
+    }
+    #sigModalCanvas {
+      min-height: 160px;
+      max-height: 35vh;
+    }
+    /* Rotate hint shown only in portrait */
+    .sig-rotate-hint {
+      display: flex !important;
+    }
+  }
+  /* Landscape: full-screen */
+  @media (orientation: landscape) {
+    #sigModal {
+      top: 0; bottom: 0; left: 0; right: 0;
+      height: 100%;
+      border-radius: 0;
+    }
+    .sig-rotate-hint { display: none !important; }
+  }
+  .sig-rotate-hint {
+    display: none;
     align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+    padding: 4px 0 0;
+    flex-shrink: 0;
   }
 
   .error-msg {
@@ -2912,7 +2959,7 @@
             <label>Who Called 911</label>
             <div class="pill-group" id="whoCalled911Pills" style="margin-top:4px">
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Patient')">Patient</button>
-              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Wife')">Wife</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Spouse')">Spouse</button>
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Relative')">Relative</button>
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Bystander')">Bystander</button>
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Other')">Other</button>
@@ -7222,7 +7269,7 @@ RULES:
 - patient.sex: "male" or "female" lowercase only, else ""
 - patient.state: two-letter abbreviation (CT, NY, etc.), else ""
 - dispatch.callType: match to one of: "lift_assist", "chest_pain", "respiratory", "trauma", "diabetic", "mva" — closest match, else ""
-- dispatch.whoCalled911: one of "Patient", "Wife", "Relative", "Bystander", "Other", or specific text if unclear
+- dispatch.whoCalled911: one of "Patient", "Spouse", "Relative", "Bystander", "Other", or specific text if unclear
 - scene.loc: EXACTLY one of: "Alert and Oriented x4", "Alert and Oriented x3", "Alert and Oriented x2", "Alert and Oriented x1", "Altered Mental Status", "Unconscious" — or "" if not mentioned
 - scene.sceneNotes: scene description, environment, positioning, who was present
 - incident.chiefComplaint: the patient's main complaint, quoted if possible
@@ -7327,7 +7374,7 @@ Dictated text: "${transcript}"`;
     }
     if (parsed.dispatch?.whoCalled911) {
       const wVal = parsed.dispatch.whoCalled911;
-      const knownW = ['Patient','Wife','Relative','Bystander','Other'];
+      const knownW = ['Patient','Spouse','Relative','Bystander','Other'];
       const matchW = knownW.find(k => k.toLowerCase() === wVal.toLowerCase()) || 'Other';
       document.querySelectorAll('#whoCalled911Pills .tap-pill').forEach(p => {
         p.classList.toggle('selected', p.textContent.trim() === matchW);
@@ -8293,11 +8340,15 @@ function buildEmailText() {
   const block = (label, value) => {
     if (!value) return;
     L(`  ${label}:`);
-    // Strip bullet prefixes for clean prose output
+    // Strip bullet prefixes, ensure each sentence ends with a period, join as prose
     const cleaned = value
       .split(/\r?\n/)
-      .map(line => line.startsWith('• ') ? line.slice(2) : line)
+      .map(line => line.startsWith('• ') ? line.slice(2).trim() : line.trim())
       .filter(Boolean)
+      .map(sentence => {
+        // Add period if sentence doesn't already end with punctuation
+        return /[.!?]$/.test(sentence) ? sentence : sentence + '.';
+      })
       .join(' ');
     // Wrap at ~80 chars per line for readability
     const words = cleaned.split(' ');
@@ -10580,7 +10631,7 @@ function restoreChartData(data) {
   }
   // Restore Who Called 911 pills
   if (data.whoCalled911) {
-    const knownValues = ['Patient','Wife','Relative','Bystander','Other'];
+    const knownValues = ['Patient','Spouse','Relative','Bystander','Other'];
     const v = data.whoCalled911;
     const isKnown = knownValues.includes(v);
     document.querySelectorAll('#whoCalled911Pills .tap-pill').forEach(p => {
@@ -10777,8 +10828,26 @@ function restoreChartData(data) {
   // Check Transport/Refusal exclusivity after restoring data
   checkTransportRefusalExclusivity();
 
-  // Resize all textareas to fit restored content
-  setTimeout(initAutoResize, 50);
+  // Resize all textareas — must temporarily un-hide sections whose display:none
+  // prevents offsetHeight measurement, otherwise textarea stays at min-height.
+  setTimeout(() => {
+    // Collect hidden section bodies and make them momentarily visible (no layout flash)
+    const hidden = [];
+    document.querySelectorAll('.section-body, .vitals-body').forEach(el => {
+      if (el.style.display === 'none' || getComputedStyle(el).display === 'none') {
+        hidden.push({ el, prev: el.style.display });
+        el.style.display = 'block';
+        el.style.visibility = 'hidden'; // visible to layout engine, invisible to user
+      }
+    });
+    // Resize every textarea now that they're measurable
+    document.querySelectorAll('textarea').forEach(ta => autoResizeTextarea(ta));
+    // Restore hidden state
+    hidden.forEach(({ el, prev }) => {
+      el.style.display = prev;
+      el.style.visibility = '';
+    });
+  }, 100);
 
   return true;
 }
@@ -11318,6 +11387,12 @@ function loadScript(src) {
 <div id="sigModal">
   <div class="sig-modal-header">
     <span class="sig-modal-title" id="sigModalTitle">Signature</span>
+    <!-- Undo/Redo/Done in header (top) -->
+    <div class="sig-modal-actions">
+      <button class="sig-action-btn" onclick="sigModalUndo()" id="sigModalUndo" title="Undo" style="font-size:18px;" disabled>↩</button>
+      <button class="sig-action-btn" onclick="sigModalRedo()" id="sigModalRedo" title="Redo" style="font-size:18px;" disabled>↪</button>
+      <button class="btn-secondary" onclick="closeSigModal()">Done</button>
+    </div>
     <div class="sig-modal-nav">
       <span class="sig-modal-step" id="sigModalStep"></span>
       <button class="btn-icon" onclick="sigModalNav(-1)" id="sigModalPrev">◀</button>
@@ -11330,16 +11405,9 @@ function loadScript(src) {
       <label id="sigModalNameLabel">Printed Name</label>
       <input type="text" id="sigModalNameInput" placeholder="Printed name">
     </div>
+    <div class="sig-rotate-hint">↻ &nbsp;Rotate to landscape for a wider signing area</div>
   </div>
-  <div class="sig-modal-footer">
-    <div style="display:flex;gap:8px;">
-      <button class="sig-action-btn" onclick="sigModalUndo()" id="sigModalUndo" title="Undo" style="font-size:18px;" disabled>↩</button>
-      <button class="sig-action-btn" onclick="sigModalRedo()" id="sigModalRedo" title="Redo" style="font-size:18px;" disabled>↪</button>
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn-secondary" onclick="closeSigModal()">Done</button>
-    </div>
-  </div>
+  <div class="sig-modal-footer"></div>
 </div>
 
 </body>
