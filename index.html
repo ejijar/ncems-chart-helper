@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v5.12 -->
-<script>const APP_VERSION = 'v5.12';</script>
+<!-- Version: v5.13 -->
+<script>const APP_VERSION = 'v5.13';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1867,9 +1867,188 @@
     line-height: 1.4;
   }
 
+  /* ── Reference Tab ────────────────────────────────────── */
+  .ref-action-bar {
+    display: flex;
+    gap: 12px;
+    padding: 16px 0 8px;
+  }
+  .ref-capture-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 20px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-muted);
+  }
+  .ref-capture-btn:hover, .ref-capture-btn:active {
+    border-color: var(--accent);
+    background: rgba(249,115,22,0.05);
+    color: var(--accent);
+  }
+  .ref-btn-icon { font-size: 28px; line-height: 1; }
+  .ref-btn-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .ref-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 48px 24px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .ref-empty-icon  { font-size: 44px; opacity: 0.4; }
+  .ref-empty-text  { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .ref-empty-sub   { font-size: 12px; max-width: 260px; line-height: 1.5; }
+
+  .ref-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    padding-bottom: 32px;
+  }
+
+  .ref-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ref-thumb-wrap {
+    position: relative;
+    width: 100%;
+    padding-top: 75%; /* 4:3 aspect */
+    cursor: pointer;
+    overflow: hidden;
+    background: #111;
+  }
+  .ref-thumb-wrap img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.15s;
+  }
+  .ref-thumb-wrap:hover img { opacity: 0.85; }
+  .ref-thumb-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .ref-thumb-wrap:hover .ref-thumb-overlay { opacity: 1; }
+
+  .ref-card-body {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .ref-caption-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 5px 8px;
+    width: 100%;
+    resize: none;
+  }
+  .ref-caption-input::placeholder { color: var(--text-dim); }
+  .ref-card-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .ref-save-btn, .ref-delete-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 5px 4px;
+    cursor: pointer;
+    transition: all 0.12s;
+    text-align: center;
+  }
+  .ref-save-btn:hover   { border-color: var(--success); color: var(--success); }
+  .ref-delete-btn:hover { border-color: var(--danger);  color: var(--danger);  }
+
+  /* Lightbox */
+  #refLightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 9990;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .ref-lb-inner {
+    display: flex;
+    flex-direction: column;
+    max-width: min(900px, 100%);
+    max-height: 100%;
+    width: 100%;
+    gap: 8px;
+  }
+  .ref-lb-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .ref-lb-caption-display {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: #fff;
+    opacity: 0.85;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #refLbImg {
+    width: 100%;
+    max-height: calc(100vh - 100px);
+    object-fit: contain;
+    border-radius: 8px;
+    display: block;
+  }
+
   /* RESPONSIVE — iPhone optimized */
   @media (max-width: 500px) {
-    .vitals-line-1,
+    .ref-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .ref-capture-btn { padding: 16px 8px; }
+    .ref-btn-icon { font-size: 24px; }
+  }
     .vitals-line-2 {
       grid-template-columns: 1fr 1fr;
     }
@@ -2946,6 +3125,7 @@
     <div class="tabs" id="tabBar">
       <button class="tab active" onclick="switchTab('dispatch', this)">Dispatch</button>
       <button class="tab" onclick="switchTab('input', this)">On-Scene</button>
+      <button class="tab" onclick="switchTab('reference', this)">Reference</button>
       <button class="tab" onclick="switchTab('output', this)">Chart</button>
       <button class="tab" onclick="switchTab('refusal', this)">Refusal</button>
     </div>
@@ -3289,6 +3469,37 @@
       </button>
     </div>
     <div id="copyChartStatus" style="font-family:var(--mono);font-size:11px;color:var(--success);text-align:center;margin-top:6px;min-height:16px;"></div>
+
+  </div>
+
+  <!-- ====== REFERENCE TAB ====== -->
+  <div id="tab-reference" style="display:none">
+
+    <!-- Hidden file inputs — wired via JS -->
+    <input type="file" id="refPhotoCamera" accept="image/*" capture="environment" style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
+    <input type="file" id="refPhotoUpload" accept="image/*"                       style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
+
+    <!-- Action bar -->
+    <div class="ref-action-bar">
+      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoCamera').click()">
+        <span class="ref-btn-icon">📷</span>
+        <span class="ref-btn-label">Camera</span>
+      </button>
+      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoUpload').click()">
+        <span class="ref-btn-icon">🖼</span>
+        <span class="ref-btn-label">Upload</span>
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="ref-empty" id="refEmpty">
+      <div class="ref-empty-icon">📸</div>
+      <div class="ref-empty-text">No reference photos yet</div>
+      <div class="ref-empty-sub">Tap Camera to shoot on-scene, or Upload from your photo library</div>
+    </div>
+
+    <!-- Photo grid -->
+    <div class="ref-grid" id="refGrid"></div>
 
   </div>
 
@@ -4765,7 +4976,7 @@ function setCurrentTimes() {
 }
 
 // ======== TABS ========
-const TAB_ORDER = ['dispatch', 'input', 'output', 'refusal'];
+const TAB_ORDER = ['dispatch', 'input', 'reference', 'output', 'refusal'];
 
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -4776,10 +4987,11 @@ function switchTab(tab, el) {
     const idx = TAB_ORDER.indexOf(tab);
     document.querySelectorAll('.tab')[idx]?.classList.add('active');
   }
-  document.getElementById('tab-dispatch').style.display = tab === 'dispatch' ? 'block' : 'none';
-  document.getElementById('tab-input').style.display = tab === 'input' ? 'block' : 'none';
-  document.getElementById('tab-output').style.display = tab === 'output' ? 'block' : 'none';
-  document.getElementById('tab-refusal').style.display = tab === 'refusal' ? 'block' : 'none';
+  document.getElementById('tab-dispatch').style.display  = tab === 'dispatch'  ? 'block' : 'none';
+  document.getElementById('tab-input').style.display     = tab === 'input'     ? 'block' : 'none';
+  document.getElementById('tab-reference').style.display = tab === 'reference' ? 'block' : 'none';
+  document.getElementById('tab-output').style.display    = tab === 'output'    ? 'block' : 'none';
+  document.getElementById('tab-refusal').style.display   = tab === 'refusal'   ? 'block' : 'none';
 
   if (tab === 'output' && !outputGenerated) {
     document.getElementById('outputEmpty').style.display = 'block';
@@ -8459,6 +8671,17 @@ function buildEmailText() {
     });
   }
 
+  // ── Reference Photos ──
+  if (d.refPhotos && d.refPhotos.length > 0) {
+    sec('REFERENCE PHOTOS');
+    L(`  ${d.refPhotos.length} photo${d.refPhotos.length > 1 ? 's' : ''} attached to this chart.`);
+    d.refPhotos.forEach((p, i) => {
+      const label = p.caption ? `Photo ${i + 1}: ${p.caption}` : `Photo ${i + 1}`;
+      row('Photo', label);
+    });
+    L(`  (Images are embedded in the saved chart file and visible in the Reference tab.)`);
+  }
+
   // ── Footer ──
   LL();
   L(SEP);
@@ -9038,6 +9261,10 @@ function newChart() {
     outputGenerated = false;
     autoSaveChartId = null;
 
+    // Clear reference photos
+    refPhotos = [];
+    renderRefGrid();
+
     // ── Refusal tab: reset all checkboxes and radios to unchecked ──
     [
       'rf_sameAsHome',
@@ -9533,6 +9760,152 @@ function redoSig(id) {
   _restoreFromDataURL(id, next);
   _updateUndoRedoBtns(id);
 }
+
+// ======== REFERENCE PHOTOS ========
+
+let refPhotos  = [];   // [{ id, dataURL, caption }]
+let refNextId  = 1;
+let refLbIndex = null; // index into refPhotos for lightbox
+
+// ── File intake ──────────────────────────────────────────
+function handleRefPhotoFiles(files) {
+  if (!files || !files.length) return;
+  const pending = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!pending.length) return;
+  let loaded = 0;
+
+  pending.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      // Compress to JPEG ≤1400px wide to keep save-file size manageable
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1400;
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataURL = cv.toDataURL('image/jpeg', 0.72);
+        refPhotos.push({ id: refNextId++, dataURL, caption: '' });
+        loaded++;
+        if (loaded === pending.length) {
+          renderRefGrid();
+          triggerAutoSave();
+        }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Reset file inputs so the same file can be re-selected
+  document.getElementById('refPhotoCamera').value = '';
+  document.getElementById('refPhotoUpload').value = '';
+}
+
+// ── Grid rendering ───────────────────────────────────────
+function renderRefGrid() {
+  const grid  = document.getElementById('refGrid');
+  const empty = document.getElementById('refEmpty');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  if (refPhotos.length === 0) {
+    if (empty) empty.style.display = 'flex';
+    grid.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  grid.style.display = 'grid';
+
+  refPhotos.forEach((photo, idx) => {
+    const card = document.createElement('div');
+    card.className = 'ref-card';
+    card.dataset.refId = photo.id;
+
+    card.innerHTML = `
+      <div class="ref-thumb-wrap" onclick="openRefLightbox(${idx})">
+        <img src="${photo.dataURL}" alt="Photo ${idx + 1}" loading="lazy">
+        <div class="ref-thumb-overlay">🔍</div>
+      </div>
+      <div class="ref-card-body">
+        <textarea class="ref-caption-input" rows="2"
+          placeholder="Add caption…"
+          oninput="updateRefCaption(${photo.id}, this.value)"
+        >${escapeHtml(photo.caption)}</textarea>
+        <div class="ref-card-actions">
+          <button class="ref-save-btn"   onclick="saveRefPhotoById(${photo.id})">⬇ Save</button>
+          <button class="ref-delete-btn" onclick="deleteRefPhoto(${photo.id})">🗑 Delete</button>
+        </div>
+      </div>`;
+
+    grid.appendChild(card);
+  });
+}
+
+// ── Caption update ───────────────────────────────────────
+function updateRefCaption(id, value) {
+  const p = refPhotos.find(x => x.id === id);
+  if (p) { p.caption = value; triggerAutoSave(); }
+}
+
+// ── Delete ───────────────────────────────────────────────
+function deleteRefPhoto(id) {
+  refPhotos = refPhotos.filter(x => x.id !== id);
+  renderRefGrid();
+  triggerAutoSave();
+}
+
+// ── Save to device (triggers browser download → Photos on iOS) ───
+function saveRefPhotoById(id) {
+  const p = refPhotos.find(x => x.id === id);
+  if (p) _downloadRefPhoto(p);
+}
+
+function _downloadRefPhoto(photo) {
+  const a = document.createElement('a');
+  const caption = (photo.caption || '').trim()
+    .replace(/[^a-z0-9 _-]/gi, '').replace(/\s+/g, '_').slice(0, 40);
+  a.download = caption ? `ref_${caption}.jpg` : `ref_photo_${photo.id}.jpg`;
+  a.href = photo.dataURL;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ── Lightbox ─────────────────────────────────────────────
+function openRefLightbox(idx) {
+  if (idx < 0 || idx >= refPhotos.length) return;
+  refLbIndex = idx;
+  const photo = refPhotos[idx];
+  document.getElementById('refLbImg').src = photo.dataURL;
+  document.getElementById('refLbCaption').textContent = photo.caption
+    ? `${idx + 1} / ${refPhotos.length}  —  ${photo.caption}`
+    : `${idx + 1} / ${refPhotos.length}`;
+  document.getElementById('refLightbox').style.display = 'flex';
+}
+
+function closeRefLightbox() {
+  document.getElementById('refLightbox').style.display = 'none';
+  refLbIndex = null;
+}
+
+function saveRefPhotoToDevice() {
+  if (refLbIndex !== null && refPhotos[refLbIndex]) _downloadRefPhoto(refPhotos[refLbIndex]);
+}
+
+// Keyboard nav: Escape closes, ←/→ navigates between photos
+document.addEventListener('keydown', e => {
+  const lb = document.getElementById('refLightbox');
+  if (!lb || lb.style.display !== 'flex') return;
+  if (e.key === 'Escape') { closeRefLightbox(); return; }
+  if (e.key === 'ArrowRight' && refLbIndex !== null)
+    openRefLightbox(Math.min(refLbIndex + 1, refPhotos.length - 1));
+  if (e.key === 'ArrowLeft' && refLbIndex !== null)
+    openRefLightbox(Math.max(refLbIndex - 1, 0));
+});
 
 // ── Signature Modal ──────────────────────────────────────
 let sigModalIdx = 0;
@@ -10670,6 +11043,9 @@ function collectChartData() {
     }
   });
   
+  // Collect reference photos (base64 + caption)
+  data.refPhotos = refPhotos.map(p => ({ dataURL: p.dataURL, caption: p.caption }));
+
   return data;
 }
 
@@ -10904,10 +11280,13 @@ function restoreChartData(data) {
     });
   }, 100);
 
-  return true;
-}
+  // Restore reference photos
+  if (Array.isArray(data.refPhotos) && data.refPhotos.length) {
+    refPhotos = data.refPhotos.map(p => ({ id: refNextId++, dataURL: p.dataURL, caption: p.caption || '' }));
+    renderRefGrid();
+  }
 
-function showSaveDialog() {
+  return true;
   const patientAddress = document.getElementById('patientAddress')?.value || '';
   
   // Generate timestamp in format YYYY-MM-DD HH:MM:SS
@@ -11439,7 +11818,21 @@ function loadScript(src) {
 </div>
 
 <!-- SIGNATURE MODAL -->
-<div id="sigModalBackdrop" onclick="closeSigModal()"></div>
+<!-- ====== PHOTO LIGHTBOX ====== -->
+<div id="refLightbox" style="display:none" onclick="closeRefLightbox()">
+  <div class="ref-lb-inner" onclick="event.stopPropagation()">
+    <div class="ref-lb-toolbar">
+      <span class="ref-lb-caption-display" id="refLbCaption"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-icon" onclick="saveRefPhotoToDevice()" title="Save to device">⬇ Save</button>
+        <button class="btn-icon" onclick="closeRefLightbox()">✕</button>
+      </div>
+    </div>
+    <img id="refLbImg" src="" alt="Reference photo">
+  </div>
+</div>
+
+
 <div id="sigModal">
   <div class="sig-modal-header">
     <span class="sig-modal-title" id="sigModalTitle">Signature</span>
