@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v7.4 -->
-<script>const APP_VERSION = 'v7.4';</script>
+<!-- Version: v7.4.1 -->
+<script>const APP_VERSION = 'v7.4.1';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -22,6 +22,108 @@
     --danger: #f85149;
     --mono: 'IBM Plex Mono', monospace;
     --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* ====== LIGHT MODE VARIABLES ====== */
+  .light-mode {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --surface2: #eef1f4;
+    --border: #d0d7de;
+    --accent: #d95f00;
+    --accent2: #e8722a;
+    --text: #1c2333;
+    --text-muted: #57606a;
+    --text-dim: #8c959f;
+    --success: #1a7f37;
+    --danger: #cf222e;
+  }
+
+  /* Auto mode: respect OS preference */
+  @media (prefers-color-scheme: light) {
+    .auto-mode {
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface2: #eef1f4;
+      --border: #d0d7de;
+      --accent: #d95f00;
+      --accent2: #e8722a;
+      --text: #1c2333;
+      --text-muted: #57606a;
+      --text-dim: #8c959f;
+      --success: #1a7f37;
+      --danger: #cf222e;
+    }
+  }
+
+  /* Light mode select arrow fix */
+  .light-mode select,
+  .auto-mode select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2357606a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  }
+
+  /* ====== THEME TOGGLE STYLES ====== */
+  .theme-toggle-group {
+    display: flex;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .theme-toggle-btn {
+    flex: 1;
+    padding: 9px 6px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .theme-toggle-btn:not(:last-child) {
+    border-right: 1px solid var(--border);
+  }
+
+  .theme-toggle-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .theme-toggle-btn:not(.active):hover {
+    color: var(--accent);
+    background: var(--surface2);
+  }
+
+  /* Light mode overrides for hardcoded dark values */
+  .light-mode .voice-btn.recording,
+  .light-mode .sig-pad-wrap.recording {
+    background: #fde8e8 !important;
+  }
+  .light-mode #micStatusBanner {
+    background: #fde8e8 !important;
+    color: var(--danger) !important;
+  }
+
+  @media (prefers-color-scheme: light) {
+    .auto-mode .voice-btn.recording,
+    .auto-mode .sig-pad-wrap.recording {
+      background: #fde8e8 !important;
+    }
+    .auto-mode #micStatusBanner {
+      background: #fde8e8 !important;
+      color: var(--danger) !important;
+    }
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -4183,6 +4285,19 @@
     <div class="modal-header">
       <div class="modal-title">App Settings</div>
       <button class="modal-close" onclick="closeAppSettings()">✕</button>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Display</div>
+    <div class="form-row full" style="margin-bottom:20px;">
+      <div class="field">
+        <label>Color Theme</label>
+        <div class="theme-toggle-group" id="themeToggleGroup">
+          <button class="theme-toggle-btn" data-theme="auto" onclick="setThemeMode('auto')">☀️🌙 Auto</button>
+          <button class="theme-toggle-btn" data-theme="light" onclick="setThemeMode('light')">☀️ Light</button>
+          <button class="theme-toggle-btn" data-theme="dark" onclick="setThemeMode('dark')">🌙 Dark</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Auto follows your device's system setting.</div>
+      </div>
     </div>
 
     <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">AI &amp; Voice</div>
@@ -9289,6 +9404,31 @@ function loadSettings() {
     const saved = localStorage.getItem('ems_crew_settings');
     if (saved) settings = JSON.parse(saved);
   } catch(e) {}
+  // Apply theme on load
+  applyThemeMode(settings.themeMode || 'auto');
+}
+
+// ======== THEME MODE ========
+function setThemeMode(mode) {
+  settings.themeMode = mode;
+  try { localStorage.setItem('ems_crew_settings', JSON.stringify(settings)); } catch(e) {}
+  applyThemeMode(mode);
+  // Update toggle buttons if modal is open
+  document.querySelectorAll('#themeToggleGroup .theme-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === mode);
+  });
+}
+
+function applyThemeMode(mode) {
+  const body = document.body;
+  body.classList.remove('light-mode', 'dark-mode', 'auto-mode');
+  if (mode === 'light') {
+    body.classList.add('light-mode');
+  } else if (mode === 'dark') {
+    body.classList.add('dark-mode');
+  } else {
+    body.classList.add('auto-mode');
+  }
 }
 
 // ======== ACCOUNT ========
@@ -9327,6 +9467,11 @@ function openAppSettings() {
   document.getElementById('as_apikey').value = settings.apikey || '';
   document.getElementById('as_openaikey').value = settings.openaikey || '';
   document.getElementById('as_voiceengine').value = settings.voiceengine || 'auto';
+  // Sync theme toggle buttons
+  const currentTheme = settings.themeMode || 'auto';
+  document.querySelectorAll('#themeToggleGroup .theme-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+  });
   document.getElementById('appSettingsModal').classList.add('visible');
 }
 
@@ -9342,6 +9487,7 @@ function saveAppSettings() {
   settings.apikey      = document.getElementById('as_apikey').value.trim();
   settings.openaikey   = document.getElementById('as_openaikey').value.trim();
   settings.voiceengine = document.getElementById('as_voiceengine').value;
+  // themeMode is already updated live via setThemeMode()
   try { localStorage.setItem('ems_crew_settings', JSON.stringify(settings)); } catch(e) {}
   closeAppSettings();
   showToast('success', 'App Settings Saved', 'API keys and voice engine updated.');
