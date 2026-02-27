@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
 <!-- Version: v7.9 -->
-<script>const APP_VERSION = 'v7.9';</script>
+<script>const APP_VERSION = 'v8.1';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1168,6 +1168,56 @@
     font-size: 13px;
   }
   
+  /* Hamburger Button */
+  .hamburger-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    border-radius: var(--radius);
+    transition: background 0.15s;
+    position: relative;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .hamburger-btn:hover { background: var(--surface2); }
+  .hamburger-btn span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--text-muted);
+    border-radius: 2px;
+    transition: background 0.15s;
+  }
+  .hamburger-btn:hover span { background: var(--accent); }
+
+  /* Hamburger Save Status */
+  .hamburger-save-status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 10px 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.03em;
+    transition: color 0.3s;
+  }
+  .hamburger-save-status svg {
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: opacity 0.3s, stroke 0.3s;
+  }
+  .hamburger-save-status.saved {
+    color: var(--success, #4ade80);
+  }
+  .hamburger-save-status.saved svg {
+    opacity: 1;
+    stroke: var(--success, #4ade80);
+  }
+
   /* Hamburger Menu Styles */
   .hamburger-menu {
     position: fixed;
@@ -1208,6 +1258,150 @@
     padding: 8px 0;
   }
   
+  /* Inline expandable panels inside hamburger */
+  .menu-panel-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: left;
+    box-sizing: border-box;
+  }
+  .menu-panel-item:hover { background: var(--bg); }
+  .menu-panel-item:hover .menu-icon { color: var(--accent); }
+  .menu-panel-chevron {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-dim);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .menu-panel-item.open .menu-panel-chevron { transform: rotate(90deg); }
+  .menu-panel-item.open { background: var(--bg); }
+
+  .menu-inline-panel {
+    display: none;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+  }
+  .menu-inline-panel.open { display: block; }
+
+  .menu-inline-panel .field {
+    margin-bottom: 12px;
+  }
+  .menu-inline-panel .field:last-of-type { margin-bottom: 0; }
+  .menu-inline-panel label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+  }
+  .menu-inline-panel input,
+  .menu-inline-panel select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 10px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .menu-inline-panel input:focus,
+  .menu-inline-panel select:focus { border-color: var(--accent); }
+  .menu-inline-panel .field-hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+  .menu-inline-panel .panel-section-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    margin-top: 4px;
+  }
+  .menu-inline-panel .panel-section-label:not(:first-child) { margin-top: 16px; }
+  .menu-inline-panel .panel-save-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 8px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .menu-inline-panel .panel-save-btn:hover { opacity: 0.85; }
+  .menu-inline-panel .panel-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0;
+  }
+  .menu-inline-panel .theme-toggle-group {
+    display: flex;
+    gap: 6px;
+  }
+  .menu-inline-panel .theme-toggle-btn {
+    flex: 1;
+    padding: 6px 4px;
+    font-size: 10px;
+    font-family: var(--mono);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .menu-inline-panel .theme-toggle-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--bg);
+  }
+  .menu-inline-panel .panel-danger-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: #f87171;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    box-sizing: border-box;
+  }
+  .menu-inline-panel .panel-danger-btn:hover { background: rgba(248,81,73,0.1); }
+
   .menu-item {
     width: 100%;
     display: flex;
@@ -1230,11 +1424,16 @@
   }
   
   .menu-icon {
-    font-size: 20px;
-    width: 28px;
-    text-align: center;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
+    color: var(--text-muted);
+    transition: color 0.15s;
   }
+  .menu-item:hover .menu-icon { color: var(--accent); }
   
   .menu-title {
     font-family: var(--mono);
@@ -3329,7 +3528,11 @@
   </div>
   <div class="header-right">
     <button class="btn-icon" onclick="toggleProtocolsSidebar()" title="CT EMS Protocols">📋 Protocols</button>
-    <button class="btn-icon" id="menuButton" onclick="toggleMenu()" title="Menu">☰</button>
+    <button class="hamburger-btn" id="menuButton" onclick="toggleMenu()" title="Menu" aria-label="Menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
   </div>
 </header>
 
@@ -3341,56 +3544,142 @@
       <button class="modal-close" onclick="toggleMenu()">✕</button>
     </div>
     <div class="hamburger-menu-body">
+      <div class="hamburger-save-status" id="autoSaveStatus">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="autoSaveStatusText">All changes saved</span>
+      </div>
+      <div class="menu-divider"></div>
       <button class="menu-item" onclick="newChart(); toggleMenu();">
-        <span class="menu-icon">➕</span>
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
         <div>
           <div class="menu-title">New Chart</div>
           <div class="menu-desc">Save current &amp; start fresh</div>
         </div>
       </button>
       <button class="menu-item" onclick="importFromJSON(); toggleMenu();">
-        <span class="menu-icon">📂</span>
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
         <div>
           <div class="menu-title">Load Chart</div>
           <div class="menu-desc">Open chart from file</div>
         </div>
       </button>
       <button class="menu-item" onclick="exportToJSON(); toggleMenu();">
-        <span class="menu-icon">💾</span>
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v14a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
         <div>
           <div class="menu-title">Save to File</div>
           <div class="menu-desc">Download encrypted chart file</div>
         </div>
       </button>
-      <div class="auto-save-status" id="autoSaveStatus">
-        <span class="menu-icon">🔄</span>
-        <div>
-          <div class="menu-title">Auto-Save</div>
-          <div class="menu-desc" id="autoSaveStatusText">All changes saved</div>
-        </div>
-      </div>
       <div class="menu-divider"></div>
-      <button class="menu-item" onclick="openAccount(); toggleMenu();">
-        <span class="menu-icon">👤</span>
+
+      <!-- Account inline panel -->
+      <button class="menu-panel-item" id="panelItemAccount" onclick="toggleInlinePanel('account')">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
         <div>
           <div class="menu-title">Account</div>
           <div class="menu-desc">Email address &amp; preferences</div>
         </div>
+        <span class="menu-panel-chevron">▶</span>
       </button>
-      <button class="menu-item" onclick="openSettings(); toggleMenu();">
-        <span class="menu-icon">⚙</span>
+      <div class="menu-inline-panel" id="inlinePanelAccount">
+        <div class="panel-section-label">Email Export</div>
+        <div class="field">
+          <label>Your Email Address</label>
+          <input type="email" id="a_email" placeholder="you@example.com" inputmode="email" autocomplete="email">
+          <div class="field-hint">Used as the "To:" address when you tap Email Chart to Desktop. Stored locally on this device only.</div>
+        </div>
+        <button class="panel-save-btn" onclick="saveAccount()">Save</button>
+        <div class="panel-divider"></div>
+        <div class="panel-section-label">Session</div>
+        <button class="panel-danger-btn" onclick="toggleMenu(); logoutUser();">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+      </div>
+
+      <!-- Crew Settings inline panel -->
+      <button class="menu-panel-item" id="panelItemCrew" onclick="toggleInlinePanel('crew')">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
         <div>
           <div class="menu-title">Crew Settings</div>
           <div class="menu-desc">Configure crew information</div>
         </div>
+        <span class="menu-panel-chevron">▶</span>
       </button>
-      <button class="menu-item" onclick="openAppSettings(); toggleMenu();">
-        <span class="menu-icon">🔧</span>
+      <div class="menu-inline-panel" id="inlinePanelCrew">
+        <div class="field">
+          <label>Service Name</label>
+          <input type="text" id="s_service" placeholder="e.g. New Canaan EMS">
+        </div>
+        <div class="field">
+          <label>Unit #</label>
+          <input type="text" id="s_unit" placeholder="e.g. 353">
+        </div>
+        <div class="field">
+          <label>Primary Caregiver</label>
+          <input type="text" id="s_primary" placeholder="Last, First">
+        </div>
+        <div class="field">
+          <label>Driver / Pilot</label>
+          <input type="text" id="s_driver" placeholder="Last, First">
+        </div>
+        <div class="field">
+          <label>Other Crew</label>
+          <input type="text" id="s_other" placeholder="Last, First (optional)">
+        </div>
+        <div class="field">
+          <label>Team Level</label>
+          <select id="s_team">
+            <option>[Select]</option>
+            <option>BLS</option>
+            <option>ALS</option>
+          </select>
+        </div>
+        <button class="panel-save-btn" onclick="saveSettings()">Save Defaults</button>
+      </div>
+
+      <!-- App Settings inline panel -->
+      <button class="menu-panel-item" id="panelItemApp" onclick="toggleInlinePanel('app')">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></span>
         <div>
           <div class="menu-title">App Settings</div>
           <div class="menu-desc">API keys &amp; voice engine</div>
         </div>
+        <span class="menu-panel-chevron">▶</span>
       </button>
+      <div class="menu-inline-panel" id="inlinePanelApp">
+        <div class="panel-section-label">Display</div>
+        <div class="field">
+          <label>Color Theme</label>
+          <div class="theme-toggle-group" id="themeToggleGroup">
+            <button class="theme-toggle-btn" data-theme="auto" onclick="setThemeMode('auto')">Auto</button>
+            <button class="theme-toggle-btn" data-theme="light" onclick="setThemeMode('light')">Light</button>
+            <button class="theme-toggle-btn" data-theme="dark" onclick="setThemeMode('dark')">Dark</button>
+          </div>
+          <div class="field-hint">Auto follows your device's system setting.</div>
+        </div>
+        <div class="panel-section-label">AI &amp; Voice</div>
+        <div class="field">
+          <label>Anthropic API Key</label>
+          <input type="password" id="as_apikey" placeholder="sk-ant-…" autocomplete="off">
+          <div class="field-hint">Required for AI field extraction. Stored locally only.</div>
+        </div>
+        <div class="field">
+          <label>OpenAI API Key <span style="color:var(--text-dim);font-weight:400">(for Whisper)</span></label>
+          <input type="password" id="as_openaikey" placeholder="sk-…" autocomplete="off">
+          <div class="field-hint">Required for Whisper dictation (~$0.006/min). Stored locally only.</div>
+        </div>
+        <div class="field">
+          <label>Voice Engine</label>
+          <select id="as_voiceengine">
+            <option value="auto">Auto</option>
+            <option value="whisper">Whisper (OpenAI)</option>
+            <option value="webspeech">Web Speech API</option>
+          </select>
+          <div class="field-hint">Auto recommended. Whisper requires OpenAI key.</div>
+        </div>
+        <button class="panel-save-btn" onclick="saveAppSettings()">Save</button>
+      </div>
       <div class="menu-divider"></div>
       <div style="padding: 10px 12px; text-align: center;">
         <span style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase;" id="menuVersion"></span>
@@ -4242,35 +4531,35 @@
     <div class="form-row">
       <div class="field">
         <label>Service Name</label>
-        <input type="text" id="s_service" placeholder="e.g. New Canaan EMS">
+        <input type="text" id="s_service_modal" placeholder="e.g. New Canaan EMS">
       </div>
       <div class="field">
         <label>Unit #</label>
-        <input type="text" id="s_unit" placeholder="e.g. 353">
+        <input type="text" id="s_unit_modal" placeholder="e.g. 353">
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>Primary Caregiver</label>
-        <input type="text" id="s_primary" placeholder="Last, First">
+        <input type="text" id="s_primary_modal" placeholder="Last, First">
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>Driver / Pilot</label>
-        <input type="text" id="s_driver" placeholder="Last, First">
+        <input type="text" id="s_driver_modal" placeholder="Last, First">
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>Other Crew</label>
-        <input type="text" id="s_other" placeholder="Last, First (optional)">
+        <input type="text" id="s_other_modal" placeholder="Last, First (optional)">
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>Team Level</label>
-        <select id="s_team">
+        <select id="s_team_modal">
           <option>[Select]</option>
           <option>BLS</option>
           <option>ALS</option>
@@ -4292,7 +4581,7 @@
     <div class="form-row full">
       <div class="field">
         <label>Your Email Address</label>
-        <input type="email" id="a_email" placeholder="you@example.com" inputmode="email" autocomplete="email">
+        <input type="email" id="a_email_modal" placeholder="you@example.com" inputmode="email" autocomplete="email">
         <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Used as the "To:" address when you tap Email Chart to Desktop. Stored locally on this device only.</div>
       </div>
     </div>
@@ -4323,7 +4612,7 @@
     <div class="form-row full" style="margin-bottom:20px;">
       <div class="field">
         <label>Color Theme</label>
-        <div class="theme-toggle-group" id="themeToggleGroup">
+        <div class="theme-toggle-group" id="themeToggleGroup_modal">
           <button class="theme-toggle-btn" data-theme="auto" onclick="setThemeMode('auto')">☀️🌙 Auto</button>
           <button class="theme-toggle-btn" data-theme="light" onclick="setThemeMode('light')">☀️ Light</button>
           <button class="theme-toggle-btn" data-theme="dark" onclick="setThemeMode('dark')">🌙 Dark</button>
@@ -4336,21 +4625,21 @@
     <div class="form-row full">
       <div class="field">
         <label>Anthropic API Key</label>
-        <input type="password" id="as_apikey" placeholder="sk-ant-…" autocomplete="off">
+        <input type="password" id="as_apikey_modal" placeholder="sk-ant-…" autocomplete="off">
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for AI field extraction. Stored locally only.</div>
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>OpenAI API Key <span style="color:var(--text-dim);font-weight:400">(for Whisper voice)</span></label>
-        <input type="password" id="as_openaikey" placeholder="sk-…" autocomplete="off">
+        <input type="password" id="as_openaikey_modal" placeholder="sk-…" autocomplete="off">
         <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for Whisper dictation (~$0.006/min). Stored locally only.</div>
       </div>
     </div>
     <div class="form-row full">
       <div class="field">
         <label>Voice Engine</label>
-        <select id="as_voiceengine">
+        <select id="as_voiceengine_modal">
           <option value="auto">Auto (Web Speech on iPhone, Whisper on Mac)</option>
           <option value="whisper">Whisper (OpenAI) — best accuracy, works everywhere</option>
           <option value="webspeech">Web Speech API — free, instant, iPhone/Chrome only</option>
@@ -9433,17 +9722,18 @@ async function claudeAPI(messages, max_tokens = 1000) {
 
 // ======== SETTINGS ========
 function openSettings() {
-  document.getElementById('s_service').value = settings.service || '';
-  document.getElementById('s_unit').value = settings.unit || '';
-  document.getElementById('s_primary').value = settings.primary || '';
-  document.getElementById('s_driver').value = settings.driver || '';
-  document.getElementById('s_other').value = settings.other || '';
-  document.getElementById('s_team').value = settings.team || 'BLS';
-  document.getElementById('settingsModal').classList.add('visible');
+  // Populate and open inline panel inside hamburger menu
+  _populateInlinePanels();
+  toggleInlinePanel('crew');
+  const menu = document.getElementById('hamburgerMenu');
+  if (!menu.classList.contains('active')) {
+    menu.style.display = 'block';
+    setTimeout(() => menu.classList.add('active'), 10);
+  }
 }
 
 function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('visible');
+  _closeInlinePanel('crew');
 }
 
 function closeSettingsOutside(e) {
@@ -9507,12 +9797,17 @@ function loadAccount() {
 }
 
 function openAccount() {
-  document.getElementById('a_email').value = accountSettings.email || '';
-  document.getElementById('accountModal').classList.add('visible');
+  _populateInlinePanels();
+  toggleInlinePanel('account');
+  const menu = document.getElementById('hamburgerMenu');
+  if (!menu.classList.contains('active')) {
+    menu.style.display = 'block';
+    setTimeout(() => menu.classList.add('active'), 10);
+  }
 }
 
 function closeAccount() {
-  document.getElementById('accountModal').classList.remove('visible');
+  _closeInlinePanel('account');
 }
 
 function closeAccountOutside(e) {
@@ -9529,19 +9824,17 @@ function saveAccount() {
 // ======== APP SETTINGS ========
 
 function openAppSettings() {
-  document.getElementById('as_apikey').value = settings.apikey || '';
-  document.getElementById('as_openaikey').value = settings.openaikey || '';
-  document.getElementById('as_voiceengine').value = settings.voiceengine || 'auto';
-  // Sync theme toggle buttons
-  const currentTheme = settings.themeMode || 'auto';
-  document.querySelectorAll('#themeToggleGroup .theme-toggle-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
-  });
-  document.getElementById('appSettingsModal').classList.add('visible');
+  _populateInlinePanels();
+  toggleInlinePanel('app');
+  const menu = document.getElementById('hamburgerMenu');
+  if (!menu.classList.contains('active')) {
+    menu.style.display = 'block';
+    setTimeout(() => menu.classList.add('active'), 10);
+  }
 }
 
 function closeAppSettings() {
-  document.getElementById('appSettingsModal').classList.remove('visible');
+  _closeInlinePanel('app');
 }
 
 function closeAppSettingsOutside(e) {
@@ -11100,16 +11393,68 @@ async function downloadRefusalPDF() {
 function toggleMenu() {
   const menu = document.getElementById('hamburgerMenu');
   const isActive = menu.classList.contains('active');
-  
+
   if (isActive) {
     menu.classList.remove('active');
     menu.style.display = 'none';
+    // Collapse all inline panels
+    ['account','crew','app'].forEach(name => _closeInlinePanel(name));
   } else {
     menu.style.display = 'block';
-    // Small delay to allow display:block to take effect before transition
+    // Populate fields with current values before showing
+    _populateInlinePanels();
     setTimeout(() => menu.classList.add('active'), 10);
   }
 }
+
+function _closeInlinePanel(name) {
+  const panel = document.getElementById('inlinePanel' + name.charAt(0).toUpperCase() + name.slice(1));
+  const item  = document.getElementById('panelItem'  + name.charAt(0).toUpperCase() + name.slice(1));
+  if (panel) panel.classList.remove('open');
+  if (item)  item.classList.remove('open');
+}
+
+function toggleInlinePanel(name) {
+  const capName = name.charAt(0).toUpperCase() + name.slice(1);
+  const panel = document.getElementById('inlinePanel' + capName);
+  const item  = document.getElementById('panelItem'   + capName);
+  const isOpen = panel.classList.contains('open');
+  // Close all panels first
+  ['Account','Crew','App'].forEach(n => {
+    document.getElementById('inlinePanel' + n).classList.remove('open');
+    document.getElementById('panelItem'   + n).classList.remove('open');
+  });
+  // Toggle the clicked one
+  if (!isOpen) {
+    panel.classList.add('open');
+    item.classList.add('open');
+  }
+}
+
+function _populateInlinePanels() {
+  // Account
+  const aEmail = document.getElementById('a_email');
+  if (aEmail) aEmail.value = accountSettings.email || '';
+  // Crew Settings
+  const fields = {s_service:'service', s_unit:'unit', s_primary:'primary', s_driver:'driver', s_other:'other', s_team:'team'};
+  Object.entries(fields).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = settings[key] || (key === 'team' ? 'BLS' : '');
+  });
+  // App Settings
+  const asApikey = document.getElementById('as_apikey');
+  const asOpenai = document.getElementById('as_openaikey');
+  const asVoice  = document.getElementById('as_voiceengine');
+  if (asApikey) asApikey.value = settings.apikey || '';
+  if (asOpenai) asOpenai.value = settings.openaikey || '';
+  if (asVoice)  asVoice.value  = settings.voiceengine || 'auto';
+  // Sync theme buttons
+  const currentTheme = settings.themeMode || 'auto';
+  document.querySelectorAll('#themeToggleGroup .theme-toggle-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+  });
+}
+
 
 // Check if user is logged in
 function checkLogin() {
@@ -11911,21 +12256,27 @@ function triggerAutoSave() {
 
 // Update auto-save status indicator
 function updateAutoSaveStatus(status) {
+  const statusEl = document.getElementById('autoSaveStatus');
   const statusText = document.getElementById('autoSaveStatusText');
   if (!statusText) return;
-  
+
   switch(status) {
     case 'saving':
+      if (statusEl) statusEl.classList.remove('saved');
       statusText.textContent = 'Saving...';
-      statusText.style.color = 'var(--accent)';
       break;
     case 'saved':
-      statusText.textContent = 'All changes saved';
-      statusText.style.color = 'var(--text-muted)';
+      if (statusEl) statusEl.classList.add('saved');
+      const now = new Date();
+      const h = now.getHours();
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      statusText.textContent = 'Saved at ' + h12 + ':' + m + ' ' + ampm;
       break;
     case 'error':
+      if (statusEl) statusEl.classList.remove('saved');
       statusText.textContent = 'Error saving';
-      statusText.style.color = '#f87171';
       break;
   }
 }
