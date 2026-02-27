@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
-<!-- Version: v8.9 -->
-<script>const APP_VERSION = 'v8.9';</script>
+<!-- Version: v9.0 -->
+<script>const APP_VERSION = 'v9.0';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2595,7 +2595,6 @@
   /* Collapse two-col to single on narrow screens */
   @media (max-width: 600px) {
     #tab-refusal .two-col-grid { grid-template-columns: 1fr; }
-    .sig-grid { grid-template-columns: 1fr; }
   }
 
   /* ── Reference Tab ────────────────────────────────────── */
@@ -2861,6 +2860,9 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
+  }
+  @media (max-width: 600px) {
+    .sig-grid { grid-template-columns: 1fr; }
   }
   .sig-block { display: flex; flex-direction: column; gap: 8px; }
   .sig-label {
