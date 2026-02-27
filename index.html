@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
-<!-- Version: v8.8 -->
-<script>const APP_VERSION = 'v8.8';</script>
+<!-- Version: v8.9 -->
+<script>const APP_VERSION = 'v8.9';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2929,12 +2929,12 @@
   }
   .sig-sign-btn.has-sig:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* Full-screen signature modal — fills screen, works in portrait */
+  /* ── Signature Modal ── */
   #sigModal {
     display: none;
     position: fixed;
     inset: 0;
-    background: #fff;
+    background: var(--surface);
     z-index: 9999;
     flex-direction: column;
     overflow: hidden;
@@ -3024,7 +3024,15 @@
     text-transform: uppercase;
     transition: background 0.15s;
   }
-  .sig-modal-done:hover { filter: brightness(1.15); }
+  .sig-modal-done:hover { background: #fb923c; }
+  .sig-modal-done:disabled {
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .sig-modal-done:disabled:hover { background: var(--surface2); }
   .sig-modal-canvas-wrap {
     flex: 1;
     padding: 12px;
@@ -3032,15 +3040,15 @@
     flex-direction: column;
     gap: 10px;
     min-height: 0;
+    background: var(--surface2);
   }
   #sigModalCanvas {
     flex: 1;
     width: 100%;
-    /* Cap height so it never stretches vertically on tall screens */
     min-height: 140px;
     max-height: 260px;
     background: #fff;
-    border: 2px solid #aaa;
+    border: 2px solid var(--border);
     border-radius: 8px;
     cursor: crosshair;
     touch-action: none;
@@ -3060,14 +3068,15 @@
     letter-spacing: 0.06em;
   }
   .sig-modal-name input {
-    background: #f8f8f8;
-    border: 1px solid #ccc;
+    background: var(--surface2);
+    border: 1px solid var(--border);
     border-radius: 6px;
-    color: #111;
-    font-family: var(--sans);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
     font-size: 15px;
     padding: 8px 12px;
     width: 100%;
+    outline: none;
   }
   .sig-modal-name input:focus { border-color: var(--accent); }
 
@@ -3111,10 +3120,10 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: min(680px, 90vw);
+      width: min(640px, 90vw);
       height: auto;
       border-radius: 12px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.28);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
     }
     /* Dim backdrop via a pseudo-overlay — we inject it in JS */
     #sigModalBackdrop {
@@ -3134,14 +3143,14 @@
       bottom: 0;
       left: 0; right: 0;
       height: auto;
-      max-height: 70vh;
+      max-height: 72vh;
       border-radius: 16px 16px 0 0;
-      box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.3);
       transform: none;
     }
     #sigModalCanvas {
       min-height: 140px;
-      max-height: 32vh;
+      max-height: 34vh;
     }
     .sig-rotate-hint { display: flex !important; }
   }
@@ -3182,7 +3191,7 @@
     gap: 6px;
     font-family: var(--mono);
     font-size: 10px;
-    color: var(--text-dim);
+    color: #aaa;
     letter-spacing: 0.05em;
     padding: 4px 0 0;
     flex-shrink: 0;
@@ -13359,7 +13368,7 @@ function loadScript(src) {
       </div>
       <div class="sig-modal-actions">
         <button class="sig-clear-btn" onclick="sigModalClear()">Clear</button>
-        <button class="sig-modal-done" onclick="closeSigModal()">Done</button>
+        <button class="sig-modal-done" disabled onclick="closeSigModal()">Done</button>
       </div>
     </div>
   </div>
