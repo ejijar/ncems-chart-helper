@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
-<!-- Version: v7.4.1 -->
-<script>const APP_VERSION = 'v7.4.1';</script>
+<!-- Version: v7.8 -->
+<script>const APP_VERSION = 'v7.8';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -3276,6 +3276,45 @@
     gap: 10px;
     justify-content: flex-end;
   }
+  #passwordPromptModal {
+    display: none;
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.72);
+    z-index: 99991;
+    align-items: center;
+    justify-content: center;
+  }
+  #passwordPromptModal.show { display: flex; }
+  #passwordPromptModal .confirm-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    max-width: 380px;
+    width: 90%;
+  }
+  #passwordPromptModal .confirm-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    color: var(--accent);
+  }
+  #passwordPromptModal .confirm-msg {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    line-height: 1.6;
+  }
+  #passwordPromptModal .confirm-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
 </style>
 </head>
 <body>
@@ -4939,6 +4978,38 @@ function showConfirm(title, msg, okLabel, okDanger, onOk) {
   const onOkHandler = () => { close(); if (onOk) onOk(); };
   okBtn.onclick = onOkHandler;
   document.getElementById('confirmCancel').onclick = close;
+}
+
+function showPasswordPrompt(title, msg, onOk, onCancel) {
+  const modal = document.getElementById('passwordPromptModal');
+  document.getElementById('passwordPromptTitle').textContent = title;
+  document.getElementById('passwordPromptMsg').textContent = msg;
+  document.getElementById('passwordPromptInput').value = '';
+  document.getElementById('passwordPromptError').textContent = '';
+  modal.classList.add('show');
+
+  const close = () => {
+    modal.classList.remove('show');
+    document.getElementById('passwordPromptInput').value = '';
+    document.getElementById('passwordPromptError').textContent = '';
+  };
+
+  document.getElementById('passwordPromptOk').onclick = () => {
+    const pw = document.getElementById('passwordPromptInput').value.trim();
+    if (!pw) {
+      document.getElementById('passwordPromptError').textContent = 'Please enter a password.';
+      return;
+    }
+    close();
+    if (onOk) onOk(pw);
+  };
+
+  document.getElementById('passwordPromptCancel').onclick = () => {
+    close();
+    if (onCancel) onCancel();
+  };
+
+  setTimeout(() => document.getElementById('passwordPromptInput').focus(), 50);
 }
 
 // ======== INLINE AUTH MESSAGE ========
@@ -11956,7 +12027,28 @@ async function loadChartById(chartId) {
       if (!password) return;
       
       // Decrypt the data
-      chartData = await decryptData(chart.data, password);
+      try {
+        chartData = await decryptData(chart.data, password);
+      } catch (decryptErr) {
+        // Current password failed — offer to try an alternate (old) password
+        showPasswordPrompt(
+          'Alternate Password',
+          `"${chart.name}" couldn't be decrypted with your current password. Enter the password that was active when this chart was saved.`,
+          async (altPassword) => {
+            try {
+              const altData = await decryptData(chart.data, altPassword);
+              if (restoreChartData(altData)) {
+                autoSaveChartId = chartId;
+                closeLoadDialog();
+                showToast('success', 'Chart Loaded', `"${chart.name}" loaded with alternate password.`);
+              }
+            } catch (e) {
+              showToast('error', 'Load Failed', 'Incorrect alternate password or corrupted data.');
+            }
+          }
+        );
+        return;
+      }
     } else {
       // Legacy unencrypted chart
       chartData = chart.data;
@@ -12070,9 +12162,38 @@ async function handleJSONImport(event) {
           try {
             chartData = await decryptData(importedData.data, password);
           } catch (err) {
-            showToast('error', 'Decryption Failed', 'Incorrect password or corrupted file.');
-            sessionStorage.removeItem('emsEncryptionKey');
-            event.target.value = '';
+            // Current password failed — offer to try an alternate (old) password
+            showPasswordPrompt(
+              'Alternate Password',
+              `"${file.name}" couldn't be decrypted with your current password. Enter the password that was active when this file was saved.`,
+              async (altPassword) => {
+                try {
+                  const altData = await decryptData(importedData.data, altPassword);
+                  if (restoreChartData(altData)) {
+                    showToast('success', 'Chart Imported', 'Chart imported with alternate password.');
+                    setTimeout(() => {
+                      const hidden = [];
+                      document.querySelectorAll(
+                        '#tab-input, #tab-dispatch, #tab-reference, #tab-output, #tab-refusal, ' +
+                        '.section-body, .vitals-body, .vitals-card-content'
+                      ).forEach(el => {
+                        if (getComputedStyle(el).display === 'none') {
+                          hidden.push({ el, prev: el.style.display });
+                          el.style.display    = 'block';
+                          el.style.visibility = 'hidden';
+                        }
+                      });
+                      document.querySelectorAll('textarea').forEach(ta => autoResizeTextarea(ta));
+                      hidden.forEach(({ el, prev }) => { el.style.display = prev; el.style.visibility = ''; });
+                    }, 300);
+                  }
+                } catch (e) {
+                  showToast('error', 'Import Failed', 'Incorrect alternate password or corrupted file.');
+                }
+                event.target.value = '';
+              },
+              () => { event.target.value = ''; }
+            );
             return;
           }
         } else {
@@ -12218,6 +12339,27 @@ function loadScript(src) {
 <div id="toastContainer"></div>
 
 <!-- Confirm Modal -->
+<!-- PASSWORD PROMPT MODAL -->
+<div id="passwordPromptModal">
+  <div class="confirm-box">
+    <div class="confirm-title" id="passwordPromptTitle">Enter Password</div>
+    <div class="confirm-msg" id="passwordPromptMsg"></div>
+    <div style="margin: 12px 0;">
+      <input type="password" id="passwordPromptInput" class="auth-input"
+        placeholder="Enter password"
+        style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:6px;
+               border:1px solid var(--border); background:var(--surface2); color:var(--text);
+               font-size:14px; font-family:var(--mono);"
+        onkeydown="if(event.key==='Enter') document.getElementById('passwordPromptOk').click()">
+      <div id="passwordPromptError" style="color:var(--danger); font-size:12px; margin-top:6px; min-height:16px;"></div>
+    </div>
+    <div class="confirm-btns">
+      <button class="btn-secondary" id="passwordPromptCancel">Cancel</button>
+      <button class="btn-primary" id="passwordPromptOk" style="background:var(--accent); border-color:var(--accent);">Decrypt</button>
+    </div>
+  </div>
+</div>
+
 <div id="confirmModal">
   <div class="confirm-box">
     <div class="confirm-title" id="confirmTitle">Confirm</div>
