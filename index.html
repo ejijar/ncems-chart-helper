@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NCEMS Chart Helper</title>
-<!-- Version: v6.1 -->
-<script>const APP_VERSION = 'v6.1';</script>
+<!-- Version: v6.2 -->
+<script>const APP_VERSION = 'v6.2';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1867,6 +1867,96 @@
     line-height: 1.4;
   }
 
+  /* ── Refusal Tab: v4.3 layout components (scoped to avoid conflicts) ── */
+
+  /* Two-column grid for Patient Informed + Disposition side by side */
+  #tab-refusal .two-col-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* Sub-section card (bordered box with header) */
+  #tab-refusal .sub-section {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  #tab-refusal .sub-section-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  #tab-refusal .sub-section-body { padding: 12px; }
+
+  /* Custom checkbox rows (v4.3 style — hidden native, styled div) */
+  #tab-refusal .check-group { display: flex; flex-direction: column; gap: 8px; }
+  #tab-refusal .check-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+  #tab-refusal .check-row input[type="checkbox"] { display: none; }
+  #tab-refusal .check-box {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+    transition: all 0.15s;
+  }
+  #tab-refusal .check-row input:checked ~ .check-box,
+  #tab-refusal .check-row input:checked + .check-box {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  #tab-refusal .check-row input:checked ~ .check-box::after,
+  #tab-refusal .check-row input:checked + .check-box::after {
+    content: '';
+    width: 8px;
+    height: 5px;
+    border-left: 2px solid #000;
+    border-bottom: 2px solid #000;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+  #tab-refusal .check-label { font-size: 13px; color: var(--text); line-height: 1.4; }
+
+  /* Custom radio rows (v4.3 style) */
+  #tab-refusal .rf-radio-group { display: flex; flex-direction: column; gap: 6px; }
+  #tab-refusal .radio-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  #tab-refusal .radio-row input[type="radio"] { display: none; }
+  #tab-refusal .radio-dot {
+    width: 16px; height: 16px; min-width: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 50%;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  #tab-refusal .radio-row input:checked + .radio-dot { border-color: var(--accent); }
+  #tab-refusal .radio-row input:checked + .radio-dot::after {
+    content: '';
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  #tab-refusal .radio-label { font-size: 13px; color: var(--text); }
+
+  /* Medical Direction contacted-via row (horizontal pills of radio rows) */
+  #tab-refusal .rf-radio-group.horizontal { flex-direction: row; flex-wrap: wrap; gap: 12px; }
+
+  /* Collapse two-col to single on narrow screens */
+  @media (max-width: 600px) {
+    #tab-refusal .two-col-grid { grid-template-columns: 1fr; }
+  }
+
   /* ── Reference Tab ────────────────────────────────────── */
   .ref-action-bar {
     display: flex;
@@ -3560,15 +3650,15 @@
 
     <!-- INCIDENT LOCATION -->
     <div class="section">
-      <div class="section-header">
+      <div class="section-header" onclick="toggleSection('rf-incloc')">
         <span class="section-title">Incident Location</span>
+        <span class="section-badge" id="rf-incloc-badge">▾</span>
       </div>
-      <div class="section-body">
+      <div class="section-body" id="section-rf-incloc">
         <label class="refusal-check" style="margin-bottom:12px">
           <input type="checkbox" id="rf_sameAsHome" onchange="toggleIncidentLocation()">
           <span>Same as Home Address</span>
         </label>
-        
         <div id="rf_incidentLocationFields">
           <div class="form-row full">
             <div class="field">
@@ -3594,68 +3684,82 @@
       </div>
     </div>
 
-    <!-- PATIENT INFORMED -->
+    <!-- PATIENT INFORMED + DISPOSITION (side-by-side via two-col-grid) -->
     <div class="section">
-      <div class="section-header">
-        <span class="section-title">Patient Informed</span>
+      <div class="section-header" onclick="toggleSection('rf-informed')">
+        <span class="section-title">Patient Informed &amp; Disposition</span>
+        <span class="section-badge" id="rf-informed-badge">▾</span>
       </div>
-      <div class="section-body">
-        <div class="refusal-checks">
-          <label class="refusal-check">
-            <input type="checkbox" id="rf_informed1">
-            <span>Medical treatment evaluation needed</span>
-          </label>
-          <label class="refusal-check">
-            <input type="checkbox" id="rf_informed2">
-            <span>Call back if necessary</span>
-          </label>
-          <label class="refusal-check">
-            <input type="checkbox" id="rf_informed3">
-            <span>Further harm / death may result without medical treatment</span>
-          </label>
-          <label class="refusal-check">
-            <input type="checkbox" id="rf_informed4">
-            <span>Transport by means other than ambulance could be hazardous in light of patient's injury / illness</span>
-          </label>
+      <div class="section-body" id="section-rf-informed">
+        <div class="two-col-grid">
+
+          <!-- Patient Informed sub-section -->
+          <div class="sub-section">
+            <div class="sub-section-title">Patient Informed</div>
+            <div class="sub-section-body">
+              <div class="check-group">
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed1">
+                  <div class="check-box"></div>
+                  <span class="check-label">Medical treatment evaluation needed</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed2">
+                  <div class="check-box"></div>
+                  <span class="check-label">Call back if necessary</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed3">
+                  <div class="check-box"></div>
+                  <span class="check-label">Further harm / death may result without medical treatment</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed4">
+                  <div class="check-box"></div>
+                  <span class="check-label">Transport by means other than ambulance could be hazardous in light of patient's injury / illness</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Disposition sub-section -->
+          <div class="sub-section">
+            <div class="sub-section-title">Disposition</div>
+            <div class="sub-section-body">
+              <div class="rf-radio-group">
+                <label class="radio-row">
+                  <input type="radio" name="rf_disposition" id="rf_disp2" value="Refused transport but accepted field treatment">
+                  <div class="radio-dot"></div>
+                  <span class="radio-label">Refused transport but accepted field treatment</span>
+                </label>
+                <label class="radio-row">
+                  <input type="radio" name="rf_disposition" id="rf_disp1" value="Refused all EMS services">
+                  <div class="radio-dot"></div>
+                  <span class="radio-label">Refused all EMS services</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
 
-    <!-- DISPOSITION -->
+    <!-- NARRATIVE (Advice + Explanation side-by-side) -->
     <div class="section">
-      <div class="section-header">
-        <span class="section-title">Disposition</span>
+      <div class="section-header" onclick="toggleSection('rf-narrative')">
+        <span class="section-title">Narrative</span>
+        <span class="section-badge" id="rf-narrative-badge">▾</span>
       </div>
-      <div class="section-body">
-        <div class="refusal-checks">
-          <label class="refusal-check">
-            <input type="radio" name="rf_disposition" id="rf_disp2" value="Refused transport but accepted field treatment">
-            <span>Refused transport but accepted field treatment</span>
-          </label>
-          <label class="refusal-check">
-            <input type="radio" name="rf_disposition" id="rf_disp1" value="Refused all EMS services">
-            <span>Refused all EMS services</span>
-          </label>
-        </div>
-      </div>
-    </div>
-
-    <!-- ADVICE GIVEN / PATIENT EXPLANATION -->
-    <div class="section">
-      <div class="section-header">
-        <span class="section-title">Advice &amp; Explanation</span>
-      </div>
-      <div class="section-body">
-        <div class="form-row full">
+      <div class="section-body" id="section-rf-narrative">
+        <div class="two-col-grid">
           <div class="field">
             <label>Advice Given to Patient by EMS</label>
-            <textarea id="rf_advice" placeholder="Document the specific advice given to the patient..." style="min-height:70px" oninput="autoResizeTextarea(this)"></textarea>
+            <textarea id="rf_advice" placeholder="Document the specific advice given to the patient..." style="min-height:90px" oninput="autoResizeTextarea(this)"></textarea>
           </div>
-        </div>
-        <div class="form-row full">
           <div class="field">
             <label>Patient Explanation for Refusal</label>
-            <textarea id="rf_explanation" placeholder="Document the patient's stated reason for refusing care..." style="min-height:70px" oninput="autoResizeTextarea(this)"></textarea>
+            <textarea id="rf_explanation" placeholder="Document the patient's stated reason for refusing care..." style="min-height:90px" oninput="autoResizeTextarea(this)"></textarea>
           </div>
         </div>
       </div>
@@ -3663,24 +3767,45 @@
 
     <!-- RELEASED INTO CUSTODY OF -->
     <div class="section">
-      <div class="section-header">
+      <div class="section-header" onclick="toggleSection('rf-custody')">
         <span class="section-title">Released Into Custody Of</span>
+        <span class="section-badge" id="rf-custody-badge">▾</span>
       </div>
-      <div class="section-body">
-        <div class="form-row full">
+      <div class="section-body" id="section-rf-custody">
+        <div class="form-row full" style="margin-bottom:12px">
           <div class="field">
             <label>Name</label>
             <input type="text" id="rf_custodyName" placeholder="Name of person patient released to">
           </div>
         </div>
-        <div class="field" style="margin-bottom:10px">
+        <div class="field">
           <label>Relationship</label>
-          <div class="check-group" style="margin-top:6px">
-            <div class="check-pill rf-rel-pill" onclick="selectRelationship(this)" data-val="Self">Self</div>
-            <div class="check-pill rf-rel-pill" onclick="selectRelationship(this)" data-val="Relative">Relative</div>
-            <div class="check-pill rf-rel-pill" onclick="selectRelationship(this)" data-val="Friend">Friend</div>
-            <div class="check-pill rf-rel-pill" onclick="selectRelationship(this)" data-val="Law Enforcement">Law Enforcement</div>
-            <div class="check-pill rf-rel-pill" onclick="selectRelationship(this)" data-val="Other">Other</div>
+          <div class="rf-radio-group horizontal" style="margin-top:8px">
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel0" value="Self" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Self</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel1" value="Relative" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Relative</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel2" value="Friend" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Friend</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel3" value="Law Enforcement" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Law Enforcement</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel4" value="Other" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Other</span>
+            </label>
           </div>
         </div>
       </div>
@@ -3693,54 +3818,107 @@
         <span class="section-badge" id="rf-meddirection-badge">▸</span>
       </div>
       <div class="section-body" id="section-rf-meddirection" style="display:none">
-        <div class="form-row full">
+        <div class="form-row full" style="margin-bottom:14px">
           <div class="field">
             <label>MD Name</label>
             <input type="text" id="rf_mdName" placeholder="Physician name">
           </div>
         </div>
-        <div class="field" style="margin-bottom:10px">
-          <label>Contacted Via</label>
-          <div class="check-group" style="margin-top:6px">
-            <div class="check-pill rf-contact-pill" onclick="selectContact(this)" data-val="Phone">Phone</div>
-            <div class="check-pill rf-contact-pill" onclick="selectContact(this)" data-val="Radio">Radio</div>
-            <div class="check-pill rf-contact-pill" onclick="selectContact(this)" data-val="On Scene">On Scene</div>
+        <div style="margin-bottom:14px">
+          <label style="display:block; margin-bottom:8px">Contacted Via</label>
+          <div class="rf-radio-group horizontal">
+            <label class="radio-row">
+              <input type="radio" name="rf_contactedVia" id="rf_cv0" value="Phone">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Phone</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_contactedVia" id="rf_cv1" value="Radio">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Radio</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_contactedVia" id="rf_cv2" value="On Scene">
+              <div class="radio-dot"></div>
+              <span class="radio-label">On Scene</span>
+            </label>
           </div>
         </div>
-        <div class="field">
-          <label>Orders</label>
-          <div class="check-group" style="margin-top:6px">
-            <div class="check-pill rf-order-pill" onclick="selectOrder(this)" data-val="Release Patient">Release Patient</div>
-            <div class="check-pill rf-order-pill" onclick="selectOrder(this)" data-val="Transport">Transport</div>
-            <div class="check-pill rf-order-pill" onclick="selectOrder(this)" data-val="Use reasonable force / restraint">Use reasonable force / restraint</div>
+        <div>
+          <label style="display:block; margin-bottom:8px">Orders</label>
+          <div class="rf-radio-group">
+            <label class="radio-row">
+              <input type="radio" name="rf_mdOrders" id="rf_ord0" value="Release Patient">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Release Patient</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_mdOrders" id="rf_ord1" value="Transport">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Transport</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_mdOrders" id="rf_ord2" value="Use reasonable force / restraint">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Use reasonable force / restraint</span>
+            </label>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- PATIENT ADVICE (legal language, collapsed by default) -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-legaltext')">
+        <span class="section-title">Patient Advice (Legal Language)</span>
+        <span class="section-badge" id="rf-legaltext-badge">▸</span>
+      </div>
+      <div class="section-body" id="section-rf-legaltext" style="display:none">
+        <p style="font-size:12px; color:var(--text-muted); line-height:1.6">
+          This form is being completed because I have refused medical care and/or treatment as noted above. I understand that ambulance personnel are not physicians and are not qualified or authorized to make a diagnosis of my condition, and that their care is not a substitute for that of a physician. I recognize that I may have a serious injury or illness, which could get worse without medical attention even though I may feel fine at this time. I understand that I may change my mind and call 911 if I decide to accept treatment or need assistance later. I also understand that I may seek treatment from a physician or at an emergency department 24 hours a day. I acknowledge that the ambulance crew has explained this advice to me and that I have read this form completely and understand its provisions. I agree to release, indemnify, and hold harmless the ambulance service and its officers, members, or other agents from any and all claims, actions, cause of action, damages, or legal liabilities of any kind arising out of my condition or the refusal of medical care and/or transport, or of any act or omission of the ambulance service or its crew, even for negligence.
+        </p>
+      </div>
+    </div>
+
     <!-- SIGNATURES -->
     <div class="section">
-      <div class="section-header">
+      <div class="section-header" onclick="toggleSection('rf-sigs')">
         <span class="section-title">Signatures</span>
+        <span class="section-badge" id="rf-sigs-badge">▾</span>
       </div>
-      <div class="section-body">
+      <div class="section-body" id="section-rf-sigs">
 
-        <!-- Signer type -->
-        <div class="field" style="margin-bottom:12px">
-          <label>Signing As</label>
-          <div class="check-group" style="margin-top:6px">
-            <div class="check-pill rf-signer-pill" onclick="selectSigner(this)" data-val="Patient">Patient</div>
-            <div class="check-pill rf-signer-pill" onclick="selectSigner(this)" data-val="Parent">Parent</div>
-            <div class="check-pill rf-signer-pill" onclick="selectSigner(this)" data-val="Legal Guardian">Legal Guardian</div>
+        <!-- Signed By -->
+        <div style="margin-bottom:14px">
+          <label style="display:block; margin-bottom:8px">Signed By</label>
+          <div class="rf-radio-group horizontal">
+            <label class="radio-row">
+              <input type="radio" name="rf_signerType" id="rf_signerPatient" value="Patient" onchange="onSignerPatientChange()">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Patient</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_signerType" id="rf_signerParent" value="Parent">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Parent</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_signerType" id="rf_signerGuardian" value="Legal Guardian">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Legal Guardian</span>
+            </label>
+          </div>
+          <div style="margin-top:10px">
+            <label class="check-row">
+              <input type="checkbox" id="rf_refusedSign" onchange="onPatientRefusedChange()">
+              <div class="check-box"></div>
+              <span class="check-label">Patient refused to sign refusal form</span>
+            </label>
           </div>
         </div>
-        <label class="refusal-check" style="margin-bottom:14px">
-          <input type="checkbox" id="rf_refusedSign">
-          <span style="font-size:13px">Patient refused to sign refusal form</span>
-        </label>
 
         <!-- Patient signature -->
-        <div class="sig-block">
+        <div class="sig-block" id="patientSigBlock">
           <div class="sig-label">Patient / Guardian Signature
             <span style="display:flex;gap:6px;align-items:center;">
               <button class="sig-action-btn" onclick="undoSig('sigPatient')" id="undo-sigPatient" title="Undo" disabled>↩</button>
@@ -8299,6 +8477,7 @@ async function extractVitalsInfo() {
       claudeAPI([{ role: 'user', content: `Extract vital signs and activity information from this dictated EMS text. Return ONLY valid JSON with these exact keys (use "" if not mentioned):
 {
   "cardName": "",
+  "allCards": false,
   "time": "",
   "bp": "",
   "pulse": "",
@@ -8314,7 +8493,8 @@ async function extractVitalsInfo() {
   "gcsMotor": ""
 }
 Rules:
-- cardName: pick the BEST match from this list based on context clues in the text (e.g. "first contact", "on scene", "transport", "hospital"): ${JSON.stringify(cardLabels)}. If unclear, use "".
+- allCards: set to true if the text indicates a value applies to ALL cards / throughout / every activity (e.g. "across all activities", "throughout", "every card", "all vitals", "consistent throughout", "same for all"). Otherwise false.
+- cardName: if allCards is false, pick the BEST match from this list based on context clues (e.g. "first contact", "on scene", "transport", "hospital"): ${JSON.stringify(cardLabels)}. If unclear or allCards is true, use "".
 - time: HH:MM 24-hour format
 - bp: "120/80" format
 - spo2: number 0-100 only, no % sign
@@ -8332,44 +8512,60 @@ Dictated text: "${transcript}"` }], 500),
     const clean = fenceMatchV ? fenceMatchV[1].trim() : vitalsText.trim();
     const parsed = JSON.parse(clean);
 
-    // Resolve target card: AI-identified cardName → match by label → fallback to first open non-Refusal card
-    let id = null;
-    if (parsed.cardName) {
-      const match = cardOptions.find(c => c.label.toLowerCase() === parsed.cardName.toLowerCase());
-      if (match) id = match.id;
-    }
-    if (!id) {
-      // Fallback: first open (visible) card that isn't Refusal
-      const fallback = cardOptions.find(c => {
-        if (c.label === 'Refusal') return false;
-        const content = document.getElementById('vitals-content-' + c.id);
-        return content && content.style.display !== 'none';
-      });
-      id = fallback ? fallback.id : cardOptions[0]?.id;
-    }
-    const vitalsFilled = [];
+    // Helper: write parsed values into a single card by ID
+    const fillCard = (cardId, filledList) => {
+      if (parsed.time)     { document.getElementById(`vt-${cardId}`).value        = parsed.time;     filledList.push('Time'); }
+      if (parsed.bp)       { document.getElementById(`vbp-${cardId}`).value       = parsed.bp;       filledList.push('BP'); }
+      if (parsed.pulse)    { document.getElementById(`vhr-${cardId}`).value       = parsed.pulse;    filledList.push('HR'); }
+      if (parsed.rr)       { document.getElementById(`vrr-${cardId}`).value       = parsed.rr;       filledList.push('RR'); }
+      if (parsed.spo2)     { document.getElementById(`vspo2-${cardId}`).value     = parsed.spo2;     filledList.push('SpO2'); }
+      if (parsed.pain)     { document.getElementById(`vpain-${cardId}`).value     = parsed.pain;     filledList.push('Pain'); }
+      if (parsed.skin)     { document.getElementById(`vskin-${cardId}`).value     = parsed.skin;     filledList.push('Skin'); }
+      if (parsed.temp)     { document.getElementById(`vtemp-${cardId}`).value     = parsed.temp;     filledList.push('Temp'); }
+      if (parsed.glucose)  { document.getElementById(`vglucose-${cardId}`).value  = parsed.glucose;  filledList.push('BGL'); }
+      if (parsed.activity) { document.getElementById(`vactivity-${cardId}`).value = parsed.activity; filledList.push('Activity'); }
+      if (parsed.gcsEye)   { document.getElementById(`vgcs-eye-${cardId}`).value    = parsed.gcsEye; }
+      if (parsed.gcsVerbal){ document.getElementById(`vgcs-verbal-${cardId}`).value = parsed.gcsVerbal; }
+      if (parsed.gcsMotor) { document.getElementById(`vgcs-motor-${cardId}`).value  = parsed.gcsMotor; }
+      if (parsed.gcsEye || parsed.gcsVerbal || parsed.gcsMotor) { updateGCS(cardId); filledList.push('GCS'); }
+    };
 
-    if (parsed.time)     { document.getElementById(`vt-${id}`).value       = parsed.time;     vitalsFilled.push('Time'); }
-    if (parsed.bp)       { document.getElementById(`vbp-${id}`).value      = parsed.bp;       vitalsFilled.push('BP'); }
-    if (parsed.pulse)    { document.getElementById(`vhr-${id}`).value      = parsed.pulse;    vitalsFilled.push('HR'); }
-    if (parsed.rr)       { document.getElementById(`vrr-${id}`).value      = parsed.rr;       vitalsFilled.push('RR'); }
-    if (parsed.spo2)     { document.getElementById(`vspo2-${id}`).value    = parsed.spo2;     vitalsFilled.push('SpO2'); }
-    if (parsed.pain)     { document.getElementById(`vpain-${id}`).value    = parsed.pain;     vitalsFilled.push('Pain'); }
-    if (parsed.skin)     { document.getElementById(`vskin-${id}`).value    = parsed.skin;     vitalsFilled.push('Skin'); }
-    if (parsed.temp)     { document.getElementById(`vtemp-${id}`).value    = parsed.temp;     vitalsFilled.push('Temp'); }
-    if (parsed.glucose)  { document.getElementById(`vglucose-${id}`).value = parsed.glucose;  vitalsFilled.push('BGL'); }
-    if (parsed.activity) { document.getElementById(`vactivity-${id}`).value = parsed.activity; vitalsFilled.push('Activity'); }
-    if (parsed.gcsEye)   { document.getElementById(`vgcs-eye-${id}`).value   = parsed.gcsEye; }
-    if (parsed.gcsVerbal){ document.getElementById(`vgcs-verbal-${id}`).value = parsed.gcsVerbal; }
-    if (parsed.gcsMotor) { document.getElementById(`vgcs-motor-${id}`).value  = parsed.gcsMotor; }
-    if (parsed.gcsEye || parsed.gcsVerbal || parsed.gcsMotor) { updateGCS(id); vitalsFilled.push('GCS'); }
+    const vitalsFilled = [];
+    let targetLabel = '';
+
+    if (parsed.allCards) {
+      // Broadcast: fill every non-Refusal card
+      const targets = cardOptions.filter(c => c.label !== 'Refusal');
+      targets.forEach(c => fillCard(c.id, []));  // fill silently per card
+      fillCard(targets[0]?.id, vitalsFilled);    // push field names once for status
+      // De-duplicate field names
+      const unique = [...new Set(vitalsFilled)];
+      vitalsFilled.length = 0; vitalsFilled.push(...unique);
+      targetLabel = 'All cards';
+    } else {
+      // Single card: resolve by name → fallback to first open non-Refusal card
+      let id = null;
+      if (parsed.cardName) {
+        const match = cardOptions.find(c => c.label.toLowerCase() === parsed.cardName.toLowerCase());
+        if (match) id = match.id;
+      }
+      if (!id) {
+        const fallback = cardOptions.find(c => {
+          if (c.label === 'Refusal') return false;
+          const content = document.getElementById('vitals-content-' + c.id);
+          return content && content.style.display !== 'none';
+        });
+        id = fallback ? fallback.id : cardOptions[0]?.id;
+      }
+      fillCard(id, vitalsFilled);
+      targetLabel = cardOptions.find(c => c.id === id)?.label || 'card';
+    }
 
     const allFields = [...vitalsFilled];
     if (universalResult.success && universalResult.fieldsPopulated.length > 0) {
       allFields.push(...universalResult.fieldsPopulated.map(f => f + ' (other section)'));
     }
 
-    const targetLabel = cardOptions.find(c => c.id === id)?.label || 'card';
     if (allFields.length > 0) {
       status.textContent = `✓ [${targetLabel}] Filled: ${allFields.join(', ')}`;
       status.classList.add('success');
@@ -9273,6 +9469,12 @@ function newChart() {
       const el = document.getElementById(id);
       if (el) el.checked = false;
     });
+    // Uncheck all radio groups in the refusal tab
+    ['rf_relationship', 'rf_contactedVia', 'rf_mdOrders', 'rf_signerType'].forEach(name => {
+      document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.checked = false);
+    });
+    // Reset refused-sign visual state
+    onPatientRefusedChange();
     // Show incident location fields (sameAsHome is now unchecked)
     try { toggleIncidentLocation(); } catch(e) {}
     // Clear refusal text fields
@@ -9536,38 +9738,46 @@ function getTransportCardId() {
 }
 
 // ---- Pill selectors (single-select) ----
-function selectRelationship(el) {
-  document.querySelectorAll('.rf-rel-pill').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
-  
-  // If "Self" is selected, auto-fill with patient name
-  if (el.dataset.val === 'Self') {
+// ---- Refusal: Relationship radio change ----
+// If "Self" selected, auto-fill custody name with patient name
+function onRelationshipChange(el) {
+  if (el.value === 'Self') {
     const patientName = document.getElementById('patientName')?.value || '';
     if (patientName) {
       document.getElementById('rf_custodyName').value = patientName;
     }
   }
 }
-function selectContact(el) {
-  document.querySelectorAll('.rf-contact-pill').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
+
+// ---- Refusal: Patient refused to sign checkbox ----
+// Dims the patient signature block when checked
+function onPatientRefusedChange() {
+  const refused = document.getElementById('rf_refusedSign')?.checked || false;
+  const sigBlock = document.getElementById('patientSigBlock');
+  if (sigBlock) {
+    sigBlock.style.opacity = refused ? '0.35' : '1';
+    sigBlock.style.pointerEvents = refused ? 'none' : '';
+  }
 }
-function selectOrder(el) {
-  document.querySelectorAll('.rf-order-pill').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
-}
-function selectSigner(el) {
-  document.querySelectorAll('.rf-signer-pill').forEach(p => p.classList.remove('selected'));
-  el.classList.add('selected');
-  
-  // If "Patient" is selected, auto-fill with patient name
-  if (el.dataset.val === 'Patient') {
+
+// ---- Refusal: Signed By radio change ----
+// If "Patient" selected, auto-fill printed name with patient name
+function onSignerPatientChange() {
+  const selected = document.querySelector('input[name="rf_signerType"]:checked')?.value || '';
+  if (selected === 'Patient') {
     const patientName = document.getElementById('patientName')?.value || '';
     if (patientName) {
-      document.getElementById('rf_printedPatient').value = patientName;
+      const printed = document.getElementById('rf_printedPatient');
+      if (printed && !printed.value) printed.value = patientName;
     }
   }
 }
+
+// ---- Legacy stubs (pill-button approach replaced by radio inputs) ----
+function selectRelationship(el) {}
+function selectContact(el) {}
+function selectOrder(el) {}
+function selectSigner(el) {}
 
 // ---- Incident Location Toggle ----
 function toggleIncidentLocation() {
@@ -10167,15 +10377,8 @@ async function downloadRefusalPDF() {
 
   // Gather data from form
   const ptName    = document.getElementById('patientName')?.value || '';
-  const ptDOBRaw  = document.getElementById('patientDOB')?.value || '';
-  // Convert DOB from YYYY-MM-DD to MM/DD/YYYY
-  let ptDOB = '';
-  if (ptDOBRaw) {
-    const parts = ptDOBRaw.split('-');
-    if (parts.length === 3) {
-      ptDOB = `${parts[1]}/${parts[2]}/${parts[0]}`;
-    }
-  }
+  // patientDOB is stored as MM/DD/YYYY (typed) — use directly
+  const ptDOB  = document.getElementById('patientDOB')?.value || '';
   const ptAge     = document.getElementById('patientAge')?.value || '';
   const ptSex     = document.getElementById('patientSex')?.value || '';
   const ptPhone   = document.getElementById('patientPhone')?.value || '';
@@ -10198,7 +10401,7 @@ async function downloadRefusalPDF() {
   const advice       = document.getElementById('rf_advice')?.value || '';
   const explanation  = document.getElementById('rf_explanation')?.value || '';
   const custodyName  = document.getElementById('rf_custodyName')?.value || '';
-  const custodyRel   = document.querySelector('.rf-rel-pill.selected')?.dataset.val || '';
+  const custodyRel   = document.querySelector('input[name="rf_relationship"]:checked')?.value || '';
   const mdName       = document.getElementById('rf_mdName')?.value || '';
 
   // Incident Location
@@ -10208,10 +10411,10 @@ async function downloadRefusalPDF() {
   const incidentState = document.getElementById('rf_incidentState')?.value || '';
   const incidentZip  = document.getElementById('rf_incidentZip')?.value || '';
 
-  // Contact/order/signer pills
-  const contact    = document.querySelector('.rf-contact-pill.selected')?.dataset.val || '';
-  const order      = document.querySelector('.rf-order-pill.selected')?.dataset.val || '';
-  const signerType = document.querySelector('.rf-signer-pill.selected')?.dataset.val || '';
+  // Contact/order/signer radios
+  const contact    = document.querySelector('input[name="rf_contactedVia"]:checked')?.value || '';
+  const order      = document.querySelector('input[name="rf_mdOrders"]:checked')?.value || '';
+  const signerType = document.querySelector('input[name="rf_signerType"]:checked')?.value || '';
   const refusedSign = document.getElementById('rf_refusedSign')?.checked || false;
 
   // Printed names for signatures
@@ -10936,11 +11139,11 @@ function collectChartData() {
       advice: document.getElementById('rf_advice')?.value || '',
       explanation: document.getElementById('rf_explanation')?.value || '',
       custodyName: document.getElementById('rf_custodyName')?.value || '',
-      custodyRel: document.querySelector('.rf-rel-pill.selected')?.dataset.val || '',
+      custodyRel: document.querySelector('input[name="rf_relationship"]:checked')?.value || '',
       mdName: document.getElementById('rf_mdName')?.value || '',
-      contact: document.querySelector('.rf-contact-pill.selected')?.dataset.val || '',
-      order: document.querySelector('.rf-order-pill.selected')?.dataset.val || '',
-      signerType: document.querySelector('.rf-signer-pill.selected')?.dataset.val || '',
+      contactedVia: document.querySelector('input[name="rf_contactedVia"]:checked')?.value || '',
+      mdOrders: document.querySelector('input[name="rf_mdOrders"]:checked')?.value || '',
+      signerType: document.querySelector('input[name="rf_signerType"]:checked')?.value || '',
       refusedSign: document.getElementById('rf_refusedSign')?.checked || false,
       printedPatient: document.getElementById('rf_printedPatient')?.value || '',
       printedWitness: document.getElementById('rf_printedWitness')?.value || '',
@@ -11112,28 +11315,34 @@ function restoreChartData(data) {
     if (document.getElementById('rf_custodyName')) document.getElementById('rf_custodyName').value = rf.custodyName || '';
     if (document.getElementById('rf_mdName')) document.getElementById('rf_mdName').value = rf.mdName || '';
     
-    // Restore pill selections
+    // Restore radio selections
     if (rf.custodyRel) {
-      const relPill = Array.from(document.querySelectorAll('.rf-rel-pill')).find(p => p.dataset.val === rf.custodyRel);
-      if (relPill) selectRelationship(relPill);
+      const relRadio = document.querySelector(`input[name="rf_relationship"][value="${rf.custodyRel}"]`);
+      if (relRadio) relRadio.checked = true;
     }
     
-    if (rf.contact) {
-      const contactPill = Array.from(document.querySelectorAll('.rf-contact-pill')).find(p => p.dataset.val === rf.contact);
-      if (contactPill) selectContact(contactPill);
+    if (rf.contactedVia) {
+      const cvRadio = document.querySelector(`input[name="rf_contactedVia"][value="${rf.contactedVia}"]`);
+      if (cvRadio) cvRadio.checked = true;
     }
     
-    if (rf.order) {
-      const orderPill = Array.from(document.querySelectorAll('.rf-order-pill')).find(p => p.dataset.val === rf.order);
-      if (orderPill) selectOrder(orderPill);
+    if (rf.mdOrders) {
+      const ordRadio = document.querySelector(`input[name="rf_mdOrders"][value="${rf.mdOrders}"]`);
+      if (ordRadio) ordRadio.checked = true;
     }
     
     if (rf.signerType) {
-      const signerPill = Array.from(document.querySelectorAll('.rf-signer-pill')).find(p => p.dataset.val === rf.signerType);
-      if (signerPill) selectSigner(signerPill);
+      const sigRadio = document.querySelector(`input[name="rf_signerType"][value="${rf.signerType}"]`);
+      if (sigRadio) {
+        sigRadio.checked = true;
+        if (rf.signerType === 'Patient') onSignerPatientChange();
+      }
     }
     
-    if (document.getElementById('rf_refusedSign')) document.getElementById('rf_refusedSign').checked = rf.refusedSign || false;
+    if (document.getElementById('rf_refusedSign')) {
+      document.getElementById('rf_refusedSign').checked = rf.refusedSign || false;
+      onPatientRefusedChange();
+    }
     if (document.getElementById('rf_printedPatient')) document.getElementById('rf_printedPatient').value = rf.printedPatient || '';
     if (document.getElementById('rf_printedWitness')) document.getElementById('rf_printedWitness').value = rf.printedWitness || '';
     if (document.getElementById('rf_printedRMA')) document.getElementById('rf_printedRMA').value = rf.printedRMA || '';
