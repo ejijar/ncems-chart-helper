@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
-<!-- Version: v9.0 -->
-<script>const APP_VERSION = 'v9.0';</script>
+<!-- Version: v9.1 -->
+<script>const APP_VERSION = 'v9.1';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -11417,6 +11417,25 @@ function _setFieldAttention(inputId, needsIt) {
     wrap.classList.remove('needs-attention');
   }
 }
+
+// Close sig modal when clicking the backdrop — but only if nothing has been drawn/typed
+// (i.e. the modal is in a clean/cleared state). Matches v4.8 behaviour.
+document.addEventListener('DOMContentLoaded', () => {
+  const backdrop = document.getElementById('sigModalBackdrop');
+  if (backdrop) {
+    // Track that the pointerdown originated ON the backdrop, not the modal
+    let _backdropPointerDown = false;
+    backdrop.addEventListener('pointerdown', (e) => {
+      _backdropPointerDown = (e.target === backdrop);
+    });
+    backdrop.addEventListener('pointerup', (e) => {
+      if (_backdropPointerDown && e.target === backdrop && !_sigNavActive) {
+        closeSigModal();
+      }
+      _backdropPointerDown = false;
+    });
+  }
+});
 
 function _updateSigUI(cfg) {
   const inlineCanvas = document.getElementById(cfg.id);
