@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Chart Helper</title>
+<!-- Version: v9.1 -->
+<script>const APP_VERSION = 'v9.1';</script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"><img src="data:image/png;base64,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" alt="NCEMS Logo" style="height:100%;width:auto;"></div>
+    <div>
+      <div class="logo-text">NCEMS CHART HELPER</div>
+      <div class="logo-sub">Zoll EMS · SOAP Format</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn-icon" onclick="toggleProtocolsSidebar()" title="Reference" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> Reference</button>
+    <button class="hamburger-btn" id="menuButton" onclick="toggleMenu()" title="Menu" aria-label="Menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+</header>
+
+<!-- Hamburger Menu -->
+<div id="hamburgerMenu" class="hamburger-menu" style="display: none;">
+  <div class="hamburger-menu-content">
+    <div class="hamburger-menu-header">
+      <span style="font-family: var(--mono); font-size: 14px; font-weight: 600; color: var(--accent); text-transform: uppercase;">Menu</span>
+      <button class="modal-close" onclick="toggleMenu()">✕</button>
+    </div>
+    <div class="hamburger-menu-body">
+      <div class="hamburger-save-status" id="autoSaveStatus">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="autoSaveStatusText">All changes saved</span>
+      </div>
+      <div class="menu-divider"></div>
+      <button class="menu-item" onclick="newChart(); toggleMenu();">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span>
+        <div>
+          <div class="menu-title">New Chart</div>
+          <div class="menu-desc">Save current &amp; start fresh</div>
+        </div>
+      </button>
+      <button class="menu-item" onclick="importFromJSON(); toggleMenu();">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+        <div>
+          <div class="menu-title">Load Chart</div>
+          <div class="menu-desc">Open chart from file</div>
+        </div>
+      </button>
+      <button class="menu-item" onclick="exportToJSON(); toggleMenu();">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v14a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span>
+        <div>
+          <div class="menu-title">Save to File</div>
+          <div class="menu-desc">Download encrypted chart file</div>
+        </div>
+      </button>
+      <div class="menu-divider"></div>
+
+      <!-- Account inline panel -->
+      <button class="menu-panel-item" id="panelItemAccount" onclick="toggleInlinePanel('account')">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <div>
+          <div class="menu-title">Account</div>
+          <div class="menu-desc">Email address &amp; preferences</div>
+        </div>
+        <span class="menu-panel-chevron">▶</span>
+      </button>
+      <div class="menu-inline-panel" id="inlinePanelAccount">
+        <div class="panel-section-label">Email Export</div>
+        <div class="field">
+          <label>Your Email Address</label>
+          <input type="email" id="a_email" placeholder="you@example.com" inputmode="email" autocomplete="email">
+          <div class="field-hint">Used as the "To:" address when you tap Email Chart to Desktop. Stored locally on this device only.</div>
+        </div>
+        <button class="panel-save-btn" onclick="saveAccount()">Save</button>
+        <div class="panel-divider"></div>
+        <div class="panel-section-label">Session</div>
+        <button class="panel-danger-btn" onclick="toggleMenu(); logoutUser();">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sign Out
+        </button>
+      </div>
+
+      <!-- Crew Settings inline panel -->
+      <button class="menu-panel-item" id="panelItemCrew" onclick="toggleInlinePanel('crew')">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>
+        <div>
+          <div class="menu-title">Crew Settings</div>
+          <div class="menu-desc">Configure crew information</div>
+        </div>
+        <span class="menu-panel-chevron">▶</span>
+      </button>
+      <div class="menu-inline-panel" id="inlinePanelCrew">
+        <div class="field">
+          <label>Service Name</label>
+          <input type="text" id="s_service" placeholder="e.g. New Canaan EMS">
+        </div>
+        <div class="field">
+          <label>Unit #</label>
+          <input type="text" id="s_unit" placeholder="e.g. 353">
+        </div>
+        <div class="field">
+          <label>Primary Caregiver</label>
+          <input type="text" id="s_primary" placeholder="Last, First">
+        </div>
+        <div class="field">
+          <label>Driver / Pilot</label>
+          <input type="text" id="s_driver" placeholder="Last, First">
+        </div>
+        <div class="field">
+          <label>Other Crew</label>
+          <input type="text" id="s_other" placeholder="Last, First (optional)">
+        </div>
+        <div class="field">
+          <label>Team Level</label>
+          <select id="s_team">
+            <option>[Select]</option>
+            <option>BLS</option>
+            <option>ALS</option>
+          </select>
+        </div>
+        <button class="panel-save-btn" onclick="saveSettings()">Save Defaults</button>
+      </div>
+
+      <!-- App Settings inline panel -->
+      <button class="menu-panel-item" id="panelItemApp" onclick="toggleInlinePanel('app')">
+        <span class="menu-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></span>
+        <div>
+          <div class="menu-title">App Settings</div>
+          <div class="menu-desc">API keys &amp; voice engine</div>
+        </div>
+        <span class="menu-panel-chevron">▶</span>
+      </button>
+      <div class="menu-inline-panel" id="inlinePanelApp">
+        <div class="panel-section-label">Display</div>
+        <div class="field">
+          <label>Color Theme</label>
+          <div class="theme-toggle-group" id="themeToggleGroup">
+            <button class="theme-toggle-btn" data-theme="auto" onclick="setThemeMode('auto')">Auto</button>
+            <button class="theme-toggle-btn" data-theme="light" onclick="setThemeMode('light')">Light</button>
+            <button class="theme-toggle-btn" data-theme="dark" onclick="setThemeMode('dark')">Dark</button>
+          </div>
+          <div class="field-hint">Auto follows your device's system setting.</div>
+        </div>
+        <div class="panel-section-label">AI &amp; Voice</div>
+        <div class="field">
+          <label>Anthropic API Key</label>
+          <input type="password" id="as_apikey" placeholder="sk-ant-…" autocomplete="off">
+          <div class="field-hint">Required for AI field extraction. Stored locally only.</div>
+        </div>
+        <div class="field">
+          <label>OpenAI API Key <span style="color:var(--text-dim);font-weight:400">(for Whisper)</span></label>
+          <input type="password" id="as_openaikey" placeholder="sk-…" autocomplete="off">
+          <div class="field-hint">Required for Whisper dictation (~$0.006/min). Stored locally only.</div>
+        </div>
+        <div class="field">
+          <label>Voice Engine</label>
+          <select id="as_voiceengine">
+            <option value="auto">Auto</option>
+            <option value="whisper">Whisper (OpenAI)</option>
+            <option value="webspeech">Web Speech API</option>
+          </select>
+          <div class="field-hint">Auto recommended. Whisper requires OpenAI key.</div>
+        </div>
+        <button class="panel-save-btn" onclick="saveAppSettings()">Save</button>
+      </div>
+      <div class="menu-divider"></div>
+      <div style="padding: 10px 12px; text-align: center;">
+        <span style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase;" id="menuVersion"></span>
+      </div>
+    </div>
+  </div>
+</div>
+<script>document.getElementById('menuVersion').textContent = 'Chart Helper · ' + APP_VERSION;</script>
+
+<div id="micStatusBanner" style="display:none;background:#3d1a1a;color:#f87171;font-family:var(--mono);font-size:12px;padding:10px 16px;text-align:center;letter-spacing:0.02em;line-height:1.6;white-space:pre-wrap"></div>
+<div id="offlineQueueBanner" style="display:none;background:#1c2a1c;color:#3fb950;font-family:var(--mono);font-size:12px;padding:10px 16px;text-align:center;letter-spacing:0.02em;cursor:pointer" onclick="processExtractionQueue()">
+  <span id="offlineQueueMsg"></span>
+</div>
+
+<div class="app">
+
+  <!-- TABS -->
+  <div class="tabs-wrapper">
+    <div class="tabs" id="tabBar">
+      <button class="tab active" onclick="switchTab('dispatch', this)">Dispatch</button>
+      <button class="tab" onclick="switchTab('input', this)">On-Scene</button>
+      <button class="tab" onclick="switchTab('reference', this)">Photos</button>
+      <button class="tab" onclick="switchTab('output', this)">Chart</button>
+      <button class="tab" onclick="switchTab('refusal', this)">Refusal</button>
+    </div>
+  </div>
+  <div class="tabs-spacer"></div>
+
+  <!-- ====== DISPATCH TAB ====== -->
+  <div id="tab-dispatch">
+
+    <!-- CALL TYPE -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Call Type</span>
+        <button class="sec-mic-btn" id="sec-mic-calltype" title="Dictate call info">🎙</button>
+      </div>
+      <div class="section-body">
+        <div class="sec-dictate-bar" id="sec-bar-calltype" style="display:none">
+          <div class="sec-dictate-top">
+            <span class="sec-dictate-state" id="sec-state-calltype">🎙 Listening…</span>
+            <span class="sec-dictate-wordcount" id="sec-words-calltype"></span>
+            <button class="sec-transcript-toggle" id="sec-toggle-calltype" onclick="toggleTranscript('calltype')" style="display:none">Show transcript</button>
+          </div>
+          <canvas class="sec-waveform" id="sec-wave-calltype"></canvas>
+          <div class="sec-transcript-full" id="sec-transcript-calltype" style="display:none">
+            <div class="sec-transcript-text" id="sec-trans-calltype"></div>
+          </div>
+        </div>
+        <div class="sec-extract-status" id="sec-status-calltype"></div>
+        <div class="form-row full">
+          <div class="field">
+            <label>Call Type</label>
+            <select id="callType" onchange="updateCallType()">
+              <option value="">[Select]</option>
+              <optgroup label="Cardiac">
+              <option value="chest_pain">Chest Pain / Cardiac (ACS)</option>
+              <option value="cardiac_arrest">Cardiac Arrest</option>
+              </optgroup>
+              <optgroup label="Respiratory">
+              <option value="respiratory">Difficulty Breathing / Respiratory Distress</option>
+              </optgroup>
+              <optgroup label="Neurological">
+              <option value="stroke">Stroke / CVA</option>
+              <option value="seizure">Convulsions / Seizure</option>
+              <option value="syncope">Syncope / Unconscious Patient</option>
+              <option value="altered_ms">Altered Mental Status (AMS)</option>
+              </optgroup>
+              <optgroup label="Medical">
+              <option value="diabetic">Diabetic Emergency</option>
+              <option value="overdose">Overdose / Poisoning</option>
+              <option value="allergic">Allergic Reaction / Anaphylaxis</option>
+              <option value="psychiatric">Psychiatric / Behavioral Emergency</option>
+              <option value="obstetric">Obstetric Emergency / Childbirth</option>
+              <option value="pediatric">Pediatric Emergency (General)</option>
+              <option value="hypothermia_heat">Hypothermia / Heat Emergency</option>
+              </optgroup>
+              <optgroup label="Trauma">
+              <option value="trauma">Trauma / Injury</option>
+              <option value="mva">Motor Vehicle Accident (MVA)</option>
+              <option value="bleeding">Bleeding / Hemorrhage Control</option>
+              </optgroup>
+              <optgroup label="Other">
+              <option value="lift_assist">Fall / Lift Assist</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field">
+            <label>Who Called 911</label>
+            <div class="pill-group" id="whoCalled911Pills" style="margin-top:4px">
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Patient')">Patient</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Spouse')">Spouse</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Relative')">Relative</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Bystander')">Bystander</button>
+              <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Other')">Other</button>
+            </div>
+            <input type="text" id="whoCalled911Other" placeholder="Specify…" style="display:none;margin-top:8px">
+            <input type="hidden" id="whoCalled911">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field">
+            <label>Patient Sex</label>
+            <div class="pill-group" id="dispatchSexPills" style="margin-top:4px">
+              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'male')">Male</button>
+              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'female')">Female</button>
+              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'unknown')">Unknown</button>
+            </div>
+            <input type="hidden" id="dispatchSex">
+          </div>
+        </div>
+        <div id="pedsToggleBar" class="form-row full">
+          <div class="field">
+            <div class="peds-toggle-wrap">
+              <span class="peds-toggle-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Pediatric Patient</span>
+              <label class="peds-toggle-switch">
+                <input type="checkbox" id="pedsToggle" onchange="setPedsMode(this.checked)">
+                <span class="peds-toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROTOCOL QUICK REFERENCE CARD -->
+    <div id="quickRefContainer"></div>
+
+  </div>
+
+  <!-- ====== INPUT TAB ====== -->
+  <div id="tab-input" style="display:none">
+
+    <!-- PATIENT INFO -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('patient')">
+        <span class="section-title">Patient</span>
+        <span class="section-badge" id="patient-badge">▾</span>
+      </div>
+      <div class="section-body" id="section-patient">
+
+        <!-- PATIENT DICTATION -->
+        <div class="pt-dictate-bar">
+          <button class="hpi-voice-btn" id="ptVoiceBtn" onclick="togglePatientVoice()">🎙</button>
+          <div class="pt-dictate-center">
+            <div class="pt-dictate-transcript" id="ptDictateTranscript">Tap mic to dictate patient info — name, DOB, address, phone…</div>
+            <canvas class="voice-waveform" id="ptWaveform" style="width:100%;height:24px;margin-top:4px"></canvas>
+          </div>
+          <button class="pt-extract-btn" id="ptExtractBtn" onclick="extractPatientInfo()" style="display:none">Extract →</button>
+          <button class="transcript-history-toggle-btn" onclick="toggleTranscriptHistory('patient')" title="View transcript history">
+            <span id="patient-history-badge">▸</span>
+          </button>
+        </div>
+        <div class="pt-extract-status" id="ptExtractStatus"></div>
+        
+        <!-- Transcript History -->
+        <div class="transcript-history-content" id="patient-transcript-history" style="display:none">
+          <div class="transcript-history-empty">No transcripts yet</div>
+        </div>
+
+
+        <div class="form-row full">
+          <div class="field">
+            <label>Patient Name</label>
+            <input type="text" id="patientName" placeholder="e.g. John Smith">
+          </div>
+        </div>
+
+        <!-- Address -->
+        <div class="form-row full">
+          <div class="field">
+            <label>Address</label>
+            <input type="text" id="patientAddress" placeholder="Street address">
+          </div>
+        </div>
+        <div class="form-row three">
+          <div class="field">
+            <label>City</label>
+            <input type="text" id="patientCity" placeholder="City" value="New Canaan">
+          </div>
+          <div class="field">
+            <label>State</label>
+            <input type="text" id="patientState" placeholder="CT" maxlength="2" style="text-transform:uppercase" value="CT">
+          </div>
+          <div class="field">
+            <label>Zip</label>
+            <input type="text" id="patientZip" placeholder="06840" maxlength="10" value="06840">
+          </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-row full">
+          <div class="field">
+            <label>Phone</label>
+            <input type="tel" id="patientPhone" placeholder="(XXX) XXX-XXXX" oninput="formatPhone(this)">
+          </div>
+        </div>
+
+        <!-- DOB / Age auto-calc -->
+        <div class="form-row three">
+          <div class="field" style="grid-column: span 2">
+            <label>Date of Birth</label>
+            <div style="position:relative; display:flex; align-items:center;">
+              <input type="text" id="patientDOB" placeholder="MM/DD/YYYY" maxlength="10"
+                style="font-family:var(--mono); padding-right:38px;"
+                inputmode="numeric"
+                oninput="formatDOBInput(this)"
+                onchange="calcAge()">
+              <button type="button" onclick="document.getElementById('patientDOBPicker').showPicker ? document.getElementById('patientDOBPicker').showPicker() : document.getElementById('patientDOBPicker').click()"
+                style="position:absolute;right:8px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:0;line-height:1;" title="Open calendar">📅</button>
+              <input type="date" id="patientDOBPicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none;"
+                onchange="syncDOBFromPicker()">
+            </div>
+          </div>
+          <div class="field">
+            <label>Age <span style="color:var(--text-dim);font-size:9px">(auto)</span></label>
+            <input type="number" id="patientAge" placeholder="—" readonly style="background:var(--surface2);color:var(--accent);font-family:var(--mono);font-weight:600">
+          </div>
+        </div>
+
+        <!-- Sex -->
+        <div class="form-row full">
+          <div class="field">
+            <label>Sex</label>
+            <div class="pill-group" id="sexPills" style="margin-top:4px">
+              <button type="button" class="tap-pill" onclick="selectSexPill(this,'male')">Male</button>
+              <button type="button" class="tap-pill" onclick="selectSexPill(this,'female')">Female</button>
+            </div>
+            <input type="hidden" id="patientSex">
+          </div>
+        </div>      </div>
+    </div>
+
+    <!-- SCENE INFORMATION -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Scene Information</span>
+      </div>
+      <div class="section-body">
+        <!-- SCENE DICTATION -->
+        <div class="pt-dictate-bar">
+          <button class="hpi-voice-btn" id="sceneVoiceBtn" onclick="toggleSceneVoice()">🎙</button>
+          <div class="pt-dictate-center">
+            <div class="pt-dictate-transcript" id="sceneDictateTranscript">Tap mic to dictate scene information — LOC, scene notes…</div>
+            <canvas class="voice-waveform" id="sceneWaveform" style="width:100%;height:24px;margin-top:4px"></canvas>
+          </div>
+          <button class="pt-extract-btn" id="sceneExtractBtn" onclick="extractSceneInfo()" style="display:none">Extract →</button>
+          <button class="transcript-history-toggle-btn" onclick="toggleTranscriptHistory('scene')" title="View transcript history">
+            <span id="scene-history-badge">▸</span>
+          </button>
+        </div>
+        <div class="pt-extract-status" id="sceneExtractStatus"></div>
+        
+        <!-- Transcript History -->
+        <div class="transcript-history-content" id="scene-transcript-history" style="display:none">
+          <div class="transcript-history-empty">No transcripts yet</div>
+        </div>
+
+        <div class="form-row full">
+          <div class="field">
+            <label>Level of Consciousness</label>
+            <div style="margin-top:6px">
+              <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Alert Status</div>
+              <div class="pill-group" id="locAlertPills">
+                <button type="button" class="tap-pill" onclick="selectLocAlert(this,'Alert')">Alert</button>
+                <button type="button" class="tap-pill" onclick="selectLocAlert(this,'Altered Mental Status')">Altered</button>
+                <button type="button" class="tap-pill" onclick="selectLocAlert(this,'Unconscious')">Unconscious</button>
+              </div>
+            </div>
+            <div id="locOrientedGroup" style="margin-top:10px;display:none">
+              <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Oriented To</div>
+              <div class="pill-group" id="locOrientedPills">
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Person')">Person</button>
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Place')">Place</button>
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Time')">Time</button>
+                <button type="button" class="tap-pill tap-pill-multi" onclick="toggleLocOriented(this,'Event')">Event</button>
+              </div>
+            </div>
+            <input type="hidden" id="patientLOC">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Scene Notes</label>
+          <textarea id="sceneNotes" placeholder="Describe the scene upon arrival. Where was the patient? How did the patient look (alert, communicative, unconscious, etc.)? Who else was there?" style="min-height:120px" oninput="autoResizeTextarea(this)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- INCIDENT DETAILS -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Incident Details</span>
+      </div>
+      <div class="section-body">
+        <!-- INCIDENT DICTATION -->
+        <div class="pt-dictate-bar">
+          <button class="hpi-voice-btn" id="incidentVoiceBtn" onclick="toggleIncidentVoice()">🎙</button>
+          <div class="pt-dictate-center">
+            <div class="pt-dictate-transcript" id="incidentDictateTranscript">Tap mic to dictate incident details — chief complaint, HPI, PMH…</div>
+            <canvas class="voice-waveform" id="incidentWaveform" style="width:100%;height:24px;margin-top:4px"></canvas>
+          </div>
+          <button class="pt-extract-btn" id="incidentExtractBtn" onclick="extractIncidentInfo()" style="display:none">Extract →</button>
+          <button class="transcript-history-toggle-btn" onclick="toggleTranscriptHistory('incident')" title="View transcript history">
+            <span id="incident-history-badge">▸</span>
+          </button>
+        </div>
+        <div class="pt-extract-status" id="incidentExtractStatus"></div>
+        
+        <!-- Transcript History -->
+        <div class="transcript-history-content" id="incident-transcript-history" style="display:none">
+          <div class="transcript-history-empty">No transcripts yet</div>
+        </div>
+
+        <!-- CC -->
+        <div class="form-row full">
+          <div class="field">
+            <label>CC — Chief Complaint</label>
+            <input type="text" id="chiefComplaint" placeholder='e.g. "I fell and hurt my knee"'>
+          </div>
+        </div>
+
+        <!-- HPI — OPQRST -->
+        <div class="subsection-label">HPI — History of Present Illness <span class="format-tag">OPQRST</span></div>
+        <div class="hpi-layout">
+          <div class="hpi-input">
+            <textarea id="hpiNarrative" placeholder="• Onset / duration&#10;• Provocation / quality&#10;• Severity (0–10) / timing" style="min-height:160px; width:100%;" oninput="bulletInput(this)" onkeydown="bulletKeydown(this,event)"></textarea>
+          </div>
+          <div class="opqrst-sidebar">
+            <div class="opqrst-item"><span class="opqrst-letter">O</span><div><div class="opqrst-word">Onset</div><div class="opqrst-hint">When/how did it start?</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">P</span><div><div class="opqrst-word">Provocation</div><div class="opqrst-hint">Better or worse with anything?</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">Q</span><div><div class="opqrst-word">Quality</div><div class="opqrst-hint">Sharp, pressure, burning?</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">R</span><div><div class="opqrst-word">Radiation</div><div class="opqrst-hint">Where? Does it spread?</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">S</span><div><div class="opqrst-word">Severity</div><div class="opqrst-hint">Pain 0–10</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">T</span><div><div class="opqrst-word">Time</div><div class="opqrst-hint">Constant? Improving?</div></div></div>
+          </div>
+        </div>
+
+        <!-- PMH — SAMPLE -->
+        <div class="subsection-label" style="margin-top:6px">PMH — Past Medical History <span class="format-tag">SAMPLE</span></div>
+        <div class="hpi-layout">
+          <div class="hpi-input">
+            <textarea id="sampleNarrative" placeholder="• Signs / symptoms&#10;• Allergies&#10;• Medications / past history" style="min-height:160px; width:100%;" oninput="bulletInput(this)" onkeydown="bulletKeydown(this,event)"></textarea>
+          </div>
+          <div class="opqrst-sidebar">
+            <div class="opqrst-item"><span class="opqrst-letter">S</span><div><div class="opqrst-word">Signs/Symptoms</div><div class="opqrst-hint">Current associated symptoms</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">A</span><div><div class="opqrst-word">Allergies</div><div class="opqrst-hint">Meds, food, environment</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">M</span><div><div class="opqrst-word">Medications</div><div class="opqrst-hint">Current meds &amp; doses</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">P</span><div><div class="opqrst-word">Pertinent Hx</div><div class="opqrst-hint">Diagnoses, surgeries</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">L</span><div><div class="opqrst-word">Last Intake</div><div class="opqrst-hint">Last meal or drink</div></div></div>
+            <div class="opqrst-item"><span class="opqrst-letter">E</span><div><div class="opqrst-word">Events Prior</div><div class="opqrst-hint">What led up to this?</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITIES -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('vitals')">
+        <span class="section-title">Activities</span>
+        <span class="section-badge" id="vitals-badge">▾</span>
+      </div>
+      <div class="section-body" id="section-vitals">
+        <!-- ACTIVITIES DICTATION -->
+        <div class="pt-dictate-bar">
+          <button class="hpi-voice-btn" id="vitalsVoiceBtn" onclick="toggleVitalsVoice()">🎙</button>
+          <div class="pt-dictate-center">
+            <div class="pt-dictate-transcript" id="vitalsDictateTranscript">Tap mic to dictate activities — vitals, what was done, interventions…</div>
+            <canvas class="voice-waveform" id="vitalsWaveform" style="width:100%;height:24px;margin-top:4px"></canvas>
+          </div>
+          <button class="pt-extract-btn" id="vitalsExtractBtn" onclick="extractVitalsInfo()" style="display:none">Extract →</button>
+          <button class="transcript-history-toggle-btn" onclick="toggleTranscriptHistory('vitals')" title="View transcript history">
+            <span id="vitals-history-badge">▸</span>
+          </button>
+        </div>
+        <div class="pt-extract-status" id="vitalsExtractStatus"></div>
+        
+        <!-- Transcript History -->
+        <div class="transcript-history-content" id="vitals-transcript-history" style="display:none">
+          <div class="transcript-history-empty">No transcripts yet</div>
+        </div>
+        
+        <div id="vitals-container">
+          <!-- rows injected by JS -->
+        </div>
+      </div>
+    </div>
+
+
+
+    <div class="error-msg" id="errorMsg">Please fill in at least the chief complaint and scene notes before generating.</div>
+
+    <button class="generate-btn" onclick="generateSOAP()">
+      <span>✦</span> Generate SOAP Narrative
+    </button>
+
+    <!-- Chart Export Options -->
+    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="generate-btn" onclick="copyChartToClipboard()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>📋</span> Copy Chart
+      </button>
+      <button class="generate-btn" onclick="shareChart()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>⬆</span> Share
+      </button>
+      <button class="generate-btn" onclick="sendChartEmail()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
+        <span>📧</span> Email
+      </button>
+    </div>
+    <div id="copyChartStatus" style="font-family:var(--mono);font-size:11px;color:var(--success);text-align:center;margin-top:6px;min-height:16px;"></div>
+
+  </div>
+
+  <!-- ====== REFERENCE TAB ====== -->
+  <div id="tab-reference" style="display:none">
+
+    <!-- Hidden file inputs — wired via JS -->
+    <input type="file" id="refPhotoCamera" accept="image/*" capture="environment" style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
+    <input type="file" id="refPhotoUpload" accept="image/*"                       style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
+
+    <!-- Action bar -->
+    <div class="ref-action-bar">
+      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoCamera').click()">
+        <span class="ref-btn-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
+        <span class="ref-btn-label">Camera</span>
+      </button>
+      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoUpload').click()">
+        <span class="ref-btn-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+        <span class="ref-btn-label">Upload</span>
+      </button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="ref-empty" id="refEmpty">
+      <div class="ref-empty-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+      <div class="ref-empty-text">No reference photos yet</div>
+      <div class="ref-empty-sub">Tap Camera to shoot on-scene, or Upload from your photo library</div>
+    </div>
+
+    <!-- Photo grid -->
+    <div class="ref-grid" id="refGrid"></div>
+
+  </div>
+
+  <!-- ====== OUTPUT TAB ====== -->
+  <div id="tab-output" style="display:none">
+
+    <div class="loading" id="loadingSpinner">
+      <div class="spinner"></div>
+      <div class="loading-text">Generating SOAP narrative…</div>
+    </div>
+
+    <div class="output-section" id="outputSection">
+
+      <div class="call-type-display" id="outputCallTypeBadge">📋 Refusal of Care</div>
+
+      <!-- S -->
+      <div class="soap-block">
+        <div class="soap-label">S — Subjective</div>
+        <button class="copy-btn" onclick="copyBlock('s-text', this)">Copy</button>
+        <div class="soap-text" id="s-text" contenteditable="true"></div>
+      </div>
+
+      <!-- O -->
+      <div class="soap-block">
+        <div class="soap-label">O — Objective</div>
+        <button class="copy-btn" onclick="copyBlock('o-text', this)">Copy</button>
+        <div class="soap-text" id="o-text" contenteditable="true"></div>
+      </div>
+
+      <!-- A -->
+      <div class="soap-block">
+        <div class="soap-label">A — Assessment</div>
+        <button class="copy-btn" onclick="copyBlock('a-text', this)">Copy</button>
+        <div class="soap-text" id="a-text" contenteditable="true"></div>
+      </div>
+
+      <!-- P -->
+      <div class="soap-block">
+        <div class="soap-label">P — Plan</div>
+        <button class="copy-btn" onclick="copyBlock('p-text', this)">Copy</button>
+        <div class="soap-text" id="p-text" contenteditable="true"></div>
+      </div>
+
+      <button class="copy-all-btn" onclick="copyAll()">📋 Copy Full SOAP Note</button>
+
+    </div>
+
+    <div id="outputEmpty" style="padding:40px;text-align:center;color:var(--text-muted);font-family:var(--mono);font-size:12px;display:none">
+      No narrative generated yet.<br>Fill out the Input tab and tap Generate.
+    </div>
+
+  </div>
+
+  <!-- ====== REFUSAL FORM TAB ====== -->
+  <div id="tab-refusal" style="display:none">
+
+    <div class="call-type-display" style="margin-bottom:16px">📋 New Canaan EMS — Patient Refusal Form</div>
+
+    <!-- INCIDENT LOCATION -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-incloc')">
+        <span class="section-title">Incident Location</span>
+        <span class="section-badge" id="rf-incloc-badge">▾</span>
+      </div>
+      <div class="section-body" id="section-rf-incloc">
+        <label class="refusal-check" style="margin-bottom:12px">
+          <input type="checkbox" id="rf_sameAsHome" onchange="toggleIncidentLocation()">
+          <span>Same as Home Address</span>
+        </label>
+        <div id="rf_incidentLocationFields">
+          <div class="form-row full">
+            <div class="field">
+              <label>Incident Address</label>
+              <input type="text" id="rf_incidentAddress" placeholder="Street address">
+            </div>
+          </div>
+          <div class="form-row three">
+            <div class="field">
+              <label>City</label>
+              <input type="text" id="rf_incidentCity" placeholder="City">
+            </div>
+            <div class="field">
+              <label>State</label>
+              <input type="text" id="rf_incidentState" placeholder="State" maxlength="2" style="text-transform:uppercase">
+            </div>
+            <div class="field">
+              <label>Zip</label>
+              <input type="text" id="rf_incidentZip" placeholder="Zip" maxlength="10">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATIENT INFORMED + DISPOSITION (side-by-side via two-col-grid) -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-informed')">
+        <span class="section-title">Patient Informed &amp; Disposition</span>
+        <span class="section-badge" id="rf-informed-badge">▾</span>
+      </div>
+      <div class="section-body" id="section-rf-informed">
+        <div class="two-col-grid">
+
+          <!-- Patient Informed sub-section -->
+          <div class="sub-section">
+            <div class="sub-section-title">Patient Informed</div>
+            <div class="sub-section-body">
+              <div class="check-group">
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed1">
+                  <div class="check-box"></div>
+                  <span class="check-label">Medical treatment evaluation needed</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed2">
+                  <div class="check-box"></div>
+                  <span class="check-label">Call back if necessary</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed3">
+                  <div class="check-box"></div>
+                  <span class="check-label">Further harm / death may result without medical treatment</span>
+                </label>
+                <label class="check-row">
+                  <input type="checkbox" id="rf_informed4">
+                  <div class="check-box"></div>
+                  <span class="check-label">Transport by means other than ambulance could be hazardous in light of patient's injury / illness</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Disposition sub-section -->
+          <div class="sub-section">
+            <div class="sub-section-title">Disposition</div>
+            <div class="sub-section-body">
+              <div class="rf-radio-group">
+                <label class="radio-row">
+                  <input type="radio" name="rf_disposition" id="rf_disp2" value="Refused transport but accepted field treatment">
+                  <div class="radio-dot"></div>
+                  <span class="radio-label">Refused transport but accepted field treatment</span>
+                </label>
+                <label class="radio-row">
+                  <input type="radio" name="rf_disposition" id="rf_disp1" value="Refused all EMS services">
+                  <div class="radio-dot"></div>
+                  <span class="radio-label">Refused all EMS services</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- NARRATIVE (Advice + Explanation side-by-side) -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-narrative')">
+        <span class="section-title">Narrative</span>
+        <span class="section-badge" id="rf-narrative-badge">▾</span>
+      </div>
+      <div class="section-body" id="section-rf-narrative">
+        <div class="two-col-grid">
+          <div class="field">
+            <label>Advice Given to Patient by EMS</label>
+            <textarea id="rf_advice" placeholder="Document the specific advice given to the patient..." style="min-height:90px" oninput="autoResizeTextarea(this)"></textarea>
+          </div>
+          <div class="field">
+            <label>Patient Explanation for Refusal</label>
+            <textarea id="rf_explanation" placeholder="Document the patient's stated reason for refusing care..." style="min-height:90px" oninput="autoResizeTextarea(this)"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RELEASED INTO CUSTODY OF -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-custody')">
+        <span class="section-title">Released Into Custody Of</span>
+        <span class="section-badge" id="rf-custody-badge">▾</span>
+      </div>
+      <div class="section-body" id="section-rf-custody">
+        <div class="form-row full" style="margin-bottom:12px">
+          <div class="field">
+            <label>Name</label>
+            <input type="text" id="rf_custodyName" placeholder="Name of person patient released to">
+          </div>
+        </div>
+        <div class="field">
+          <label>Relationship</label>
+          <div class="rf-radio-group horizontal" style="margin-top:8px">
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel0" value="Self" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Self</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel1" value="Relative" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Relative</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel2" value="Friend" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Friend</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel3" value="Law Enforcement" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Law Enforcement</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_relationship" id="rf_rel4" value="Other" onchange="onRelationshipChange(this)">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Other</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEDICAL DIRECTION (default collapsed) -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-meddirection')">
+        <span class="section-title">Medical Direction</span>
+        <span class="section-badge" id="rf-meddirection-badge">▸</span>
+      </div>
+      <div class="section-body" id="section-rf-meddirection" style="display:none">
+        <div class="form-row full" style="margin-bottom:14px">
+          <div class="field">
+            <label>MD Name</label>
+            <input type="text" id="rf_mdName" placeholder="Physician name">
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block; margin-bottom:8px">Contacted Via</label>
+          <div class="rf-radio-group horizontal">
+            <label class="radio-row">
+              <input type="radio" name="rf_contactedVia" id="rf_cv0" value="Phone">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Phone</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_contactedVia" id="rf_cv1" value="Radio">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Radio</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_contactedVia" id="rf_cv2" value="On Scene">
+              <div class="radio-dot"></div>
+              <span class="radio-label">On Scene</span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:8px">Orders</label>
+          <div class="rf-radio-group">
+            <label class="radio-row">
+              <input type="radio" name="rf_mdOrders" id="rf_ord0" value="Release Patient">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Release Patient</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_mdOrders" id="rf_ord1" value="Transport">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Transport</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_mdOrders" id="rf_ord2" value="Use reasonable force / restraint">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Use reasonable force / restraint</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PATIENT ADVICE (legal language, collapsed by default) -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-legaltext')">
+        <span class="section-title">Patient Advice (Legal Language)</span>
+        <span class="section-badge" id="rf-legaltext-badge">▸</span>
+      </div>
+      <div class="section-body" id="section-rf-legaltext" style="display:none">
+        <p style="font-size:12px; color:var(--text-muted); line-height:1.6">
+          This form is being completed because I have refused medical care and/or treatment as noted above. I understand that ambulance personnel are not physicians and are not qualified or authorized to make a diagnosis of my condition, and that their care is not a substitute for that of a physician. I recognize that I may have a serious injury or illness, which could get worse without medical attention even though I may feel fine at this time. I understand that I may change my mind and call 911 if I decide to accept treatment or need assistance later. I also understand that I may seek treatment from a physician or at an emergency department 24 hours a day. I acknowledge that the ambulance crew has explained this advice to me and that I have read this form completely and understand its provisions. I agree to release, indemnify, and hold harmless the ambulance service and its officers, members, or other agents from any and all claims, actions, cause of action, damages, or legal liabilities of any kind arising out of my condition or the refusal of medical care and/or transport, or of any act or omission of the ambulance service or its crew, even for negligence.
+        </p>
+      </div>
+    </div>
+
+    <!-- SIGNATURES -->
+    <div class="section">
+      <div class="section-header" onclick="toggleSection('rf-sigs')">
+        <span class="section-title">Signatures</span>
+        <span class="section-badge" id="rf-sigs-badge">▾</span>
+      </div>
+      <div class="section-body" id="section-rf-sigs">
+
+        <!-- Signed By -->
+        <div style="margin-bottom:14px">
+          <label style="display:block; margin-bottom:8px">Signed By</label>
+          <div class="rf-radio-group horizontal">
+            <label class="radio-row">
+              <input type="radio" name="rf_signerType" id="rf_signerPatient" value="Patient" onchange="onSignerPatientChange()">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Patient</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_signerType" id="rf_signerParent" value="Parent">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Parent</span>
+            </label>
+            <label class="radio-row">
+              <input type="radio" name="rf_signerType" id="rf_signerGuardian" value="Legal Guardian">
+              <div class="radio-dot"></div>
+              <span class="radio-label">Legal Guardian</span>
+            </label>
+          </div>
+          <div style="margin-top:10px">
+            <label class="check-row">
+              <input type="checkbox" id="rf_refusedSign" onchange="onPatientRefusedChange()">
+              <div class="check-box"></div>
+              <span class="check-label">Patient refused to sign refusal form</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="sig-grid">
+        <!-- Patient signature -->
+        <div class="sig-block" id="patientSigBlock">
+          <div class="sig-label">Patient / Guardian Signature</div>
+          <div class="sig-preview" id="previewPatient">
+            <canvas id="sigPatient" class="sig-canvas"></canvas>
+            <span class="sig-preview-empty">No signature</span>
+            <span class="sig-watermark">Patient</span>
+          </div>
+          <button class="sig-sign-btn" id="btnPatient" onclick="openSigModal(0)">✍ Sign</button>
+          <div class="field" style="margin-top:4px">
+            <label style="font-size:11px">Printed Name</label>
+            <input type="text" id="rf_printedPatient" placeholder="Printed name">
+          </div>
+        </div>
+
+        <!-- Witness signature -->
+        <div class="sig-block">
+          <div class="sig-label">Witness Signature</div>
+          <div class="sig-preview" id="previewWitness">
+            <canvas id="sigWitness" class="sig-canvas"></canvas>
+            <span class="sig-preview-empty">No signature</span>
+            <span class="sig-watermark">Witness</span>
+          </div>
+          <button class="sig-sign-btn" id="btnWitness" onclick="openSigModal(1)">✍ Sign</button>
+          <div class="field" style="margin-top:4px">
+            <label style="font-size:11px">Printed Name</label>
+            <input type="text" id="rf_printedWitness" placeholder="Printed name">
+          </div>
+        </div>
+
+        <!-- RMA signature -->
+        <div class="sig-block">
+          <div class="sig-label">RMA Administered By</div>
+          <div class="sig-preview" id="previewRMA">
+            <canvas id="sigRMA" class="sig-canvas"></canvas>
+            <span class="sig-preview-empty">No signature</span>
+            <span class="sig-watermark">EMT</span>
+          </div>
+          <button class="sig-sign-btn" id="btnRMA" onclick="openSigModal(2)">✍ Sign</button>
+          <div class="field" style="margin-top:4px">
+            <label style="font-size:11px">Printed Name</label>
+            <input type="text" id="rf_printedRMA" placeholder="Printed name">
+          </div>
+          <div class="field" style="margin-top:4px">
+            <label style="font-size:11px">Unit #</label>
+            <input type="text" id="rf_unitRMA" placeholder="Unit number">
+          </div>
+        </div>
+        </div><!-- /.sig-grid -->
+
+      </div>
+    </div>
+
+    <button class="generate-btn" onclick="downloadRefusalPDF()" style="background:#1a56a0">
+      <span>⬇</span> Download Refusal Form PDF
+    </button>
+
+  </div>
+
+  </div>
+</div>
+
+<!-- GCS MODAL -->
+<div class="modal-overlay" id="gcsModal" onclick="closeGCSOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Glasgow Coma Scale</div>
+      <button class="modal-close" onclick="closeGCS()">✕</button>
+    </div>
+
+    <!-- Eye Opening -->
+    <div class="gcs-section">
+      <div class="gcs-section-title">E — Eye Opening</div>
+      <div class="gcs-options" id="gcs-eye">
+        <button class="gcs-opt" data-val="4" onclick="selectGCS('eye',4,this)"><span class="gcs-score">4</span>Spontaneous</button>
+        <button class="gcs-opt" data-val="3" onclick="selectGCS('eye',3,this)"><span class="gcs-score">3</span>To Voice</button>
+        <button class="gcs-opt" data-val="2" onclick="selectGCS('eye',2,this)"><span class="gcs-score">2</span>To Pain</button>
+        <button class="gcs-opt" data-val="1" onclick="selectGCS('eye',1,this)"><span class="gcs-score">1</span>None</button>
+      </div>
+    </div>
+
+    <!-- Verbal Response -->
+    <div class="gcs-section">
+      <div class="gcs-section-title">V — Verbal Response</div>
+      <div class="gcs-options" id="gcs-verbal">
+        <button class="gcs-opt" data-val="5" onclick="selectGCS('verbal',5,this)"><span class="gcs-score">5</span>Oriented</button>
+        <button class="gcs-opt" data-val="4" onclick="selectGCS('verbal',4,this)"><span class="gcs-score">4</span>Confused</button>
+        <button class="gcs-opt" data-val="3" onclick="selectGCS('verbal',3,this)"><span class="gcs-score">3</span>Words</button>
+        <button class="gcs-opt" data-val="2" onclick="selectGCS('verbal',2,this)"><span class="gcs-score">2</span>Sounds</button>
+        <button class="gcs-opt" data-val="1" onclick="selectGCS('verbal',1,this)"><span class="gcs-score">1</span>None</button>
+      </div>
+    </div>
+
+    <!-- Motor Response -->
+    <div class="gcs-section">
+      <div class="gcs-section-title">M — Motor Response</div>
+      <div class="gcs-options" id="gcs-motor">
+        <button class="gcs-opt" data-val="6" onclick="selectGCS('motor',6,this)"><span class="gcs-score">6</span>Obeys</button>
+        <button class="gcs-opt" data-val="5" onclick="selectGCS('motor',5,this)"><span class="gcs-score">5</span>Localizes</button>
+        <button class="gcs-opt" data-val="4" onclick="selectGCS('motor',4,this)"><span class="gcs-score">4</span>Withdraws</button>
+        <button class="gcs-opt" data-val="3" onclick="selectGCS('motor',3,this)"><span class="gcs-score">3</span>Flexion</button>
+        <button class="gcs-opt" data-val="2" onclick="selectGCS('motor',2,this)"><span class="gcs-score">2</span>Extension</button>
+        <button class="gcs-opt" data-val="1" onclick="selectGCS('motor',1,this)"><span class="gcs-score">1</span>None</button>
+      </div>
+    </div>
+
+    <!-- Total -->
+    <div class="gcs-total-row">
+      <div class="gcs-total-label">Total GCS</div>
+      <div class="gcs-total-value" id="gcsTotalDisplay">—</div>
+      <div class="gcs-breakdown" id="gcsBreakdown">E? + V? + M?</div>
+    </div>
+
+    <button class="save-btn" onclick="confirmGCS()">Set GCS Score</button>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal" onclick="closeSettingsOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Crew Defaults</div>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Service Name</label>
+        <input type="text" id="s_service_modal" placeholder="e.g. New Canaan EMS">
+      </div>
+      <div class="field">
+        <label>Unit #</label>
+        <input type="text" id="s_unit_modal" placeholder="e.g. 353">
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Primary Caregiver</label>
+        <input type="text" id="s_primary_modal" placeholder="Last, First">
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Driver / Pilot</label>
+        <input type="text" id="s_driver_modal" placeholder="Last, First">
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Other Crew</label>
+        <input type="text" id="s_other_modal" placeholder="Last, First (optional)">
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Team Level</label>
+        <select id="s_team_modal">
+          <option>[Select]</option>
+          <option>BLS</option>
+          <option>ALS</option>
+        </select>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveSettings()">Save Defaults</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="accountModal" onclick="closeAccountOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Account</div>
+      <button class="modal-close" onclick="closeAccount()">✕</button>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Email Export</div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Your Email Address</label>
+        <input type="email" id="a_email_modal" placeholder="you@example.com" inputmode="email" autocomplete="email">
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">Used as the "To:" address when you tap Email Chart to Desktop. Stored locally on this device only.</div>
+      </div>
+    </div>
+
+    <div class="menu-divider" style="margin:16px 0"></div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Session</div>
+    <button class="menu-item menu-item-danger" style="width:100%;margin-bottom:0" onclick="closeAccount(); logoutUser();">
+      <span class="menu-icon">🚪</span>
+      <div>
+        <div class="menu-title">Sign Out</div>
+        <div class="menu-desc">End your current session</div>
+      </div>
+    </button>
+
+    <button class="save-btn" onclick="saveAccount()" style="margin-top:16px">Save</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="appSettingsModal" onclick="closeAppSettingsOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">App Settings</div>
+      <button class="modal-close" onclick="closeAppSettings()">✕</button>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">Display</div>
+    <div class="form-row full" style="margin-bottom:20px;">
+      <div class="field">
+        <label>Color Theme</label>
+        <div class="theme-toggle-group" id="themeToggleGroup_modal">
+          <button class="theme-toggle-btn" data-theme="auto" onclick="setThemeMode('auto')">☀️🌙 Auto</button>
+          <button class="theme-toggle-btn" data-theme="light" onclick="setThemeMode('light')">☀️ Light</button>
+          <button class="theme-toggle-btn" data-theme="dark" onclick="setThemeMode('dark')">🌙 Dark</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Auto follows your device's system setting.</div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;">AI &amp; Voice</div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Anthropic API Key</label>
+        <input type="password" id="as_apikey_modal" placeholder="sk-ant-…" autocomplete="off">
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for AI field extraction. Stored locally only.</div>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>OpenAI API Key <span style="color:var(--text-dim);font-weight:400">(for Whisper voice)</span></label>
+        <input type="password" id="as_openaikey_modal" placeholder="sk-…" autocomplete="off">
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Required for Whisper dictation (~$0.006/min). Stored locally only.</div>
+      </div>
+    </div>
+    <div class="form-row full">
+      <div class="field">
+        <label>Voice Engine</label>
+        <select id="as_voiceengine_modal">
+          <option value="auto">Auto (Web Speech on iPhone, Whisper on Mac)</option>
+          <option value="whisper">Whisper (OpenAI) — best accuracy, works everywhere</option>
+          <option value="webspeech">Web Speech API — free, instant, iPhone/Chrome only</option>
+        </select>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:3px">Auto recommended. Whisper requires OpenAI key (~$0.006/min).</div>
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="saveAppSettings()" style="margin-top:16px">Save</button>
+  </div>
+</div>
+
+<script src="js/dispatch.js"></script>
+<script src="js/app.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/auth.js"></script>
+
+<!-- Login/Signup Screen -->
+<div id="loginOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.95); z-index: 9999; align-items: center; justify-content: center;">
+  <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 40px; max-width: 450px; width: 90%;">
+    <div style="text-align: center; margin-bottom: 30px;">
+      <div style="margin-bottom: 16px;"><img src="data:image/png;base64,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" alt="NCEMS Logo" style="height: 80px; width: auto;"></div>
+      <h2 style="font-family: var(--mono); font-size: 20px; color: var(--accent); margin: 0; text-transform: uppercase; letter-spacing: 0.05em;">Chart Helper</h2>
+      <p style="font-family: var(--sans); font-size: 13px; color: var(--text-muted); margin: 8px 0 4px 0;">Secure Patient Documentation</p>
+      <p id="loginVersionBadge" style="font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin: 0; letter-spacing: 0.08em; text-transform: uppercase;"></p>
+      <script>document.getElementById('loginVersionBadge').textContent = APP_VERSION;</script>
+    </div>
+    
+    <!-- Login Form -->
+    <div id="loginForm">
+      <label style="font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">USERNAME</label>
+      <input type="text" id="loginUsername" class="form-input" placeholder="Enter your username" style="margin-bottom: 12px;" autocomplete="username" onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()">
+      
+      <label style="font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">PASSWORD</label>
+      <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" style="margin-bottom: 24px;" autocomplete="current-password" onkeydown="if(event.key==='Enter') loginUser()">
+      
+      <button class="btn-primary" onclick="loginUser()" style="width: 100%; margin-bottom: 12px;">Sign In</button>
+      <button class="btn-secondary" onclick="showSignupForm()" style="width: 100%;">Create New Account</button>
+      <div id="loginMsg" class="auth-msg"></div>
+    </div>
+    
+    <!-- Signup Form -->
+    <div id="signupForm" style="display: none;">
+      <div style="background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+        <p style="font-family: var(--mono); font-size: 11px; color: var(--accent); margin: 0; line-height: 1.5;">
+          <strong>⚠️ IMPORTANT:</strong><br>
+          Your username and password encrypt all patient data. If you forget them, your data is PERMANENTLY lost. Write them down securely.
+        </p>
+      </div>
+      
+      <label style="font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">USERNAME</label>
+      <input type="text" id="signupUsername" class="form-input" placeholder="Choose a username" style="margin-bottom: 12px;" autocomplete="username">
+      
+      <label style="font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">PASSWORD (min 8 characters)</label>
+      <input type="password" id="signupPassword" class="form-input" placeholder="Choose a strong password" style="margin-bottom: 12px;" autocomplete="new-password">
+      
+      <label style="font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">CONFIRM PASSWORD</label>
+      <input type="password" id="signupPasswordConfirm" class="form-input" placeholder="Re-enter password" style="margin-bottom: 24px;" autocomplete="new-password">
+      
+      <button class="btn-primary" onclick="signupUser()" style="width: 100%; margin-bottom: 12px;">Create Account & Sign In</button>
+      <button class="btn-secondary" onclick="showLoginForm()" style="width: 100%;">Back to Sign In</button>
+      <div id="signupMsg" class="auth-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for JSON import -->
+<input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleJSONImport(event)">
+
+<!-- Toast Notification Container -->
+<div id="toastContainer"></div>
+
+<!-- Confirm Modal -->
+<!-- PASSWORD PROMPT MODAL -->
+<div id="passwordPromptModal">
+  <div class="confirm-box">
+    <div class="confirm-title" id="passwordPromptTitle">Enter Password</div>
+    <div class="confirm-msg" id="passwordPromptMsg"></div>
+    <div style="margin: 12px 0;">
+      <input type="password" id="passwordPromptInput" class="auth-input"
+        placeholder="Enter password"
+        style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:6px;
+               border:1px solid var(--border); background:var(--surface2); color:var(--text);
+               font-size:14px; font-family:var(--mono);"
+        onkeydown="if(event.key==='Enter') document.getElementById('passwordPromptOk').click()">
+      <div id="passwordPromptError" style="color:var(--danger); font-size:12px; margin-top:6px; min-height:16px;"></div>
+    </div>
+    <div class="confirm-btns">
+      <button class="btn-secondary" id="passwordPromptCancel">Cancel</button>
+      <button class="btn-primary" id="passwordPromptOk" style="background:var(--accent); border-color:var(--accent);">Decrypt</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirmModal">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">Confirm</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-btns">
+      <button class="btn-secondary" id="confirmCancel">Cancel</button>
+      <button class="btn-primary" id="confirmOk" style="background:var(--danger); border-color:var(--danger);">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROTOCOLS SIDEBAR -->
+<div class="protocol-overlay" id="protocolOverlay" onclick="toggleProtocolsSidebar()"></div>
+<div class="protocols-sidebar" id="protocolsSidebar">
+
+  <!-- HEADER -->
+  <div class="protocols-header">
+    <span class="protocols-title" style="display:flex;align-items:center;gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> Reference</span>
+    <button class="protocols-close" onclick="toggleProtocolsSidebar()">✕</button>
+  </div>
+
+  <!-- QUICK CONTACTS (always visible, no collapse) -->
+  <div class="ref-contacts-section">
+    <div class="ref-contacts-title">Quick Contacts</div>
+    <div class="ref-call-buttons">
+      <a href="tel:2033380762" class="btn-call btn-call-medical">
+        <span class="btn-call-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 9.63 19.79 19.79 0 01.88 1a2 2 0 012-.22h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        </span>
+        <span class="btn-call-text">
+          <span class="btn-call-label">Medical Direction</span>
+          <span class="btn-call-number">203-338-0762</span>
+        </span>
+      </a>
+      <a href="tel:18002221222" class="btn-call btn-call-poison">
+        <span class="btn-call-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 9.63 19.79 19.79 0 01.88 1a2 2 0 012-.22h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        </span>
+        <span class="btn-call-text">
+          <span class="btn-call-label">Poison Control</span>
+          <span class="btn-call-number">1-800-222-1222</span>
+        </span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Scrollable area for guides + protocols -->
+  <div style="flex:1; overflow-y:auto; display:flex; flex-direction:column;">
+
+    <!-- EMT QUICK REFERENCE GUIDES - default closed -->
+    <div class="ref-section-divider" onclick="toggleRefSection('refGuidesBody', this)">
+      <span class="ref-section-divider-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></span>
+      <span>EMT Quick References</span>
+      <span class="ref-section-toggle">▶</span>
+    </div>
+    <div id="refGuidesBody" class="ref-guides-content" style="display:none;">
+
+      <!-- BE-FAST -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.44 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 013.32-3.97A2.5 2.5 0 019.5 2z"/><path d="M14.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 004.96-.44 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-3.32-3.97A2.5 2.5 0 0014.5 2z"/></svg></span> BE-FAST Stroke Scale</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <div class="ref-guide-row"><span class="ref-guide-key">B</span><span class="ref-guide-val"><strong>Balance</strong> — Sudden loss of balance or coordination</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">E</span><span class="ref-guide-val"><strong>Eyes</strong> — Sudden vision change or double vision</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">F</span><span class="ref-guide-val"><strong>Face</strong> — Ask to smile; one side drooping?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">A</span><span class="ref-guide-val"><strong>Arms</strong> — Ask to raise both arms; one drifts down?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">S</span><span class="ref-guide-val"><strong>Speech</strong> — Slurred, strange, or unable to speak?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">T</span><span class="ref-guide-val"><strong>Time</strong> — <span class="ref-flag">Note onset time. Call immediately.</span></span></div>
+          <div class="ref-guide-note">Last known well time is critical for tPA eligibility window (typically 3–4.5 hrs).</div>
+        </div>
+      </div>
+
+      <!-- Cincinnati Stroke Scale -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.44 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 013.32-3.97A2.5 2.5 0 019.5 2z"/><path d="M14.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 004.96-.44 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-3.32-3.97A2.5 2.5 0 0014.5 2z"/></svg></span> Cincinnati Stroke Scale</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <div class="ref-guide-row"><span class="ref-guide-key">1</span><span class="ref-guide-val"><strong>Facial Droop</strong> — Ask to show teeth or smile. Normal: both sides move equally. Abnormal: one side doesn't move.</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">2</span><span class="ref-guide-val"><strong>Arm Drift</strong> — Eyes closed, both arms out 10 sec. Normal: equal. Abnormal: one drifts down or pronates.</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">3</span><span class="ref-guide-val"><strong>Abnormal Speech</strong> — "You can't teach an old dog new tricks." Normal: correct words, clear. Abnormal: slurred, wrong words, or none.</span></div>
+          <div class="ref-guide-note"><span class="ref-flag">1 abnormal finding = 72% probability of stroke.</span> All 3 abnormal = &gt;85%.</div>
+        </div>
+      </div>
+
+      <!-- GCS -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></span> Glasgow Coma Scale (GCS)</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <table class="ref-guide-table">
+            <tr><th>Category</th><th>Response</th><th>Score</th></tr>
+            <tr><td rowspan="4"><strong>Eye</strong></td><td>Spontaneous</td><td>4</td></tr>
+            <tr><td>To voice</td><td>3</td></tr>
+            <tr><td>To pain</td><td>2</td></tr>
+            <tr><td>None</td><td>1</td></tr>
+            <tr><td rowspan="5"><strong>Verbal</strong></td><td>Oriented</td><td>5</td></tr>
+            <tr><td>Confused</td><td>4</td></tr>
+            <tr><td>Words only</td><td>3</td></tr>
+            <tr><td>Sounds only</td><td>2</td></tr>
+            <tr><td>None</td><td>1</td></tr>
+            <tr><td rowspan="6"><strong>Motor</strong></td><td>Obeys commands</td><td>6</td></tr>
+            <tr><td>Localizes pain</td><td>5</td></tr>
+            <tr><td>Withdraws</td><td>4</td></tr>
+            <tr><td>Flexion (decorticate)</td><td>3</td></tr>
+            <tr><td>Extension (decerebrate)</td><td>2</td></tr>
+            <tr><td>None</td><td>1</td></tr>
+          </table>
+          <div class="ref-guide-note">Max 15 (normal). <span class="ref-flag">≤8 = severe TBI, consider airway.</span> 9–12 = moderate. 13–15 = mild.</div>
+        </div>
+      </div>
+
+      <!-- AVPU -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span> AVPU Scale</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <div class="ref-guide-row"><span class="ref-guide-key">A</span><span class="ref-guide-val"><strong>Alert</strong> — Awake, aware, responds appropriately</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">V</span><span class="ref-guide-val"><strong>Voice</strong> — Responds only to verbal stimuli</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">P</span><span class="ref-guide-val"><strong>Pain</strong> — Responds only to painful stimuli</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">U</span><span class="ref-guide-val"><strong>Unresponsive</strong> — No response to any stimuli</span></div>
+          <div class="ref-guide-note">V, P, or U roughly corresponds to GCS ≤13, ≤8, and ≤6 respectively.</div>
+        </div>
+      </div>
+
+      <!-- OPQRST -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></span> OPQRST — Pain Assessment</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <div class="ref-guide-row"><span class="ref-guide-key">O</span><span class="ref-guide-val"><strong>Onset</strong> — When did it start? What were you doing?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">P</span><span class="ref-guide-val"><strong>Provocation/Palliation</strong> — What makes it better or worse?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">Q</span><span class="ref-guide-val"><strong>Quality</strong> — Sharp, dull, crushing, burning, tearing?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">R</span><span class="ref-guide-val"><strong>Radiation</strong> — Does it go anywhere else? Jaw, arm, back?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">S</span><span class="ref-guide-val"><strong>Severity</strong> — Rate 0–10. How does it compare to prior episodes?</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">T</span><span class="ref-guide-val"><strong>Time</strong> — Constant or intermittent? Getting better or worse?</span></div>
+        </div>
+      </div>
+
+      <!-- SAMPLE -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> SAMPLE History</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <div class="ref-guide-row"><span class="ref-guide-key">S</span><span class="ref-guide-val"><strong>Signs &amp; Symptoms</strong> — Chief complaint, what patient notices</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">A</span><span class="ref-guide-val"><strong>Allergies</strong> — Medications, environmental, food</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">M</span><span class="ref-guide-val"><strong>Medications</strong> — Rx, OTC, herbals, patches, inhalers</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">P</span><span class="ref-guide-val"><strong>Pertinent History</strong> — Relevant past medical/surgical history</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">L</span><span class="ref-guide-val"><strong>Last Oral Intake</strong> — Food and drink, when</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key">E</span><span class="ref-guide-val"><strong>Events</strong> — What led up to this? Any trauma or triggers?</span></div>
+        </div>
+      </div>
+
+      <!-- Pediatric Vitals -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></span> Pediatric Normal Vitals</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <table class="ref-guide-table">
+            <tr><th>Age</th><th>HR</th><th>RR</th><th>SBP</th></tr>
+            <tr><td>Newborn</td><td>120–160</td><td>40–60</td><td>60–90</td></tr>
+            <tr><td>Infant (&lt;1 yr)</td><td>100–160</td><td>30–60</td><td>70–100</td></tr>
+            <tr><td>Toddler (1–3)</td><td>90–150</td><td>24–40</td><td>80–110</td></tr>
+            <tr><td>Preschool (3–5)</td><td>80–140</td><td>22–34</td><td>80–110</td></tr>
+            <tr><td>School (6–12)</td><td>70–120</td><td>18–30</td><td>85–120</td></tr>
+            <tr><td>Adolescent (13+)</td><td>60–100</td><td>12–20</td><td>90–130</td></tr>
+          </table>
+          <div class="ref-guide-note">Min acceptable SBP (peds): 70 + (2 × age in years).</div>
+        </div>
+      </div>
+
+      <!-- SpO2 / BGL -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> SpO₂ &amp; BGL Reference</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <div class="ref-guide-row"><span class="ref-guide-key" style="min-width:60px">SpO₂</span><span class="ref-guide-val">
+            ≥95% Normal<br>
+            91–94% Mild hypoxia — supplemental O₂<br>
+            86–90% Moderate — high-flow O₂<br>
+            <span class="ref-flag">≤85% Severe — immediate intervention</span>
+          </span></div>
+          <div style="height:8px"></div>
+          <div class="ref-guide-row"><span class="ref-guide-key" style="min-width:60px">BGL</span><span class="ref-guide-val">
+            70–110 mg/dL Normal (fasting)<br>
+            <span class="ref-flag">&lt;70 mg/dL Hypoglycemia — treat</span><br>
+            &gt;180 mg/dL Hyperglycemia<br>
+            <span class="ref-flag">&gt;300 mg/dL Critical — monitor closely</span>
+          </span></div>
+        </div>
+      </div>
+
+      <!-- Rule of Nines -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg></span> Rule of Nines — Burns BSA</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <table class="ref-guide-table">
+            <tr><th>Body Area</th><th>Adult</th><th>Child</th></tr>
+            <tr><td>Head &amp; neck</td><td>9%</td><td>18%</td></tr>
+            <tr><td>Each arm</td><td>9%</td><td>9%</td></tr>
+            <tr><td>Chest (anterior)</td><td>9%</td><td>9%</td></tr>
+            <tr><td>Abdomen (anterior)</td><td>9%</td><td>9%</td></tr>
+            <tr><td>Upper back</td><td>9%</td><td>9%</td></tr>
+            <tr><td>Lower back/buttocks</td><td>9%</td><td>9%</td></tr>
+            <tr><td>Each thigh</td><td>9%</td><td>7%</td></tr>
+            <tr><td>Each lower leg</td><td>9%</td><td>5%</td></tr>
+            <tr><td>Genitalia</td><td>1%</td><td>1%</td></tr>
+          </table>
+          <div class="ref-guide-note">Palm of patient's hand ≈ 1% BSA. <span class="ref-flag">Burns &gt;20% BSA, airway, or circumferential = critical.</span></div>
+        </div>
+      </div>
+
+      <!-- Shock -->
+      <div class="ref-guide-card">
+        <div class="ref-guide-card-header" onclick="toggleGuideCard(this)">
+          <span class="ref-guide-card-header-left"><span class="ref-guide-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> Shock — Signs &amp; Types</span>
+          <span class="ref-guide-card-toggle">▶</span>
+        </div>
+        <div class="ref-guide-card-body">
+          <div style="margin-bottom:6px; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; opacity:0.6;">Compensated vs. Decompensated</div>
+          <div class="ref-guide-row"><span class="ref-guide-key" style="min-width:90px">Compensated</span><span class="ref-guide-val">Normal BP, ↑HR, pale/cool/diaphoretic, anxiety, ↑RR</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key ref-flag" style="min-width:90px">Decompensated</span><span class="ref-guide-val"><span class="ref-flag">↓BP, altered LOC, mottling — imminent arrest</span></span></div>
+          <div style="height:8px"></div>
+          <div style="margin-bottom:6px; font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; opacity:0.6;">Types</div>
+          <div class="ref-guide-row"><span class="ref-guide-key" style="min-width:90px">Hypovolemic</span><span class="ref-guide-val">Hemorrhage, dehydration, burns</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key" style="min-width:90px">Cardiogenic</span><span class="ref-guide-val">MI, CHF, arrhythmia — JVD, crackles</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key" style="min-width:90px">Distributive</span><span class="ref-guide-val">Septic, anaphylactic, neurogenic</span></div>
+          <div class="ref-guide-row"><span class="ref-guide-key" style="min-width:90px">Obstructive</span><span class="ref-guide-val">Tension PTX, tamponade, PE</span></div>
+        </div>
+      </div>
+
+    </div><!-- /ref-guides-body -->
+
+    <!-- PROTOCOLS SECTION - default closed -->
+    <div class="ref-section-divider" onclick="toggleRefSection('refProtocolsBody', this)">
+      <span class="ref-section-divider-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+      <span>CT EMS Protocols</span>
+      <span class="ref-section-toggle">▶</span>
+    </div>
+    <div id="refProtocolsBody" style="display:none; flex-direction:column;">
+      <div class="protocols-search">
+        <input type="text" id="protocolSearchInput" placeholder="Search protocols..." oninput="searchProtocols(this.value)">
+      </div>
+      <div class="protocols-content" id="protocolsContent">
+        <!-- Protocol sections will be populated by JavaScript -->
+      </div>
+    </div>
+
+  </div><!-- /scrollable area -->
+</div><!-- /protocols-sidebar -->
+
+<!-- PROTOCOL DETAIL MODAL -->
+<div class="protocol-modal" id="protocolModal" onclick="closeProtocolModal(event)">
+  <div class="protocol-modal-content" onclick="event.stopPropagation()">
+    <div class="protocol-modal-header">
+      <div class="protocol-modal-title-group">
+        <div class="protocol-modal-id" id="modalProtocolId"></div>
+        <div class="protocol-modal-title" id="modalProtocolTitle"></div>
+        <div class="protocol-modal-meta" id="modalProtocolMeta"></div>
+      </div>
+      <button class="protocol-modal-close" onclick="closeProtocolModal()">✕</button>
+    </div>
+    <div class="protocol-modal-body" id="modalProtocolBody">
+      <!-- Protocol details will be populated by JavaScript -->
+    </div>
+  </div>
+</div>
+
+<!-- SIGNATURE MODAL -->
+<!-- ====== PHOTO LIGHTBOX ====== -->
+<div id="refLightbox" style="display:none" onclick="closeRefLightbox()">
+  <div class="ref-lb-inner" onclick="event.stopPropagation()">
+    <div class="ref-lb-toolbar">
+      <span class="ref-lb-caption-display" id="refLbCaption"></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn-icon" onclick="saveRefPhotoToDevice()" title="Save to device">⬇ Save</button>
+        <button class="btn-icon" onclick="closeRefLightbox()">✕</button>
+      </div>
+    </div>
+    <img id="refLbImg" src="" alt="Reference photo">
+  </div>
+</div>
+
+
+<div id="sigModalBackdrop"></div>
+
+<div id="sigModal" onclick="event.stopPropagation()">
+  <div class="sig-modal-header">
+    <div class="sig-modal-header-row1">
+      <span class="sig-modal-title" id="sigModalTitle">Signature</span>
+    </div>
+    <div class="sig-modal-header-row2">
+      <div class="sig-modal-nav">
+        <button class="sig-nav-btn" onclick="event.stopPropagation(); sigModalNav(-1)">◀</button>
+        <span class="sig-modal-step" id="sigModalStep"></span>
+        <button class="sig-nav-btn" onclick="event.stopPropagation(); sigModalNav(1)">▶</button>
+      </div>
+      <div class="sig-modal-actions">
+        <button class="sig-clear-btn" onclick="sigModalClear()">Clear</button>
+        <button class="sig-modal-done" disabled onclick="closeSigModal()">Done</button>
+      </div>
+    </div>
+  </div>
+  <div class="sig-modal-canvas-wrap">
+    <canvas id="sigModalCanvas"></canvas>
+    <div class="sig-modal-name">
+      <label id="sigModalNameLabel">Printed Name</label>
+      <input type="text" id="sigModalNameInput" placeholder="Printed name" autocomplete="off">
+    </div>
+    <div class="sig-modal-name" id="sigModalUnitRow" style="display:none">
+      <label>Unit #</label>
+      <input type="text" id="sigModalUnitInput" placeholder="Unit number" autocomplete="off">
+    </div>
+    <div class="sig-rotate-hint">↻ &nbsp;Rotate to landscape for a wider signing area</div>
+    <div class="sig-landscape-hint">↺ &nbsp;Rotate to portrait to complete signing</div>
+  </div>
+</div>
+
+</body>
+</html>

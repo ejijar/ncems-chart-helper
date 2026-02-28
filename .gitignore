@@ -1,0 +1,5 @@
+.DS_Store
+*.backup
+patch_*.py
+patches/
+ems-chart-helper-v9_1.html
