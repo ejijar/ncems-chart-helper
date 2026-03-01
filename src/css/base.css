@@ -4439,6 +4439,26 @@
   z-index: 99;
 }
 .ai-bar.visible { display: block; }
+/* Override ai-process-btn inside ai-bar for larger tap target */
+.ai-bar .ai-process-btn {
+  width: 100%;
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 10px;
+  justify-content: center;
+  gap: 10px;
+}
+.ai-bar .ai-process-btn.ready {
+  background: rgba(249,115,22,0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ai-bar .item-count-badge {
+  font-size: 11px;
+  padding: 2px 9px;
+  margin-left: 4px;
+}
 .cad-summary-item { display: flex; flex-direction: column; gap: 1px; }
 .cad-summary-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
 .cad-summary-value { color: var(--text); font-size: 12px; }

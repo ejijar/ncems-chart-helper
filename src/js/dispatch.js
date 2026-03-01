@@ -1426,8 +1426,11 @@ function playBucketAudio(url) {
 function updateAIBtn() {
   const btn = document.getElementById('aiProcessBtn');
   const badge = document.getElementById('aiItemCount');
-  if (!btn || !badge) return;
-  badge.textContent = bucketItems.length;
+  if (!btn) return;
+  if (badge) {
+    badge.textContent = bucketItems.length;
+    badge.style.display = bucketItems.length > 0 ? 'inline-block' : 'none';
+  }
   btn.classList.toggle('ready', bucketItems.length > 0);
 }
 

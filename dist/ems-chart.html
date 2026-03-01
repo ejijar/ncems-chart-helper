@@ -4449,6 +4449,26 @@
   z-index: 99;
 }
 .ai-bar.visible { display: block; }
+/* Override ai-process-btn inside ai-bar for larger tap target */
+.ai-bar .ai-process-btn {
+  width: 100%;
+  padding: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 10px;
+  justify-content: center;
+  gap: 10px;
+}
+.ai-bar .ai-process-btn.ready {
+  background: rgba(249,115,22,0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ai-bar .item-count-badge {
+  font-size: 11px;
+  padding: 2px 9px;
+  margin-left: 4px;
+}
 .cad-summary-item { display: flex; flex-direction: column; gap: 1px; }
 .cad-summary-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
 .cad-summary-value { color: var(--text); font-size: 12px; }
@@ -7259,8 +7279,11 @@ function playBucketAudio(url) {
 function updateAIBtn() {
   const btn = document.getElementById('aiProcessBtn');
   const badge = document.getElementById('aiItemCount');
-  if (!btn || !badge) return;
-  badge.textContent = bucketItems.length;
+  if (!btn) return;
+  if (badge) {
+    badge.textContent = bucketItems.length;
+    badge.style.display = bucketItems.length > 0 ? 'inline-block' : 'none';
+  }
   btn.classList.toggle('ready', bucketItems.length > 0);
 }
 
