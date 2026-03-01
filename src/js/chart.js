@@ -231,8 +231,8 @@ function startRecordingWS() {
   document.getElementById('sceneWaveform').classList.add('active');
   document.getElementById('voiceBtn').classList.add('recording');
   document.getElementById('voiceBtn').textContent = '⏹';
-  document.getElementById('voiceStatus').textContent = '🎙 Recording… tap to stop';
-  document.getElementById('voiceStatus').classList.add('active');
+  { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.textContent = '🎙 Recording… tap to stop'; }
+  { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.classList.add('active'); }
 }
 
 // Async Whisper start — only called when Whisper engine is active (no gesture requirement)
@@ -244,8 +244,8 @@ async function startRecordingWhisper() {
   document.getElementById('sceneWaveform').classList.add('active');
   document.getElementById('voiceBtn').classList.add('recording');
   document.getElementById('voiceBtn').textContent = '⏹';
-  document.getElementById('voiceStatus').textContent = '🎙 Recording… tap to stop';
-  document.getElementById('voiceStatus').classList.add('active');
+  { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.textContent = '🎙 Recording… tap to stop'; }
+  { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.classList.add('active'); }
 }
 
 // Keep startRecording as alias for backward compat (e.g. any onclick still referencing it)
@@ -261,19 +261,19 @@ async function stopRecording() {
   document.getElementById('voiceBtn').textContent = '🎙';
 
   if (useWhisper()) {
-    document.getElementById('voiceStatus').textContent = 'Transcribing…';
-    document.getElementById('voiceStatus').classList.add('active');
+    { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.textContent = 'Transcribing…'; }
+    { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.classList.add('active'); }
     const transcript = await whisperStop();
     if (transcript && !transcript.startsWith('ERROR:')) {
       const ta = document.getElementById('sceneNotes');
       ta.value = (ta.value ? ta.value + ' ' : '') + transcript;
-      document.getElementById('voiceStatus').textContent = '✓ Done — review above';
+      { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.textContent = '✓ Done — review above'; }
     } else {
-      document.getElementById('voiceStatus').textContent = transcript ? '✗ ' + transcript.slice(6) : '✗ No audio captured';
+      { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.textContent = transcript ? '✗ ' + transcript.slice(6) : '✗ No audio captured'; }
     }
     setTimeout(() => {
-      document.getElementById('voiceStatus').textContent = 'Tap to dictate scene notes';
-      document.getElementById('voiceStatus').classList.remove('active');
+      { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.textContent = 'Tap to dictate scene notes'; }
+      { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.classList.remove('active'); }
     }, 3000);
   } else {
     if (recognition) { const h = recognition; recognition = null; if (h && typeof h.stop === 'function') h.stop(); }
@@ -284,8 +284,8 @@ async function stopRecording() {
       const ta = document.getElementById('sceneNotes');
       if (ta) ta.value = (ta.value ? ta.value + ' ' : '') + statusTxt.slice(3).trim();
     }
-    document.getElementById('voiceStatus').textContent = 'Tap to dictate scene notes';
-    document.getElementById('voiceStatus').classList.remove('active');
+    { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.textContent = 'Tap to dictate scene notes'; }
+    { const _vs = document.getElementById('voiceStatus'); if (_vs) _vs.classList.remove('active'); }
   }
 }
 
