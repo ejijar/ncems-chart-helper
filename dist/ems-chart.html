@@ -4519,6 +4519,14 @@
   padding: 6px 10px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
 }
 .post-call-btn:hover, .post-call-btn.active { border-color: var(--accent); color: var(--accent); }
+.cad-post-call-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text-muted); font-family: var(--mono); font-size: 10px;
+  padding: 3px 8px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.cad-post-call-btn:hover, .cad-post-call-btn.active { border-color: var(--accent); color: var(--accent); }
 }
 </style>
 </head>
@@ -4534,13 +4542,6 @@
   </div>
   <div class="header-right">
     <button class="btn-icon" onclick="toggleProtocolsSidebar()" title="Reference" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> Reference</button>
-    <button class="post-call-btn" id="postCallBtn" onclick="toggleDrawer()" style="display:none;">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-      </svg>
-      Post-Call
-    </button>
     <button class="hamburger-btn" id="menuButton" onclick="toggleMenu()" title="Menu" aria-label="Menu">
       <span></span>
       <span></span>
@@ -4908,6 +4909,13 @@
 
     <!-- CAD summary bar -->
     <div class="cad-summary" id="cadSummary">
+      <button class="cad-post-call-btn" id="postCallBtn" onclick="toggleDrawer()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Post-Call
+      </button>
       <div class="cad-summary-item">
         <span class="cad-summary-label">On Scene</span>
         <span class="cad-summary-value" id="sumArv">—</span>
@@ -4968,7 +4976,7 @@
         </svg>
         Upload
       </button>
-      <button class="capture-btn" onclick="toggleVoice()" id="voiceBtn">
+      <button class="capture-btn" onclick="toggleBucketVoice()" id="voiceBtn">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
           <path d="M19 10v2a7 7 0 01-14 0v-2"/>
@@ -4976,6 +4984,7 @@
           <line x1="8" y1="23" x2="16" y2="23"/>
         </svg>
         Voice
+        <span id="voiceBtnLabel" style="font-size:9px;display:none;color:var(--red);">STOP</span>
       </button>
       <button class="capture-btn" onclick="openNote()" id="noteBtn">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4988,7 +4997,7 @@
 
     <!-- Hidden file inputs for photos -->
     <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
-    <input type="file" id="photoUploadInput" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+    <input type="file" id="photoUploadInput" accept="image/*,application/pdf" style="display:none" onchange="handlePhoto(event)">
 
   </div>
 
@@ -6807,11 +6816,13 @@ function switchTab(tab, el) {
   document.getElementById('tab-chart').style.display    = tab === 'chart'    ? 'block' : 'none';
   document.getElementById('tab-refusal').style.display  = tab === 'refusal'  ? 'block' : 'none';
 
-  // Show/hide capture bar and Post-Call button for On-Scene tab
+  // Show/hide capture bar for On-Scene tab
   const captureBar = document.getElementById('captureBarEl');
-  const postCallBtn = document.getElementById('postCallBtn');
   if (captureBar) captureBar.classList.toggle('visible', tab === 'input');
-  if (postCallBtn) postCallBtn.style.display = tab === 'input' ? 'flex' : 'none';
+  // Always show CAD summary bar on On-Scene tab (Post-Call button lives there)
+  const cadSummary = document.getElementById('cadSummary');
+  if (cadSummary && tab === 'input') cadSummary.classList.add('visible');
+  if (cadSummary && tab !== 'input') cadSummary.classList.remove('visible');
 
   // Close drawer when leaving On-Scene tab
   if (tab !== 'input') {
@@ -6836,9 +6847,9 @@ let audioChunks = [];
 function toggleDrawer() {
   const drawer = document.getElementById('drawer');
   const btn = document.getElementById('postCallBtn');
-  if (drawer && btn) {
+  if (drawer) {
     drawer.classList.toggle('open');
-    btn.classList.toggle('active');
+    if (btn) btn.classList.toggle('active');
   }
 }
 
@@ -6957,21 +6968,22 @@ function handlePhoto(e) {
   e.target.value = '';
 }
 
-async function toggleVoice() {
+async function toggleBucketVoice() {
   const btn = document.getElementById('voiceBtn');
   if (!isCapturing) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+      const mimeType = ['audio/mp4', 'audio/aac', 'audio/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       audioChunks = [];
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
         const url = URL.createObjectURL(blob);
         addBucketItem({ type: 'voice', url, transcript: '' });
         stream.getTracks().forEach(t => t.stop());
       };
-      mediaRecorder.start();
+      mediaRecorder.start(100);
       isCapturing = true;
       btn.classList.add('recording');
     } catch(e) {
@@ -7029,6 +7041,8 @@ function addBucketItem(item) {
   bucketItems.unshift(item);
   renderBucket();
   updateAIBtn();
+  const bucket = document.getElementById('bucket');
+  if (bucket) bucket.scrollTop = 0;
 }
 
 function deleteBucketItem(id) {

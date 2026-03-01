@@ -1060,11 +1060,13 @@ function switchTab(tab, el) {
   document.getElementById('tab-chart').style.display    = tab === 'chart'    ? 'block' : 'none';
   document.getElementById('tab-refusal').style.display  = tab === 'refusal'  ? 'block' : 'none';
 
-  // Show/hide capture bar and Post-Call button for On-Scene tab
+  // Show/hide capture bar for On-Scene tab
   const captureBar = document.getElementById('captureBarEl');
-  const postCallBtn = document.getElementById('postCallBtn');
   if (captureBar) captureBar.classList.toggle('visible', tab === 'input');
-  if (postCallBtn) postCallBtn.style.display = tab === 'input' ? 'flex' : 'none';
+  // Always show CAD summary bar on On-Scene tab (Post-Call button lives there)
+  const cadSummary = document.getElementById('cadSummary');
+  if (cadSummary && tab === 'input') cadSummary.classList.add('visible');
+  if (cadSummary && tab !== 'input') cadSummary.classList.remove('visible');
 
   // Close drawer when leaving On-Scene tab
   if (tab !== 'input') {
@@ -1089,9 +1091,9 @@ let audioChunks = [];
 function toggleDrawer() {
   const drawer = document.getElementById('drawer');
   const btn = document.getElementById('postCallBtn');
-  if (drawer && btn) {
+  if (drawer) {
     drawer.classList.toggle('open');
-    btn.classList.toggle('active');
+    if (btn) btn.classList.toggle('active');
   }
 }
 
@@ -1210,21 +1212,22 @@ function handlePhoto(e) {
   e.target.value = '';
 }
 
-async function toggleVoice() {
+async function toggleBucketVoice() {
   const btn = document.getElementById('voiceBtn');
   if (!isCapturing) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+      const mimeType = ['audio/mp4', 'audio/aac', 'audio/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       audioChunks = [];
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const blob = new Blob(audioChunks, { type: mimeType || 'audio/webm' });
         const url = URL.createObjectURL(blob);
         addBucketItem({ type: 'voice', url, transcript: '' });
         stream.getTracks().forEach(t => t.stop());
       };
-      mediaRecorder.start();
+      mediaRecorder.start(100);
       isCapturing = true;
       btn.classList.add('recording');
     } catch(e) {
@@ -1282,6 +1285,8 @@ function addBucketItem(item) {
   bucketItems.unshift(item);
   renderBucket();
   updateAIBtn();
+  const bucket = document.getElementById('bucket');
+  if (bucket) bucket.scrollTop = 0;
 }
 
 function deleteBucketItem(id) {

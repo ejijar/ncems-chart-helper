@@ -4509,4 +4509,12 @@
   padding: 6px 10px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
 }
 .post-call-btn:hover, .post-call-btn.active { border-color: var(--accent); color: var(--accent); }
+.cad-post-call-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text-muted); font-family: var(--mono); font-size: 10px;
+  padding: 3px 8px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.cad-post-call-btn:hover, .cad-post-call-btn.active { border-color: var(--accent); color: var(--accent); }
 }

@@ -21,13 +21,6 @@
   </div>
   <div class="header-right">
     <button class="btn-icon" onclick="toggleProtocolsSidebar()" title="Reference" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> Reference</button>
-    <button class="post-call-btn" id="postCallBtn" onclick="toggleDrawer()" style="display:none;">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-      </svg>
-      Post-Call
-    </button>
     <button class="hamburger-btn" id="menuButton" onclick="toggleMenu()" title="Menu" aria-label="Menu">
       <span></span>
       <span></span>
@@ -395,6 +388,13 @@
 
     <!-- CAD summary bar -->
     <div class="cad-summary" id="cadSummary">
+      <button class="cad-post-call-btn" id="postCallBtn" onclick="toggleDrawer()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Post-Call
+      </button>
       <div class="cad-summary-item">
         <span class="cad-summary-label">On Scene</span>
         <span class="cad-summary-value" id="sumArv">—</span>
@@ -455,7 +455,7 @@
         </svg>
         Upload
       </button>
-      <button class="capture-btn" onclick="toggleVoice()" id="voiceBtn">
+      <button class="capture-btn" onclick="toggleBucketVoice()" id="voiceBtn">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
           <path d="M19 10v2a7 7 0 01-14 0v-2"/>
@@ -463,6 +463,7 @@
           <line x1="8" y1="23" x2="16" y2="23"/>
         </svg>
         Voice
+        <span id="voiceBtnLabel" style="font-size:9px;display:none;color:var(--red);">STOP</span>
       </button>
       <button class="capture-btn" onclick="openNote()" id="noteBtn">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -475,7 +476,7 @@
 
     <!-- Hidden file inputs for photos -->
     <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
-    <input type="file" id="photoUploadInput" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+    <input type="file" id="photoUploadInput" accept="image/*,application/pdf" style="display:none" onchange="handlePhoto(event)">
 
   </div>
 
