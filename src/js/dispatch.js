@@ -1254,7 +1254,9 @@ function submitNote() {
 
 function bucketNow() {
   const d = new Date();
-  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  return d.getHours().toString().padStart(2,'0') + ':' +
+         d.getMinutes().toString().padStart(2,'0') + ':' +
+         d.getSeconds().toString().padStart(2,'0');
 }
 
 function inferStage(timestamp) {
@@ -1283,6 +1285,7 @@ function addBucketItem(item) {
 }
 
 function deleteBucketItem(id) {
+  if (!confirm('Remove this item from the record?')) return;
   bucketItems = bucketItems.filter(i => i.id !== id);
   renderBucket();
   updateAIBtn();

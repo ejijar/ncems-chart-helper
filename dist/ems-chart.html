@@ -4958,7 +4958,15 @@
           <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
           <circle cx="12" cy="13" r="4"/>
         </svg>
-        Photo
+        Camera
+      </button>
+      <button class="capture-btn" onclick="document.getElementById('photoUploadInput').click()" id="uploadBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload
       </button>
       <button class="capture-btn" onclick="toggleVoice()" id="voiceBtn">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4978,8 +4986,9 @@
       </button>
     </div>
 
-    <!-- Hidden file input for photos -->
+    <!-- Hidden file inputs for photos -->
     <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+    <input type="file" id="photoUploadInput" accept="image/*" style="display:none" onchange="handlePhoto(event)">
 
   </div>
 
@@ -6992,7 +7001,9 @@ function submitNote() {
 
 function bucketNow() {
   const d = new Date();
-  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+  return d.getHours().toString().padStart(2,'0') + ':' +
+         d.getMinutes().toString().padStart(2,'0') + ':' +
+         d.getSeconds().toString().padStart(2,'0');
 }
 
 function inferStage(timestamp) {
@@ -7021,6 +7032,7 @@ function addBucketItem(item) {
 }
 
 function deleteBucketItem(id) {
+  if (!confirm('Remove this item from the record?')) return;
   bucketItems = bucketItems.filter(i => i.id !== id);
   renderBucket();
   updateAIBtn();
