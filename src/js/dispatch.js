@@ -1541,7 +1541,7 @@ function buildBriefingHTML(briefing, isFemale) {
   html += '</ul></div>';
 
   if (briefing.pearls && briefing.pearls.length > 0) {
-    html += '<div class="briefing-section"><div class="briefing-section-label"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:5px"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0018 8 6 6 0 006 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 018.91 14"/></svg>Pearls</div><ul class="briefing-list">';
+    html += '<div class="briefing-section"><div class="briefing-section-label">Pearls</div><ul class="briefing-list">';
     for (const pearl of briefing.pearls) html += '<li>' + pearl + '</li>';
     html += '</ul></div>';
   }
