@@ -3951,32 +3951,50 @@
 .briefing-list li {
   font-family: var(--sans);
   font-size: 14px;
-  color: var(--text);
+  color: var(--text-muted);
   padding-left: 14px;
   position: relative;
   line-height: 1.5;
 }
-
 .briefing-list li::before {
-  content: '•';
+  content: '\2022';
   position: absolute;
   left: 0;
-  color: var(--accent);
+  color: var(--border);
 }
-
 .briefing-list li strong {
-  color: var(--accent2);
   font-weight: 600;
+  color: inherit;
 }
-
-.briefing-list.red-flags li::before {
-  content: '⚠';
-  font-size: 11px;
-  top: 1px;
+/* Key items — bold + accent left border, no bullet */
+.briefing-list li.key-item {
+  color: var(--text);
+  font-weight: 600;
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
+  margin-left: -2px;
 }
-
+.briefing-list li.key-item::before {
+  display: none;
+}
+/* Red flags — muted text, red bullet */
 .briefing-list.red-flags li {
+  color: var(--text-muted);
+}
+.briefing-list.red-flags li::before {
+  content: '\2022';
+  font-size: 14px;
+  top: 0;
+  color: var(--border);
+}
+/* Red flag key items — danger border, no bullet */
+.briefing-list.red-flags li.key-item {
+  border-left-color: var(--danger);
   color: var(--danger);
+  font-weight: 700;
+}
+.briefing-list.red-flags li.key-item::before {
+  display: none;
 }
 
 .briefing-footer {
@@ -3989,12 +4007,12 @@
 .expand-trigger {
   display: inline;
   cursor: pointer;
-  color: var(--accent);
+  color: var(--text-muted);
   font-family: var(--mono);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: 0.05em;
-  background: var(--surface2);
+  background: transparent;
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 6px;
@@ -4002,6 +4020,11 @@
   vertical-align: middle;
   white-space: nowrap;
   user-select: none;
+  transition: color 0.15s, border-color 0.15s;
+}
+.expand-trigger:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
 }
 
 .expand-trigger::before {
