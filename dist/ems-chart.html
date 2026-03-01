@@ -4251,14 +4251,12 @@
 }
 /* ── On-Scene Capture Tab ── */
 .drawer {
+  display: none;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  overflow: hidden;
-  max-height: 0;
   flex-shrink: 0;
-  transition: max-height 0.3s ease, padding 0.3s ease;
 }
-.drawer.open { max-height: 600px; }
+.drawer.open { display: block; }
 .drawer-inner { padding: 16px; }
 .drawer-section-title {
   font-family: var(--mono);
