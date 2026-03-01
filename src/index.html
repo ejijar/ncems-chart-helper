@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
 <!-- Version: v9.1 -->
-<script>const APP_VERSION = 'v9.2';</script>
+<script>const APP_VERSION = 'v9.3';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 </head>
@@ -207,7 +207,7 @@
     <!-- CALL TYPE -->
     <div class="section">
       <div class="section-header">
-        <span class="section-title">Call Type</span>
+        <span class="section-title">Incident</span>
         <button class="sec-mic-btn" id="sec-mic-calltype" title="Dictate call info">🎙</button>
       </div>
       <div class="section-body">
@@ -263,6 +263,30 @@
         </div>
         <div class="form-row full">
           <div class="field">
+            <label>Location</label>
+            <input type="text" id="incidentLocation" placeholder="Street address…" onblur="syncIncidentLocation()">
+
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field">
+            <label>Patient</label>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px">
+              <div class="pill-group" id="dispatchAgePills">
+                <button type="button" class="tap-pill selected" onclick="selectDispatchAge(this,'adult')">Adult</button>
+                <button type="button" class="tap-pill" onclick="selectDispatchAge(this,'pediatric')">Pediatric</button>
+              </div>
+              <div class="pill-group" id="dispatchSexPills">
+                <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'male')">Male</button>
+                <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'female')">Female</button>
+                <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'unknown')">Unknown</button>
+              </div>
+            </div>
+            <input type="hidden" id="dispatchSex">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field">
             <label>Who Called 911</label>
             <div class="pill-group" id="whoCalled911Pills" style="margin-top:4px">
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Patient')">Patient</button>
@@ -273,28 +297,6 @@
             </div>
             <input type="text" id="whoCalled911Other" placeholder="Specify…" style="display:none;margin-top:8px">
             <input type="hidden" id="whoCalled911">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="field">
-            <label>Patient Sex</label>
-            <div class="pill-group" id="dispatchSexPills" style="margin-top:4px">
-              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'male')">Male</button>
-              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'female')">Female</button>
-              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'unknown')">Unknown</button>
-            </div>
-            <input type="hidden" id="dispatchSex">
-          </div>
-        </div>
-        <div id="pedsToggleBar" class="form-row full">
-          <div class="field">
-            <div class="peds-toggle-wrap">
-              <span class="peds-toggle-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Pediatric Patient</span>
-              <label class="peds-toggle-switch">
-                <input type="checkbox" id="pedsToggle" onchange="setPedsMode(this.checked)">
-                <span class="peds-toggle-slider"></span>
-              </label>
-            </div>
           </div>
         </div>
       </div>
@@ -680,29 +682,15 @@
         <span class="section-badge" id="rf-incloc-badge">▾</span>
       </div>
       <div class="section-body" id="section-rf-incloc">
-        <label class="refusal-check" style="margin-bottom:12px">
-          <input type="checkbox" id="rf_sameAsHome" onchange="toggleIncidentLocation()">
-          <span>Same as Home Address</span>
+        <label class="check-row" style="margin-bottom:12px">
+          <input type="checkbox" id="rf_sameAsHome">
+          <div class="check-box"></div>
+          <span class="check-label">Same as Home Address</span>
         </label>
         <div id="rf_incidentLocationFields">
           <div class="form-row full">
             <div class="field">
-              <label>Incident Address</label>
-              <input type="text" id="rf_incidentAddress" placeholder="Street address">
-            </div>
-          </div>
-          <div class="form-row three">
-            <div class="field">
-              <label>City</label>
-              <input type="text" id="rf_incidentCity" placeholder="City">
-            </div>
-            <div class="field">
-              <label>State</label>
-              <input type="text" id="rf_incidentState" placeholder="State" maxlength="2" style="text-transform:uppercase">
-            </div>
-            <div class="field">
-              <label>Zip</label>
-              <input type="text" id="rf_incidentZip" placeholder="Zip" maxlength="10">
+              <input type="text" id="rf_incidentLocation" placeholder="e.g. 49 Park St, New Canaan, CT 06840">
             </div>
           </div>
         </div>

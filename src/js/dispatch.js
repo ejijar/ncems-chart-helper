@@ -1328,24 +1328,53 @@ function handleBPKeydown(el, e) {
 let pedsMode = false;
 let femaleMode = false;
 
-function setPedsMode(enabled) {
-  pedsMode = enabled;
-  const container = document.getElementById('quickRefContainer');
-  if (container) container.classList.toggle('peds-active', enabled);
+function selectDispatchAge(btn, value) {
+  // Toggle off if already selected
+  if (btn.classList.contains('selected')) {
+    btn.classList.remove('selected');
+    if (value === 'pediatric') {
+      pedsMode = false;
+      const container = document.getElementById('quickRefContainer');
+      if (container) container.classList.remove('peds-active');
+      updateCallType();
+    }
+    return;
+  }
+  // Select it
+  btn.classList.add('selected');
+  if (value === 'pediatric') {
+    pedsMode = true;
+    const container = document.getElementById('quickRefContainer');
+    if (container) container.classList.add('peds-active');
+    updateCallType();
+  }
 }
 
 function selectDispatchSex(btn, value) {
-  // Update dispatch pills
+  const isSelected = btn.classList.contains('selected');
+  // Deselect all pills first
   btn.closest('.pill-group').querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
+  // Toggle off if it was already selected
+  if (isSelected) {
+    document.getElementById('dispatchSex').value = '';
+    femaleMode = false;
+    const container = document.getElementById('quickRefContainer');
+    if (container) container.classList.remove('female-active');
+    updateCallType();
+    const patientSexInput = document.getElementById('patientSex');
+    const sexPills = document.getElementById('sexPills');
+    if (patientSexInput) patientSexInput.value = '';
+    if (sexPills) sexPills.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
+    return;
+  }
+  // Select the clicked pill
   btn.classList.add('selected');
   document.getElementById('dispatchSex').value = value;
-
   // Set femaleMode and re-render briefing
   femaleMode = (value === 'female');
   const container = document.getElementById('quickRefContainer');
   if (container) container.classList.toggle('female-active', femaleMode);
   updateCallType();
-
   // Sync to Patient Info sex pills
   const patientSexInput = document.getElementById('patientSex');
   const sexPills = document.getElementById('sexPills');
@@ -1358,13 +1387,48 @@ function selectDispatchSex(btn, value) {
       });
     }
   } else {
-    // Unknown — clear patient info selection
+    // Unknown - clear patient info selection
     if (patientSexInput) patientSexInput.value = '';
-    if (sexPills) {
-      sexPills.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
-    }
+    if (sexPills) sexPills.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
   }
 }
+
+function isCompleteAddress(addr) {
+  // Already complete if it has a zip code, a town name, or any comma (indicating city/state present)
+  if (/\d{5}/.test(addr)) return true;       // has zip code
+  if (/new canaan/i.test(addr)) return true;      // has town name
+  if (addr.indexOf(',') !== -1) return true;      // has a comma = city/state already present
+  return false;
+}
+
+function formatIncidentLocation(addr) {
+  const trimmed = addr.trim();
+  if (!trimmed) return '';
+  if (isCompleteAddress(trimmed)) return trimmed;
+  return trimmed + ', New Canaan, CT 06840';
+}
+
+function syncIncidentLocation() {
+  const locField = document.getElementById('incidentLocation');
+  const sameChk  = document.getElementById('locationSameAsPatient');
+  const rfField  = document.getElementById('rf_incidentLocation');
+  if (!locField) return;
+
+  const raw = locField.value.trim();
+
+  // Don't modify if empty
+  if (!raw) {
+    if (rfField) rfField.value = '';
+    return;
+  }
+
+  // Format and sync
+  const formatted = formatIncidentLocation(raw);
+  locField.value = formatted;
+  if (rfField) rfField.value = formatted;
+}
+
+
 
 function toggleExpandPanel(panelId) {
   const panel = document.getElementById(panelId);

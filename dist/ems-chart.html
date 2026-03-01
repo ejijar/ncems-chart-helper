@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
 <!-- Version: v9.1 -->
-<script>const APP_VERSION = 'v9.2';</script>
+<script>const APP_VERSION = 'v9.3';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -4414,7 +4414,7 @@
     <!-- CALL TYPE -->
     <div class="section">
       <div class="section-header">
-        <span class="section-title">Call Type</span>
+        <span class="section-title">Incident</span>
         <button class="sec-mic-btn" id="sec-mic-calltype" title="Dictate call info">🎙</button>
       </div>
       <div class="section-body">
@@ -4470,6 +4470,30 @@
         </div>
         <div class="form-row full">
           <div class="field">
+            <label>Location</label>
+            <input type="text" id="incidentLocation" placeholder="Street address…" onblur="syncIncidentLocation()">
+
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field">
+            <label>Patient</label>
+            <div style="display:flex; flex-direction:column; gap:6px; margin-top:4px">
+              <div class="pill-group" id="dispatchAgePills">
+                <button type="button" class="tap-pill selected" onclick="selectDispatchAge(this,'adult')">Adult</button>
+                <button type="button" class="tap-pill" onclick="selectDispatchAge(this,'pediatric')">Pediatric</button>
+              </div>
+              <div class="pill-group" id="dispatchSexPills">
+                <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'male')">Male</button>
+                <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'female')">Female</button>
+                <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'unknown')">Unknown</button>
+              </div>
+            </div>
+            <input type="hidden" id="dispatchSex">
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="field">
             <label>Who Called 911</label>
             <div class="pill-group" id="whoCalled911Pills" style="margin-top:4px">
               <button type="button" class="tap-pill" onclick="selectWhoCalledPill(this,'Patient')">Patient</button>
@@ -4480,28 +4504,6 @@
             </div>
             <input type="text" id="whoCalled911Other" placeholder="Specify…" style="display:none;margin-top:8px">
             <input type="hidden" id="whoCalled911">
-          </div>
-        </div>
-        <div class="form-row full">
-          <div class="field">
-            <label>Patient Sex</label>
-            <div class="pill-group" id="dispatchSexPills" style="margin-top:4px">
-              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'male')">Male</button>
-              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'female')">Female</button>
-              <button type="button" class="tap-pill" onclick="selectDispatchSex(this,'unknown')">Unknown</button>
-            </div>
-            <input type="hidden" id="dispatchSex">
-          </div>
-        </div>
-        <div id="pedsToggleBar" class="form-row full">
-          <div class="field">
-            <div class="peds-toggle-wrap">
-              <span class="peds-toggle-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:6px"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Pediatric Patient</span>
-              <label class="peds-toggle-switch">
-                <input type="checkbox" id="pedsToggle" onchange="setPedsMode(this.checked)">
-                <span class="peds-toggle-slider"></span>
-              </label>
-            </div>
           </div>
         </div>
       </div>
@@ -4887,29 +4889,15 @@
         <span class="section-badge" id="rf-incloc-badge">▾</span>
       </div>
       <div class="section-body" id="section-rf-incloc">
-        <label class="refusal-check" style="margin-bottom:12px">
-          <input type="checkbox" id="rf_sameAsHome" onchange="toggleIncidentLocation()">
-          <span>Same as Home Address</span>
+        <label class="check-row" style="margin-bottom:12px">
+          <input type="checkbox" id="rf_sameAsHome">
+          <div class="check-box"></div>
+          <span class="check-label">Same as Home Address</span>
         </label>
         <div id="rf_incidentLocationFields">
           <div class="form-row full">
             <div class="field">
-              <label>Incident Address</label>
-              <input type="text" id="rf_incidentAddress" placeholder="Street address">
-            </div>
-          </div>
-          <div class="form-row three">
-            <div class="field">
-              <label>City</label>
-              <input type="text" id="rf_incidentCity" placeholder="City">
-            </div>
-            <div class="field">
-              <label>State</label>
-              <input type="text" id="rf_incidentState" placeholder="State" maxlength="2" style="text-transform:uppercase">
-            </div>
-            <div class="field">
-              <label>Zip</label>
-              <input type="text" id="rf_incidentZip" placeholder="Zip" maxlength="10">
+              <input type="text" id="rf_incidentLocation" placeholder="e.g. 49 Park St, New Canaan, CT 06840">
             </div>
           </div>
         </div>
@@ -6729,24 +6717,53 @@ function handleBPKeydown(el, e) {
 let pedsMode = false;
 let femaleMode = false;
 
-function setPedsMode(enabled) {
-  pedsMode = enabled;
-  const container = document.getElementById('quickRefContainer');
-  if (container) container.classList.toggle('peds-active', enabled);
+function selectDispatchAge(btn, value) {
+  // Toggle off if already selected
+  if (btn.classList.contains('selected')) {
+    btn.classList.remove('selected');
+    if (value === 'pediatric') {
+      pedsMode = false;
+      const container = document.getElementById('quickRefContainer');
+      if (container) container.classList.remove('peds-active');
+      updateCallType();
+    }
+    return;
+  }
+  // Select it
+  btn.classList.add('selected');
+  if (value === 'pediatric') {
+    pedsMode = true;
+    const container = document.getElementById('quickRefContainer');
+    if (container) container.classList.add('peds-active');
+    updateCallType();
+  }
 }
 
 function selectDispatchSex(btn, value) {
-  // Update dispatch pills
+  const isSelected = btn.classList.contains('selected');
+  // Deselect all pills first
   btn.closest('.pill-group').querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
+  // Toggle off if it was already selected
+  if (isSelected) {
+    document.getElementById('dispatchSex').value = '';
+    femaleMode = false;
+    const container = document.getElementById('quickRefContainer');
+    if (container) container.classList.remove('female-active');
+    updateCallType();
+    const patientSexInput = document.getElementById('patientSex');
+    const sexPills = document.getElementById('sexPills');
+    if (patientSexInput) patientSexInput.value = '';
+    if (sexPills) sexPills.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
+    return;
+  }
+  // Select the clicked pill
   btn.classList.add('selected');
   document.getElementById('dispatchSex').value = value;
-
   // Set femaleMode and re-render briefing
   femaleMode = (value === 'female');
   const container = document.getElementById('quickRefContainer');
   if (container) container.classList.toggle('female-active', femaleMode);
   updateCallType();
-
   // Sync to Patient Info sex pills
   const patientSexInput = document.getElementById('patientSex');
   const sexPills = document.getElementById('sexPills');
@@ -6759,13 +6776,48 @@ function selectDispatchSex(btn, value) {
       });
     }
   } else {
-    // Unknown — clear patient info selection
+    // Unknown - clear patient info selection
     if (patientSexInput) patientSexInput.value = '';
-    if (sexPills) {
-      sexPills.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
-    }
+    if (sexPills) sexPills.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
   }
 }
+
+function isCompleteAddress(addr) {
+  // Already complete if it has a zip code, a town name, or any comma (indicating city/state present)
+  if (/\d{5}/.test(addr)) return true;       // has zip code
+  if (/new canaan/i.test(addr)) return true;      // has town name
+  if (addr.indexOf(',') !== -1) return true;      // has a comma = city/state already present
+  return false;
+}
+
+function formatIncidentLocation(addr) {
+  const trimmed = addr.trim();
+  if (!trimmed) return '';
+  if (isCompleteAddress(trimmed)) return trimmed;
+  return trimmed + ', New Canaan, CT 06840';
+}
+
+function syncIncidentLocation() {
+  const locField = document.getElementById('incidentLocation');
+  const sameChk  = document.getElementById('locationSameAsPatient');
+  const rfField  = document.getElementById('rf_incidentLocation');
+  if (!locField) return;
+
+  const raw = locField.value.trim();
+
+  // Don't modify if empty
+  if (!raw) {
+    if (rfField) rfField.value = '';
+    return;
+  }
+
+  // Format and sync
+  const formatted = formatIncidentLocation(raw);
+  locField.value = formatted;
+  if (rfField) rfField.value = formatted;
+}
+
+
 
 function toggleExpandPanel(panelId) {
   const panel = document.getElementById(panelId);
@@ -12299,7 +12351,8 @@ function _doClearChart() {
      'transportHospital','edRoom',
      'sceneNotes','refusalReason',
      'callType',
-     'whoCalled911','whoCalled911Other','patientSex','patientLOC'].forEach(id => {
+     'whoCalled911','whoCalled911Other','patientSex','patientLOC',
+     'incidentLocation'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -12345,6 +12398,9 @@ function _doClearChart() {
     // Reset all tap pills
     document.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
     document.querySelectorAll('.check-pill').forEach(p => p.classList.remove('selected'));
+    // Re-select Adult as default
+    const adultPill = document.querySelector('#dispatchAgePills .tap-pill');
+    if (adultPill) { adultPill.classList.add('selected'); pedsMode = false; }
     // Reset who-called Other input visibility
     const wco = document.getElementById('whoCalled911Other');
     if (wco) wco.style.display = 'none';
@@ -12423,7 +12479,7 @@ function _doClearChart() {
     try { toggleIncidentLocation(); } catch(e) {}
     // Clear refusal text fields
     [
-      'rf_incidentAddress','rf_incidentCity','rf_incidentState','rf_incidentZip',
+      'rf_incidentLocation',
       'rf_custodyName','rf_mdName','rf_advice','rf_explanation',
       'rf_printedPatient','rf_printedWitness','rf_printedRMA','rf_unitRMA'
     ].forEach(id => {
@@ -12726,29 +12782,23 @@ function selectSigner(el) {}
 function toggleIncidentLocation() {
   const checkbox = document.getElementById('rf_sameAsHome');
   const fieldsDiv = document.getElementById('rf_incidentLocationFields');
-  
+  const locField  = document.getElementById('rf_incidentLocation');
+  if (!checkbox) return;
+
   if (checkbox.checked) {
-    // Hide the manual input fields
-    fieldsDiv.style.display = 'none';
-    
-    // Populate with home address from Input tab
-    const homeAddr = document.getElementById('patientAddress')?.value || '';
-    const homeCity = document.getElementById('patientCity')?.value || '';
-    const homeState = document.getElementById('patientState')?.value || '';
-    const homeZip = document.getElementById('patientZip')?.value || '';
-    
-    document.getElementById('rf_incidentAddress').value = homeAddr;
-    document.getElementById('rf_incidentCity').value = homeCity;
-    document.getElementById('rf_incidentState').value = homeState;
-    document.getElementById('rf_incidentZip').value = homeZip;
+    // Copy patient home address into incident location and hide the field
+    const ptAddr  = document.getElementById('patientAddress')?.value || '';
+    const ptCity  = document.getElementById('patientCity')?.value || '';
+    const ptState = document.getElementById('patientState')?.value || '';
+    const ptZip   = document.getElementById('patientZip')?.value || '';
+    const full = [ptAddr, ptCity, ptState, ptZip].filter(Boolean).join(', ');
+    if (locField) locField.value = full;
+    if (fieldsDiv) fieldsDiv.style.display = 'none';
   } else {
-    // Show the manual input fields
-    fieldsDiv.style.display = 'block';
-    // Clear the fields so user can enter a different address
-    document.getElementById('rf_incidentAddress').value = '';
-    document.getElementById('rf_incidentCity').value = '';
-    document.getElementById('rf_incidentState').value = '';
-    document.getElementById('rf_incidentZip').value = '';
+    // Show the field and restore dispatch incident location
+    if (fieldsDiv) fieldsDiv.style.display = 'block';
+    const dispatchLoc = document.getElementById('incidentLocation')?.value || '';
+    if (locField && dispatchLoc) locField.value = dispatchLoc;
   }
 }
 
@@ -13357,6 +13407,11 @@ function _setFieldAttention(inputId, needsIt) {
 // Close sig modal when clicking the backdrop — but only if nothing has been drawn/typed
 // (i.e. the modal is in a clean/cleared state). Matches v4.8 behaviour.
 document.addEventListener('DOMContentLoaded', () => {
+  const sameAsHome = document.getElementById('rf_sameAsHome');
+  if (sameAsHome) sameAsHome.addEventListener('change', toggleIncidentLocation);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
   const backdrop = document.getElementById('sigModalBackdrop');
   if (backdrop) {
     // Track that the pointerdown originated ON the backdrop, not the modal
@@ -13491,10 +13546,7 @@ async function downloadRefusalPDF() {
 
   // Incident Location
   const sameAsHome   = document.getElementById('rf_sameAsHome')?.checked || false;
-  const incidentAddr = document.getElementById('rf_incidentAddress')?.value || '';
-  const incidentCity = document.getElementById('rf_incidentCity')?.value || '';
-  const incidentState = document.getElementById('rf_incidentState')?.value || '';
-  const incidentZip  = document.getElementById('rf_incidentZip')?.value || '';
+  const incidentLocation = document.getElementById('rf_incidentLocation')?.value || '';
 
   // Contact/order/signer radios
   const contact    = document.querySelector('input[name="rf_contactedVia"]:checked')?.value || '';
@@ -13640,22 +13692,8 @@ async function downloadRefusalPDF() {
   const finalIncidentState = sameAsHome ? ptState : incidentState;
   const finalIncidentZip = sameAsHome ? ptZip : incidentZip;
   
-  console.log('Incident Location Debug:');
-  console.log('sameAsHome:', sameAsHome);
-  console.log('incidentAddr:', incidentAddr);
-  console.log('incidentCity:', incidentCity);
-  console.log('incidentState:', incidentState);
-  console.log('incidentZip:', incidentZip);
-  
-  // Create formatted incident location line - show ONLY when different from home
-  // This goes in the "Location" field on the line after "Same as Home Address" checkbox
-  const incidentLocationLine = sameAsHome 
-    ? '' // If same as home, leave blank since checkbox is checked
-    : `${incidentAddr}, ${incidentCity}, ${incidentState} ${incidentZip}`.trim();
-  
-  console.log('incidentLocationLine:', incidentLocationLine);
-  
-  // Set the incident location in the "Location" field (the text field after the checkbox)
+  // Set the incident location in the "Location" field (blank if same as home)
+  const incidentLocationLine = sameAsHome ? '' : incidentLocation;
   setText('Location', incidentLocationLine);
 
   // ---- Sex checkboxes (radio buttons - mutually exclusive) ----
@@ -14239,6 +14277,7 @@ function collectChartData() {
     
     // Call Type
     callType: document.getElementById('callType')?.value || '',
+    incidentLocation: document.getElementById('incidentLocation')?.value || '',
     whoCalled911: document.getElementById('whoCalled911')?.value || '',
     whoCalled911Other: document.getElementById('whoCalled911Other')?.value || '',
     
@@ -14270,10 +14309,7 @@ function collectChartData() {
     // Refusal Tab Data
     refusalData: {
       sameAsHome: document.getElementById('rf_sameAsHome')?.checked || false,
-      incidentAddress: document.getElementById('rf_incidentAddress')?.value || '',
-      incidentCity: document.getElementById('rf_incidentCity')?.value || '',
-      incidentState: document.getElementById('rf_incidentState')?.value || '',
-      incidentZip: document.getElementById('rf_incidentZip')?.value || '',
+      incidentLocation: document.getElementById('rf_incidentLocation')?.value || '',
       informed1: document.getElementById('rf_informed1')?.checked || false,
       informed2: document.getElementById('rf_informed2')?.checked || false,
       informed3: document.getElementById('rf_informed3')?.checked || false,
@@ -14370,6 +14406,7 @@ function restoreChartData(data) {
   // Restore Call Type
   if (document.getElementById('callType')) {
     document.getElementById('callType').value = data.callType || '';
+    if (document.getElementById('incidentLocation')) document.getElementById('incidentLocation').value = data.incidentLocation || '';
     updateCallType(); // Re-initialize activity cards for this call type
   }
   // Restore Who Called 911 pills
@@ -14440,10 +14477,7 @@ function restoreChartData(data) {
       document.getElementById('rf_sameAsHome').checked = rf.sameAsHome || false;
       toggleIncidentLocation(); // Update visibility of incident location fields
     }
-    if (document.getElementById('rf_incidentAddress')) document.getElementById('rf_incidentAddress').value = rf.incidentAddress || '';
-    if (document.getElementById('rf_incidentCity')) document.getElementById('rf_incidentCity').value = rf.incidentCity || '';
-    if (document.getElementById('rf_incidentState')) document.getElementById('rf_incidentState').value = rf.incidentState || '';
-    if (document.getElementById('rf_incidentZip')) document.getElementById('rf_incidentZip').value = rf.incidentZip || '';
+    if (document.getElementById('rf_incidentLocation')) document.getElementById('rf_incidentLocation').value = rf.incidentLocation || '';
     
     if (document.getElementById('rf_informed1')) document.getElementById('rf_informed1').checked = rf.informed1 || false;
     if (document.getElementById('rf_informed2')) document.getElementById('rf_informed2').checked = rf.informed2 || false;

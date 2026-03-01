@@ -378,6 +378,7 @@ function collectChartData() {
     
     // Call Type
     callType: document.getElementById('callType')?.value || '',
+    incidentLocation: document.getElementById('incidentLocation')?.value || '',
     whoCalled911: document.getElementById('whoCalled911')?.value || '',
     whoCalled911Other: document.getElementById('whoCalled911Other')?.value || '',
     
@@ -409,10 +410,7 @@ function collectChartData() {
     // Refusal Tab Data
     refusalData: {
       sameAsHome: document.getElementById('rf_sameAsHome')?.checked || false,
-      incidentAddress: document.getElementById('rf_incidentAddress')?.value || '',
-      incidentCity: document.getElementById('rf_incidentCity')?.value || '',
-      incidentState: document.getElementById('rf_incidentState')?.value || '',
-      incidentZip: document.getElementById('rf_incidentZip')?.value || '',
+      incidentLocation: document.getElementById('rf_incidentLocation')?.value || '',
       informed1: document.getElementById('rf_informed1')?.checked || false,
       informed2: document.getElementById('rf_informed2')?.checked || false,
       informed3: document.getElementById('rf_informed3')?.checked || false,
@@ -509,6 +507,7 @@ function restoreChartData(data) {
   // Restore Call Type
   if (document.getElementById('callType')) {
     document.getElementById('callType').value = data.callType || '';
+    if (document.getElementById('incidentLocation')) document.getElementById('incidentLocation').value = data.incidentLocation || '';
     updateCallType(); // Re-initialize activity cards for this call type
   }
   // Restore Who Called 911 pills
@@ -579,10 +578,7 @@ function restoreChartData(data) {
       document.getElementById('rf_sameAsHome').checked = rf.sameAsHome || false;
       toggleIncidentLocation(); // Update visibility of incident location fields
     }
-    if (document.getElementById('rf_incidentAddress')) document.getElementById('rf_incidentAddress').value = rf.incidentAddress || '';
-    if (document.getElementById('rf_incidentCity')) document.getElementById('rf_incidentCity').value = rf.incidentCity || '';
-    if (document.getElementById('rf_incidentState')) document.getElementById('rf_incidentState').value = rf.incidentState || '';
-    if (document.getElementById('rf_incidentZip')) document.getElementById('rf_incidentZip').value = rf.incidentZip || '';
+    if (document.getElementById('rf_incidentLocation')) document.getElementById('rf_incidentLocation').value = rf.incidentLocation || '';
     
     if (document.getElementById('rf_informed1')) document.getElementById('rf_informed1').checked = rf.informed1 || false;
     if (document.getElementById('rf_informed2')) document.getElementById('rf_informed2').checked = rf.informed2 || false;

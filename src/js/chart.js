@@ -2686,7 +2686,8 @@ function _doClearChart() {
      'transportHospital','edRoom',
      'sceneNotes','refusalReason',
      'callType',
-     'whoCalled911','whoCalled911Other','patientSex','patientLOC'].forEach(id => {
+     'whoCalled911','whoCalled911Other','patientSex','patientLOC',
+     'incidentLocation'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -2732,6 +2733,9 @@ function _doClearChart() {
     // Reset all tap pills
     document.querySelectorAll('.tap-pill').forEach(p => p.classList.remove('selected'));
     document.querySelectorAll('.check-pill').forEach(p => p.classList.remove('selected'));
+    // Re-select Adult as default
+    const adultPill = document.querySelector('#dispatchAgePills .tap-pill');
+    if (adultPill) { adultPill.classList.add('selected'); pedsMode = false; }
     // Reset who-called Other input visibility
     const wco = document.getElementById('whoCalled911Other');
     if (wco) wco.style.display = 'none';
@@ -2810,7 +2814,7 @@ function _doClearChart() {
     try { toggleIncidentLocation(); } catch(e) {}
     // Clear refusal text fields
     [
-      'rf_incidentAddress','rf_incidentCity','rf_incidentState','rf_incidentZip',
+      'rf_incidentLocation',
       'rf_custodyName','rf_mdName','rf_advice','rf_explanation',
       'rf_printedPatient','rf_printedWitness','rf_printedRMA','rf_unitRMA'
     ].forEach(id => {
@@ -3113,29 +3117,23 @@ function selectSigner(el) {}
 function toggleIncidentLocation() {
   const checkbox = document.getElementById('rf_sameAsHome');
   const fieldsDiv = document.getElementById('rf_incidentLocationFields');
-  
+  const locField  = document.getElementById('rf_incidentLocation');
+  if (!checkbox) return;
+
   if (checkbox.checked) {
-    // Hide the manual input fields
-    fieldsDiv.style.display = 'none';
-    
-    // Populate with home address from Input tab
-    const homeAddr = document.getElementById('patientAddress')?.value || '';
-    const homeCity = document.getElementById('patientCity')?.value || '';
-    const homeState = document.getElementById('patientState')?.value || '';
-    const homeZip = document.getElementById('patientZip')?.value || '';
-    
-    document.getElementById('rf_incidentAddress').value = homeAddr;
-    document.getElementById('rf_incidentCity').value = homeCity;
-    document.getElementById('rf_incidentState').value = homeState;
-    document.getElementById('rf_incidentZip').value = homeZip;
+    // Copy patient home address into incident location and hide the field
+    const ptAddr  = document.getElementById('patientAddress')?.value || '';
+    const ptCity  = document.getElementById('patientCity')?.value || '';
+    const ptState = document.getElementById('patientState')?.value || '';
+    const ptZip   = document.getElementById('patientZip')?.value || '';
+    const full = [ptAddr, ptCity, ptState, ptZip].filter(Boolean).join(', ');
+    if (locField) locField.value = full;
+    if (fieldsDiv) fieldsDiv.style.display = 'none';
   } else {
-    // Show the manual input fields
-    fieldsDiv.style.display = 'block';
-    // Clear the fields so user can enter a different address
-    document.getElementById('rf_incidentAddress').value = '';
-    document.getElementById('rf_incidentCity').value = '';
-    document.getElementById('rf_incidentState').value = '';
-    document.getElementById('rf_incidentZip').value = '';
+    // Show the field and restore dispatch incident location
+    if (fieldsDiv) fieldsDiv.style.display = 'block';
+    const dispatchLoc = document.getElementById('incidentLocation')?.value || '';
+    if (locField && dispatchLoc) locField.value = dispatchLoc;
   }
 }
 
@@ -3744,6 +3742,11 @@ function _setFieldAttention(inputId, needsIt) {
 // Close sig modal when clicking the backdrop — but only if nothing has been drawn/typed
 // (i.e. the modal is in a clean/cleared state). Matches v4.8 behaviour.
 document.addEventListener('DOMContentLoaded', () => {
+  const sameAsHome = document.getElementById('rf_sameAsHome');
+  if (sameAsHome) sameAsHome.addEventListener('change', toggleIncidentLocation);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
   const backdrop = document.getElementById('sigModalBackdrop');
   if (backdrop) {
     // Track that the pointerdown originated ON the backdrop, not the modal
@@ -3878,10 +3881,7 @@ async function downloadRefusalPDF() {
 
   // Incident Location
   const sameAsHome   = document.getElementById('rf_sameAsHome')?.checked || false;
-  const incidentAddr = document.getElementById('rf_incidentAddress')?.value || '';
-  const incidentCity = document.getElementById('rf_incidentCity')?.value || '';
-  const incidentState = document.getElementById('rf_incidentState')?.value || '';
-  const incidentZip  = document.getElementById('rf_incidentZip')?.value || '';
+  const incidentLocation = document.getElementById('rf_incidentLocation')?.value || '';
 
   // Contact/order/signer radios
   const contact    = document.querySelector('input[name="rf_contactedVia"]:checked')?.value || '';
@@ -4027,22 +4027,8 @@ async function downloadRefusalPDF() {
   const finalIncidentState = sameAsHome ? ptState : incidentState;
   const finalIncidentZip = sameAsHome ? ptZip : incidentZip;
   
-  console.log('Incident Location Debug:');
-  console.log('sameAsHome:', sameAsHome);
-  console.log('incidentAddr:', incidentAddr);
-  console.log('incidentCity:', incidentCity);
-  console.log('incidentState:', incidentState);
-  console.log('incidentZip:', incidentZip);
-  
-  // Create formatted incident location line - show ONLY when different from home
-  // This goes in the "Location" field on the line after "Same as Home Address" checkbox
-  const incidentLocationLine = sameAsHome 
-    ? '' // If same as home, leave blank since checkbox is checked
-    : `${incidentAddr}, ${incidentCity}, ${incidentState} ${incidentZip}`.trim();
-  
-  console.log('incidentLocationLine:', incidentLocationLine);
-  
-  // Set the incident location in the "Location" field (the text field after the checkbox)
+  // Set the incident location in the "Location" field (blank if same as home)
+  const incidentLocationLine = sameAsHome ? '' : incidentLocation;
   setText('Location', incidentLocationLine);
 
   // ---- Sex checkboxes (radio buttons - mutually exclusive) ----
