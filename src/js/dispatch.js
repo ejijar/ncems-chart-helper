@@ -1206,7 +1206,12 @@ function handlePhoto(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = ev => {
-    addBucketItem({ type: 'photo', src: ev.target.result, caption: file.name });
+    if (file.type === 'application/pdf') {
+      const url = URL.createObjectURL(file);
+      addBucketItem({ type: 'pdf', url, caption: file.name });
+    } else {
+      addBucketItem({ type: 'photo', src: ev.target.result, caption: file.name });
+    }
   };
   reader.readAsDataURL(file);
   e.target.value = '';
@@ -1324,7 +1329,8 @@ function getBucketIcon(type) {
   const icons = {
     note: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
     voice: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
-    photo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`
+    photo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+    pdf: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`
   };
   return icons[type] || '';
 }
@@ -1346,9 +1352,69 @@ function getBucketBody(item) {
     ${item.transcript ? `<div class="feed-transcript">${item.transcript}</div>` : ''}`;
   }
   if (item.type === 'photo') {
-    return `<img class="feed-photo-thumb" src="${item.src}" alt="Scene photo">`;
+    return `<div class="feed-photo-wrap" onclick="openMediaLightbox(${item.id})">
+      <img class="feed-photo-thumb" src="${item.src}" alt="${item.caption}">
+      <div class="feed-photo-caption">${item.caption || 'Photo'}</div>
+    </div>`;
+  }
+  if (item.type === 'pdf') {
+    return `<div class="feed-pdf-wrap" onclick="openPDF('${item.url}')">
+      <div class="feed-pdf-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+      </div>
+      <div class="feed-pdf-name">${item.caption || 'Document'}</div>
+      <div class="feed-pdf-hint">Tap to open</div>
+    </div>`;
   }
   return '';
+}
+
+function openMediaLightbox(id) {
+  const item = bucketItems.find(i => i.id === id);
+  if (!item || item.type !== 'photo') return;
+  const overlay = document.getElementById('mediaLightbox');
+  const img = document.getElementById('lightboxImg');
+  const caption = document.getElementById('lightboxCaption');
+  img.src = item.src;
+  caption.textContent = item.caption || 'Photo';
+  overlay.classList.add('open');
+  // Store item id for share
+  overlay.dataset.itemId = id;
+}
+
+function closeLightbox() {
+  document.getElementById('mediaLightbox').classList.remove('open');
+}
+
+function shareMedia() {
+  const overlay = document.getElementById('mediaLightbox');
+  const id = parseInt(overlay.dataset.itemId);
+  const item = bucketItems.find(i => i.id === id);
+  if (!item) return;
+  // Convert data URL to blob for sharing
+  fetch(item.src)
+    .then(r => r.blob())
+    .then(blob => {
+      const file = new File([blob], item.caption || 'photo.jpg', { type: blob.type });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: item.caption || 'Scene photo' });
+      } else if (navigator.share) {
+        navigator.share({ title: item.caption || 'Scene photo', text: item.caption });
+      } else {
+        // Fallback: open image in new tab
+        window.open(item.src, '_blank');
+      }
+    });
+}
+
+function openPDF(url) {
+  window.open(url, '_blank');
 }
 
 function playBucketAudio(url) {
