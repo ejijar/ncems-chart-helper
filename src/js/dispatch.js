@@ -1425,7 +1425,7 @@ function playBucketAudio(url) {
 
 function updateAIBtn() {
   const btn = document.getElementById('aiProcessBtn');
-  const badge = document.getElementById('itemCountBadge');
+  const badge = document.getElementById('aiItemCount');
   if (!btn || !badge) return;
   badge.textContent = bucketItems.length;
   btn.classList.toggle('ready', bucketItems.length > 0);
