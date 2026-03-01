@@ -4227,6 +4227,13 @@
 .female-block .briefing-list {
   margin: 4px 0 0 0;
 
+
+/* On-Scene tab container layout */
+#tab-input {
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
 /* ── On-Scene Capture Tab ── */
 .drawer {
   background: var(--surface);
