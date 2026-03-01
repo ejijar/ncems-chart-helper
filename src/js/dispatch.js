@@ -1043,7 +1043,7 @@ function setCurrentTimes() {
 }
 
 // ======== TABS ========
-const TAB_ORDER = ['dispatch', 'input', 'reference', 'output', 'refusal'];
+const TAB_ORDER = ['dispatch', 'input', 'chart', 'refusal'];
 
 function switchTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1054,19 +1054,309 @@ function switchTab(tab, el) {
     const idx = TAB_ORDER.indexOf(tab);
     document.querySelectorAll('.tab')[idx]?.classList.add('active');
   }
-  document.getElementById('tab-dispatch').style.display  = tab === 'dispatch'  ? 'block' : 'none';
-  document.getElementById('tab-input').style.display     = tab === 'input'     ? 'block' : 'none';
-  document.getElementById('tab-reference').style.display = tab === 'reference' ? 'block' : 'none';
-  document.getElementById('tab-output').style.display    = tab === 'output'    ? 'block' : 'none';
-  document.getElementById('tab-refusal').style.display   = tab === 'refusal'   ? 'block' : 'none';
+  document.getElementById('tab-dispatch').style.display = tab === 'dispatch' ? 'block' : 'none';
+  document.getElementById('tab-input').style.display    = tab === 'input'    ? 'block' : 'none';
+  document.getElementById('tab-chart').style.display    = tab === 'chart'    ? 'block' : 'none';
+  document.getElementById('tab-refusal').style.display  = tab === 'refusal'  ? 'block' : 'none';
 
-  if (tab === 'output' && !outputGenerated) {
-    document.getElementById('outputEmpty').style.display = 'block';
+  // Show/hide capture bar and Post-Call button for On-Scene tab
+  const captureBar = document.getElementById('captureBarEl');
+  const postCallBtn = document.getElementById('postCallBtn');
+  if (captureBar) captureBar.classList.toggle('visible', tab === 'input');
+  if (postCallBtn) postCallBtn.style.display = tab === 'input' ? 'flex' : 'none';
+
+  // Close drawer when leaving On-Scene tab
+  if (tab !== 'input') {
+    const drawer = document.getElementById('drawer');
+    if (drawer) drawer.classList.remove('open');
   }
+
   if (tab === 'refusal') {
     prefillRefusalForm();
     setTimeout(initSignaturePads, 100);
   }
+}
+
+
+// ======== ON-SCENE CAPTURE TAB ========
+let bucketItems = [];
+let cadData = null;
+let isCapturing = false;
+let mediaRecorder = null;
+let audioChunks = [];
+
+function toggleDrawer() {
+  const drawer = document.getElementById('drawer');
+  const btn = document.getElementById('postCallBtn');
+  if (drawer && btn) {
+    drawer.classList.toggle('open');
+    btn.classList.toggle('active');
+  }
+}
+
+function setMode(mode) {
+  document.getElementById('modeManual').classList.toggle('active', mode === 'manual');
+  document.getElementById('modePaste').classList.toggle('active', mode === 'paste');
+  document.getElementById('cadManual').classList.toggle('hidden', mode !== 'manual');
+  document.getElementById('cadPaste').classList.toggle('visible', mode === 'paste');
+}
+
+function toggleRefusal() {
+  const isRefusal = document.getElementById('isRefusal').checked;
+  document.getElementById('tHosp').disabled = isRefusal;
+  document.getElementById('tHosp').style.opacity = isRefusal ? '0.3' : '1';
+}
+
+function applyCAD() {
+  const mode = document.getElementById('modeManual').classList.contains('active') ? 'manual' : 'paste';
+  let data = {};
+  if (mode === 'manual') {
+    data = {
+      disp:     document.getElementById('tDisp').value,
+      enroute:  document.getElementById('tEnr').value,
+      arrival:  document.getElementById('tArv').value,
+      depart:   document.getElementById('tDep').value,
+      hospitalArrival: document.getElementById('isRefusal').checked ? null : document.getElementById('tHosp').value,
+      rts:      document.getElementById('tRts').value,
+      destination: document.getElementById('tDest').value,
+      isRefusal: document.getElementById('isRefusal').checked
+    };
+  } else {
+    try {
+      data = parseCADString(document.getElementById('pasteField').value);
+    } catch(e) {
+      alert('Could not parse CAD data: ' + e.message);
+      return;
+    }
+  }
+  if (cadData) {
+    if (!confirm('CAD times are already set. Overwrite?')) return;
+  }
+  cadData = data;
+  showCADSummary(data);
+  toggleDrawer();
+}
+
+function showCADSummary(data) {
+  const fmt = t => t || '—';
+  document.getElementById('sumArv').textContent  = fmt(data.arrival);
+  document.getElementById('sumDep').textContent  = fmt(data.depart);
+  document.getElementById('sumHosp').textContent = fmt(data.hospitalArrival);
+  document.getElementById('sumRts').textContent  = fmt(data.rts);
+  const badge = document.getElementById('callTypeBadge');
+  if (data.isRefusal) {
+    badge.textContent = 'Refusal';
+    badge.className = 'cad-summary-badge badge-refusal';
+  } else {
+    badge.textContent = 'Transport';
+    badge.className = 'cad-summary-badge badge-transport';
+  }
+  document.getElementById('cadSummary').classList.add('visible');
+  bucketItems.forEach(item => { item.stage = inferStage(item.timestamp); });
+  renderBucket();
+}
+
+function parseCADString(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const dataLine = lines.find(l => /\d{1,2}:\d{2}/.test(l));
+  if (!dataLine) throw new Error('No time data found.');
+  const tokenRegex = /(\d{1,2}:\d{2})|([A-Za-z]+\/[A-Za-z]+)|([A-Za-z]+)|(\d+)/g;
+  const tokens = [];
+  let match;
+  while ((match = tokenRegex.exec(dataLine)) !== null) tokens.push(match[0]);
+  const parsed = {};
+  let i = 0;
+  parsed.unit = tokens[i++];
+  parsed.level = tokens[i++];
+  parsed.disp    = tokens[i++];
+  parsed.enroute = tokens[i++];
+  parsed.arrival = tokens[i++];
+  parsed.depart  = tokens[i++];
+  parsed.priority = tokens[i++];
+  let dest = '';
+  while (i < tokens.length && /^[A-Za-z]/.test(tokens[i]) && !/^\d{1,2}:\d{2}$/.test(tokens[i])) {
+    dest += (dest ? ' ' : '') + tokens[i++];
+  }
+  parsed.destination = dest;
+  parsed.patients = tokens[i++];
+  const remaining = tokens.slice(i).join(' ').toUpperCase();
+  const isRefusal = /RMA|AMA|REFUSAL|REFUSED/.test(remaining) || dest === '';
+  parsed.isRefusal = isRefusal;
+  if (isRefusal) {
+    parsed.hospitalArrival = null;
+    parsed.rts = tokens[i++] || null;
+    parsed.actual = tokens.slice(i).join('/') || 'RMA/AMA';
+  } else {
+    parsed.hospitalArrival = tokens[i++];
+    parsed.rts = tokens[i++];
+    parsed.actual = tokens.slice(i).join(' ');
+  }
+  return parsed;
+}
+
+function capturePhoto() {
+  document.getElementById('photoInput').click();
+}
+
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    addBucketItem({ type: 'photo', src: ev.target.result, caption: file.name });
+  };
+  reader.readAsDataURL(file);
+  e.target.value = '';
+}
+
+async function toggleVoice() {
+  const btn = document.getElementById('voiceBtn');
+  if (!isCapturing) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        addBucketItem({ type: 'voice', url, transcript: '' });
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorder.start();
+      isCapturing = true;
+      btn.classList.add('recording');
+    } catch(e) {
+      alert('Microphone access denied.');
+    }
+  } else {
+    mediaRecorder.stop();
+    isCapturing = false;
+    btn.classList.remove('recording');
+  }
+}
+
+function openNote() {
+  document.getElementById('noteOverlay').classList.add('open');
+  setTimeout(() => document.getElementById('noteText').focus(), 100);
+}
+function closeNote() {
+  document.getElementById('noteOverlay').classList.remove('open');
+  document.getElementById('noteText').value = '';
+}
+function submitNote() {
+  const text = document.getElementById('noteText').value.trim();
+  if (!text) return;
+  addBucketItem({ type: 'note', text });
+  closeNote();
+}
+
+function bucketNow() {
+  const d = new Date();
+  return d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0');
+}
+
+function inferStage(timestamp) {
+  if (!cadData) return null;
+  const toMins = t => { if (!t) return null; const [h,m] = t.split(':').map(Number); return h*60+m; };
+  const ts = toMins(timestamp);
+  const arv  = toMins(cadData.arrival);
+  const dep  = toMins(cadData.depart);
+  const hosp = toMins(cadData.hospitalArrival);
+  const rts  = toMins(cadData.rts);
+  if (!ts) return null;
+  if (rts && ts >= rts) return null;
+  if (hosp && ts >= hosp) return 'Hospital Transfer';
+  if (dep && ts >= dep) return 'Transport';
+  if (arv && ts >= arv) return 'On-Scene';
+  return 'Pre-Scene';
+}
+
+function addBucketItem(item) {
+  item.id = Date.now();
+  item.timestamp = bucketNow();
+  item.stage = inferStage(item.timestamp);
+  bucketItems.unshift(item);
+  renderBucket();
+  updateAIBtn();
+}
+
+function deleteBucketItem(id) {
+  bucketItems = bucketItems.filter(i => i.id !== id);
+  renderBucket();
+  updateAIBtn();
+}
+
+function renderBucket() {
+  const bucket = document.getElementById('bucket');
+  const empty = document.getElementById('bucketEmpty');
+  if (!bucket) return;
+  empty.style.display = bucketItems.length ? 'none' : 'flex';
+  bucket.querySelectorAll('.feed-item').forEach(el => el.remove());
+  bucketItems.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'feed-item';
+    el.innerHTML = `
+      <div class="feed-item-header">
+        <span class="feed-item-icon">${getBucketIcon(item.type)}</span>
+        <span class="feed-item-type">${item.type}</span>
+        ${item.stage ? `<span class="stage-badge">${item.stage}</span>` : ''}
+        <span class="feed-item-time">${item.timestamp}</span>
+        <button class="feed-item-delete" onclick="deleteBucketItem(${item.id})" title="Remove">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="feed-item-body">${getBucketBody(item)}</div>`;
+    bucket.appendChild(el);
+  });
+}
+
+function getBucketIcon(type) {
+  const icons = {
+    note: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+    voice: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
+    photo: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`
+  };
+  return icons[type] || '';
+}
+
+function getBucketBody(item) {
+  if (item.type === 'note') {
+    return `<div class="feed-note-text">${item.text}</div>`;
+  }
+  if (item.type === 'voice') {
+    const ticks = Array.from({length: 40}, () =>
+      `<div class="waveform-tick" style="height:${4 + Math.random()*18}px"></div>`
+    ).join('');
+    return `<div class="feed-voice-player">
+      <button class="play-btn" onclick="playBucketAudio('${item.url}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>
+      <div class="voice-waveform-bar">${ticks}</div>
+    </div>
+    ${item.transcript ? `<div class="feed-transcript">${item.transcript}</div>` : ''}`;
+  }
+  if (item.type === 'photo') {
+    return `<img class="feed-photo-thumb" src="${item.src}" alt="Scene photo">`;
+  }
+  return '';
+}
+
+function playBucketAudio(url) {
+  new Audio(url).play();
+}
+
+function updateAIBtn() {
+  const btn = document.getElementById('aiProcessBtn');
+  const badge = document.getElementById('itemCountBadge');
+  if (!btn || !badge) return;
+  badge.textContent = bucketItems.length;
+  btn.classList.toggle('ready', bucketItems.length > 0);
+}
+
+function processWithAI() {
+  if (bucketItems.length === 0) { alert('Add some items to the record first.'); return; }
+  alert(`Ready to process ${bucketItems.length} item(s) with AI.\n\n(AI pipeline integration coming next.)`);
 }
 
 // ======== SWIPE GESTURE — TAB NAVIGATION ========

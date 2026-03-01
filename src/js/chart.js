@@ -2235,7 +2235,7 @@ async function generateSOAP() {
   }
 
   // Switch to Chart (output) tab
-  switchTab('output', document.querySelectorAll('.tab')[2]);
+  switchTab('chart', document.querySelectorAll('.tab')[2]);
 
   // Show spinner
   document.getElementById('loadingSpinner').classList.add('visible');

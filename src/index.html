@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Chart Helper</title>
-<!-- Version: v9.1 -->
-<script>const APP_VERSION = 'v9.5';</script>
+<!-- Version: v10.0 -->
+<script>const APP_VERSION = 'v10.0';</script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/base.css">
 </head>
@@ -21,6 +21,13 @@
   </div>
   <div class="header-right">
     <button class="btn-icon" onclick="toggleProtocolsSidebar()" title="Reference" style="display:flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> Reference</button>
+    <button class="post-call-btn" id="postCallBtn" onclick="toggleDrawer()" style="display:none;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+      Post-Call
+    </button>
     <button class="hamburger-btn" id="menuButton" onclick="toggleMenu()" title="Menu" aria-label="Menu">
       <span></span>
       <span></span>
@@ -194,8 +201,7 @@
     <div class="tabs" id="tabBar">
       <button class="tab active" onclick="switchTab('dispatch', this)">Dispatch</button>
       <button class="tab" onclick="switchTab('input', this)">On-Scene</button>
-      <button class="tab" onclick="switchTab('reference', this)">Photos</button>
-      <button class="tab" onclick="switchTab('output', this)">Chart</button>
+      <button class="tab" onclick="switchTab('chart', this)">Chart</button>
       <button class="tab" onclick="switchTab('refusal', this)">Refusal</button>
     </div>
   </div>
@@ -310,6 +316,163 @@
   <!-- ====== INPUT TAB ====== -->
   <div id="tab-input" style="display:none">
 
+    <!-- Post-call drawer -->
+    <div class="drawer" id="drawer">
+      <div class="drawer-inner">
+        <div class="drawer-section-title">CAD Times</div>
+
+        <!-- Mode toggle -->
+        <div class="cad-mode-toggle">
+          <button class="cad-mode-btn active" id="modeManual" onclick="setMode('manual')">Manual Entry</button>
+          <button class="cad-mode-btn" id="modePaste" onclick="setMode('paste')">Paste Row</button>
+        </div>
+
+        <!-- Manual entry -->
+        <div class="cad-manual-area" id="cadManual">
+          <div class="cad-time-grid">
+            <div class="cad-time-field">
+              <label>Disp</label>
+              <input type="time" id="tDisp">
+            </div>
+            <div class="cad-time-field">
+              <label>Enroute</label>
+              <input type="time" id="tEnr">
+            </div>
+            <div class="cad-time-field">
+              <label>On Scene</label>
+              <input type="time" id="tArv">
+            </div>
+            <div class="cad-time-field">
+              <label>Depart</label>
+              <input type="time" id="tDep">
+            </div>
+            <div class="cad-time-field">
+              <label>Hospital</label>
+              <input type="time" id="tHosp">
+            </div>
+            <div class="cad-time-field">
+              <label>RTS</label>
+              <input type="time" id="tRts">
+            </div>
+          </div>
+          <div class="cad-dest-row">
+            <div class="cad-time-field" style="flex:1">
+              <label>Destination</label>
+              <input type="text" id="tDest" placeholder="e.g. Norwalk Hospital" style="font-size:13px; text-align:left; padding: 7px 8px; width:100%; background:var(--bg); border:1px solid var(--border); border-radius:5px; color:var(--text); font-family:var(--mono);">
+            </div>
+            <label class="refusal-toggle" id="refusalToggle">
+              <input type="checkbox" id="isRefusal" onchange="toggleRefusal()">
+              <div class="refusal-toggle-box">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span class="refusal-toggle-label">Refusal</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Paste mode -->
+        <div class="cad-paste-area" id="cadPaste">
+          <textarea class="paste-field" id="pasteField" placeholder="Paste CAD row here…"></textarea>
+        </div>
+
+        <div class="drawer-btn-row">
+          <button class="drawer-btn drawer-btn-secondary" onclick="toggleDrawer()">Cancel</button>
+          <button class="drawer-btn drawer-btn-primary" id="applyBtn" onclick="applyCAD()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Apply Times
+          </button>
+        </div>
+
+        <hr class="process-divider">
+        <div class="drawer-section-title">Chart Population</div>
+        <button class="ai-process-btn" id="aiProcessBtn" onclick="processWithAI()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Process with AI
+          <span class="item-count-badge" id="itemCountBadge">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CAD summary bar -->
+    <div class="cad-summary" id="cadSummary">
+      <div class="cad-summary-item">
+        <span class="cad-summary-label">On Scene</span>
+        <span class="cad-summary-value" id="sumArv">—</span>
+      </div>
+      <div class="cad-summary-item">
+        <span class="cad-summary-label">Depart</span>
+        <span class="cad-summary-value" id="sumDep">—</span>
+      </div>
+      <div class="cad-summary-item">
+        <span class="cad-summary-label">Hospital</span>
+        <span class="cad-summary-value" id="sumHosp">—</span>
+      </div>
+      <div class="cad-summary-item">
+        <span class="cad-summary-label">RTS</span>
+        <span class="cad-summary-value" id="sumRts">—</span>
+      </div>
+      <span class="cad-summary-badge" id="callTypeBadge"></span>
+    </div>
+
+    <!-- Bucket feed -->
+    <div class="bucket" id="bucket">
+      <div class="bucket-empty" id="bucketEmpty">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        <div class="bucket-empty-text">Drop anything here —<br>photos, voice, notes.</div>
+      </div>
+    </div>
+
+    <!-- Note input overlay -->
+    <div class="note-overlay" id="noteOverlay">
+      <div class="note-sheet">
+        <div class="note-sheet-title">
+          Add Note
+          <button class="note-close" onclick="closeNote()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <textarea class="note-textarea" id="noteText" placeholder="Type anything — vitals, observations, patient statements…"></textarea>
+        <button class="note-submit" onclick="submitNote()">Add to Record</button>
+      </div>
+    </div>
+
+    <!-- Capture bar -->
+    <div class="capture-bar" id="captureBarEl">
+      <button class="capture-btn" onclick="capturePhoto()" id="photoBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        Photo
+      </button>
+      <button class="capture-btn" onclick="toggleVoice()" id="voiceBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+          <path d="M19 10v2a7 7 0 01-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+        Voice
+      </button>
+      <button class="capture-btn" onclick="openNote()" id="noteBtn">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Note
+      </button>
+    </div>
+
+    <!-- Hidden file input for photos -->
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+
+  </div>
+
+  <!-- ====== CHART TAB ====== -->
+  <div id="tab-chart" style="display:none">
+
     <!-- PATIENT INFO -->
     <div class="section">
       <div class="section-header" onclick="toggleSection('patient')">
@@ -317,8 +480,6 @@
         <span class="section-badge" id="patient-badge">▾</span>
       </div>
       <div class="section-body" id="section-patient">
-
-        <!-- PATIENT DICTATION -->
         <div class="pt-dictate-bar">
           <button class="hpi-voice-btn" id="ptVoiceBtn" onclick="togglePatientVoice()">🎙</button>
           <div class="pt-dictate-center">
@@ -331,21 +492,15 @@
           </button>
         </div>
         <div class="pt-extract-status" id="ptExtractStatus"></div>
-        
-        <!-- Transcript History -->
         <div class="transcript-history-content" id="patient-transcript-history" style="display:none">
           <div class="transcript-history-empty">No transcripts yet</div>
         </div>
-
-
         <div class="form-row full">
           <div class="field">
             <label>Patient Name</label>
             <input type="text" id="patientName" placeholder="e.g. John Smith">
           </div>
         </div>
-
-        <!-- Address -->
         <div class="form-row full">
           <div class="field">
             <label>Address</label>
@@ -366,16 +521,12 @@
             <input type="text" id="patientZip" placeholder="06840" maxlength="10" value="06840">
           </div>
         </div>
-
-        <!-- Phone -->
         <div class="form-row full">
           <div class="field">
             <label>Phone</label>
             <input type="tel" id="patientPhone" placeholder="(XXX) XXX-XXXX" oninput="formatPhone(this)">
           </div>
         </div>
-
-        <!-- DOB / Age auto-calc -->
         <div class="form-row three">
           <div class="field" style="grid-column: span 2">
             <label>Date of Birth</label>
@@ -396,8 +547,6 @@
             <input type="number" id="patientAge" placeholder="—" readonly style="background:var(--surface2);color:var(--accent);font-family:var(--mono);font-weight:600">
           </div>
         </div>
-
-        <!-- Sex -->
         <div class="form-row full">
           <div class="field">
             <label>Sex</label>
@@ -407,7 +556,8 @@
             </div>
             <input type="hidden" id="patientSex">
           </div>
-        </div>      </div>
+        </div>
+      </div>
     </div>
 
     <!-- SCENE INFORMATION -->
@@ -416,7 +566,6 @@
         <span class="section-title">Scene Information</span>
       </div>
       <div class="section-body">
-        <!-- SCENE DICTATION -->
         <div class="pt-dictate-bar">
           <button class="hpi-voice-btn" id="sceneVoiceBtn" onclick="toggleSceneVoice()">🎙</button>
           <div class="pt-dictate-center">
@@ -429,12 +578,9 @@
           </button>
         </div>
         <div class="pt-extract-status" id="sceneExtractStatus"></div>
-        
-        <!-- Transcript History -->
         <div class="transcript-history-content" id="scene-transcript-history" style="display:none">
           <div class="transcript-history-empty">No transcripts yet</div>
         </div>
-
         <div class="form-row full">
           <div class="field">
             <label>Level of Consciousness</label>
@@ -458,10 +604,9 @@
             <input type="hidden" id="patientLOC">
           </div>
         </div>
-
         <div class="field">
           <label>Scene Notes</label>
-          <textarea id="sceneNotes" placeholder="Describe the scene upon arrival. Where was the patient? How did the patient look (alert, communicative, unconscious, etc.)? Who else was there?" style="min-height:120px" oninput="autoResizeTextarea(this)"></textarea>
+          <textarea id="sceneNotes" placeholder="Describe the scene upon arrival. Where was the patient? How did the patient look? Who else was there?" style="min-height:120px" oninput="autoResizeTextarea(this)"></textarea>
         </div>
       </div>
     </div>
@@ -472,7 +617,6 @@
         <span class="section-title">Incident Details</span>
       </div>
       <div class="section-body">
-        <!-- INCIDENT DICTATION -->
         <div class="pt-dictate-bar">
           <button class="hpi-voice-btn" id="incidentVoiceBtn" onclick="toggleIncidentVoice()">🎙</button>
           <div class="pt-dictate-center">
@@ -485,21 +629,15 @@
           </button>
         </div>
         <div class="pt-extract-status" id="incidentExtractStatus"></div>
-        
-        <!-- Transcript History -->
         <div class="transcript-history-content" id="incident-transcript-history" style="display:none">
           <div class="transcript-history-empty">No transcripts yet</div>
         </div>
-
-        <!-- CC -->
         <div class="form-row full">
           <div class="field">
             <label>CC — Chief Complaint</label>
             <input type="text" id="chiefComplaint" placeholder='e.g. "I fell and hurt my knee"'>
           </div>
         </div>
-
-        <!-- HPI — OPQRST -->
         <div class="subsection-label">HPI — History of Present Illness <span class="format-tag">OPQRST</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
@@ -514,8 +652,6 @@
             <div class="opqrst-item"><span class="opqrst-letter">T</span><div><div class="opqrst-word">Time</div><div class="opqrst-hint">Constant? Improving?</div></div></div>
           </div>
         </div>
-
-        <!-- PMH — SAMPLE -->
         <div class="subsection-label" style="margin-top:6px">PMH — Past Medical History <span class="format-tag">SAMPLE</span></div>
         <div class="hpi-layout">
           <div class="hpi-input">
@@ -540,7 +676,6 @@
         <span class="section-badge" id="vitals-badge">▾</span>
       </div>
       <div class="section-body" id="section-vitals">
-        <!-- ACTIVITIES DICTATION -->
         <div class="pt-dictate-bar">
           <button class="hpi-voice-btn" id="vitalsVoiceBtn" onclick="toggleVitalsVoice()">🎙</button>
           <div class="pt-dictate-center">
@@ -553,28 +688,17 @@
           </button>
         </div>
         <div class="pt-extract-status" id="vitalsExtractStatus"></div>
-        
-        <!-- Transcript History -->
         <div class="transcript-history-content" id="vitals-transcript-history" style="display:none">
           <div class="transcript-history-empty">No transcripts yet</div>
         </div>
-        
         <div id="vitals-container">
           <!-- rows injected by JS -->
         </div>
       </div>
     </div>
 
-
-
-    <div class="error-msg" id="errorMsg">Please fill in at least the chief complaint and scene notes before generating.</div>
-
-    <button class="generate-btn" onclick="generateSOAP()">
-      <span>✦</span> Generate SOAP Narrative
-    </button>
-
-    <!-- Chart Export Options -->
-    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+    <!-- Chart Export -->
+    <div style="margin-top:16px; padding: 0 0 16px 0; display:flex; gap:8px; flex-wrap:wrap;">
       <button class="generate-btn" onclick="copyChartToClipboard()" style="flex:1; background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);margin:0; min-width:0;">
         <span>📋</span> Copy Chart
       </button>
@@ -586,87 +710,6 @@
       </button>
     </div>
     <div id="copyChartStatus" style="font-family:var(--mono);font-size:11px;color:var(--success);text-align:center;margin-top:6px;min-height:16px;"></div>
-
-  </div>
-
-  <!-- ====== REFERENCE TAB ====== -->
-  <div id="tab-reference" style="display:none">
-
-    <!-- Hidden file inputs — wired via JS -->
-    <input type="file" id="refPhotoCamera" accept="image/*" capture="environment" style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
-    <input type="file" id="refPhotoUpload" accept="image/*"                       style="display:none" multiple onchange="handleRefPhotoFiles(this.files)">
-
-    <!-- Action bar -->
-    <div class="ref-action-bar">
-      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoCamera').click()">
-        <span class="ref-btn-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span>
-        <span class="ref-btn-label">Camera</span>
-      </button>
-      <button class="ref-capture-btn" onclick="document.getElementById('refPhotoUpload').click()">
-        <span class="ref-btn-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
-        <span class="ref-btn-label">Upload</span>
-      </button>
-    </div>
-
-    <!-- Empty state -->
-    <div class="ref-empty" id="refEmpty">
-      <div class="ref-empty-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
-      <div class="ref-empty-text">No reference photos yet</div>
-      <div class="ref-empty-sub">Tap Camera to shoot on-scene, or Upload from your photo library</div>
-    </div>
-
-    <!-- Photo grid -->
-    <div class="ref-grid" id="refGrid"></div>
-
-  </div>
-
-  <!-- ====== OUTPUT TAB ====== -->
-  <div id="tab-output" style="display:none">
-
-    <div class="loading" id="loadingSpinner">
-      <div class="spinner"></div>
-      <div class="loading-text">Generating SOAP narrative…</div>
-    </div>
-
-    <div class="output-section" id="outputSection">
-
-      <div class="call-type-display" id="outputCallTypeBadge">📋 Refusal of Care</div>
-
-      <!-- S -->
-      <div class="soap-block">
-        <div class="soap-label">S — Subjective</div>
-        <button class="copy-btn" onclick="copyBlock('s-text', this)">Copy</button>
-        <div class="soap-text" id="s-text" contenteditable="true"></div>
-      </div>
-
-      <!-- O -->
-      <div class="soap-block">
-        <div class="soap-label">O — Objective</div>
-        <button class="copy-btn" onclick="copyBlock('o-text', this)">Copy</button>
-        <div class="soap-text" id="o-text" contenteditable="true"></div>
-      </div>
-
-      <!-- A -->
-      <div class="soap-block">
-        <div class="soap-label">A — Assessment</div>
-        <button class="copy-btn" onclick="copyBlock('a-text', this)">Copy</button>
-        <div class="soap-text" id="a-text" contenteditable="true"></div>
-      </div>
-
-      <!-- P -->
-      <div class="soap-block">
-        <div class="soap-label">P — Plan</div>
-        <button class="copy-btn" onclick="copyBlock('p-text', this)">Copy</button>
-        <div class="soap-text" id="p-text" contenteditable="true"></div>
-      </div>
-
-      <button class="copy-all-btn" onclick="copyAll()">📋 Copy Full SOAP Note</button>
-
-    </div>
-
-    <div id="outputEmpty" style="padding:40px;text-align:center;color:var(--text-muted);font-family:var(--mono);font-size:12px;display:none">
-      No narrative generated yet.<br>Fill out the Input tab and tap Generate.
-    </div>
 
   </div>
 
