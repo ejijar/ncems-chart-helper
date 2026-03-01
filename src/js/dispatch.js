@@ -1060,10 +1060,12 @@ function switchTab(tab, el) {
   document.getElementById('tab-chart').style.display    = tab === 'chart'    ? 'block' : 'none';
   document.getElementById('tab-refusal').style.display  = tab === 'refusal'  ? 'block' : 'none';
 
-  // Show/hide capture bar for On-Scene tab
+  // Show/hide capture bar and AI bar for On-Scene tab
   const captureBar = document.getElementById('captureBarEl');
   if (captureBar) captureBar.classList.toggle('visible', tab === 'input');
-  // Always show CAD summary bar on On-Scene tab (Post-Call button lives there)
+  const aiBar = document.getElementById('aiBar');
+  if (aiBar) aiBar.classList.toggle('visible', tab === 'input');
+  // Always show CAD summary bar on On-Scene tab
   const cadSummary = document.getElementById('cadSummary');
   if (cadSummary && tab === 'input') cadSummary.classList.add('visible');
   if (cadSummary && tab !== 'input') cadSummary.classList.remove('visible');
@@ -1090,10 +1092,10 @@ let audioChunks = [];
 
 function toggleDrawer() {
   const drawer = document.getElementById('drawer');
-  const btn = document.getElementById('postCallBtn');
+  const bar = document.getElementById('cadSummary');
   if (drawer) {
     drawer.classList.toggle('open');
-    if (btn) btn.classList.toggle('active');
+    if (bar) bar.classList.toggle('active');
   }
 }
 

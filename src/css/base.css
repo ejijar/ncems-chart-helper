@@ -4427,6 +4427,18 @@
   align-items: center;
 }
 .cad-summary.visible { display: flex; }
+.cad-summary:hover, .cad-summary.active { background: var(--surface); }
+/* AI bar */
+.ai-bar {
+  display: none;
+  position: fixed;
+  bottom: 88px;
+  left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  padding: 0 20px 8px;
+  z-index: 99;
+}
+.ai-bar.visible { display: block; }
 .cad-summary-item { display: flex; flex-direction: column; gap: 1px; }
 .cad-summary-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
 .cad-summary-value { color: var(--text); font-size: 12px; }
@@ -4437,7 +4449,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  padding-bottom: 120px;
+  padding-bottom: 180px;
 }
 .bucket-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -4565,12 +4577,5 @@
   padding: 6px 10px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
 }
 .post-call-btn:hover, .post-call-btn.active { border-color: var(--accent); color: var(--accent); }
-.cad-post-call-btn {
-  display: flex; align-items: center; gap: 5px;
-  background: none; border: 1px solid var(--border); border-radius: 5px;
-  color: var(--text-muted); font-family: var(--mono); font-size: 10px;
-  padding: 3px 8px; cursor: pointer; transition: border-color 0.15s, color 0.15s;
-  white-space: nowrap; flex-shrink: 0;
-}
-.cad-post-call-btn:hover, .cad-post-call-btn.active { border-color: var(--accent); color: var(--accent); }
+
 }
