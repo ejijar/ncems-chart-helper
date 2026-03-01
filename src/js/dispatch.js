@@ -1056,6 +1056,7 @@ function switchTab(tab, el) {
   }
   document.getElementById('tab-dispatch').style.display = tab === 'dispatch' ? 'block' : 'none';
   document.getElementById('tab-input').style.display    = tab === 'input'    ? 'flex' : 'none';
+  document.getElementById('tab-input').style.flexDirection = 'column';
   document.getElementById('tab-chart').style.display    = tab === 'chart'    ? 'block' : 'none';
   document.getElementById('tab-refusal').style.display  = tab === 'refusal'  ? 'block' : 'none';
 
